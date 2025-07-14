@@ -74,13 +74,15 @@ RUN echo '#!/bin/bash\necho "Service command mocked for Docker build: $*"\nexit 
   echo '#!/bin/bash\necho "invoke-rc.d mocked for Docker build: $*"\nexit 0' > /usr/local/bin/invoke-rc.d && \
   chmod +x /usr/local/bin/invoke-rc.d && \
   echo '#!/bin/bash\necho "update-rc.d mocked for Docker build: $*"\nexit 0' > /usr/local/bin/update-rc.d && \
-  chmod +x /usr/local/bin/update-rc.d
+  chmod +x /usr/local/bin/update-rc.d && \
+  echo '#!/bin/bash\necho "systemctl mocked for Docker build: $*"\nexit 0' > /usr/local/bin/systemctl && \
+  chmod +x /usr/local/bin/systemctl
 
 # Ensure our mock commands are used
 ENV PATH="/usr/local/bin:${PATH}"
 
 # Run Polarion installation with robust error handling
-RUN set -x && ./install.expect || { \
+RUN set -x && timeout 1800 ./install.expect || { \
   echo "Installation encountered errors, checking if core components installed..."; \
   if [ -d "/opt/polarion" ] && [ -f "/opt/polarion/polarion/version" ]; then \
   echo "Core Polarion installation detected, continuing..."; \

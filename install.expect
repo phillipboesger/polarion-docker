@@ -1,7 +1,7 @@
 #!/usr/bin/expect -f
 
 # Set timeout and enable debugging
-set timeout 600
+set timeout 300
 exp_internal 1
 
 # Start Polarion installer
@@ -32,8 +32,14 @@ expect "When you are done press Enter to continue."
 send "Y\r"
 
 # Step 7: Copy predefined Apache configuration files
-expect "Do you want to copy predefined conf. files into /etc/apache2?"
-send "yes\r"
+expect {
+    "*Do you want to copy predefined conf. files into /etc/apache2?*" {
+        send "yes\r"
+    }
+    "*Type answer*" {
+        send "yes\r"
+    }
+}
 
 # Handle potential Apache restart errors gracefully
 expect {

@@ -1,90 +1,84 @@
 #!/usr/bin/expect -f
 
 # Set timeout and enable debugging
-set timeout 600
+set timeout 300
 exp_internal 1
 
 # Start Polarion installer
 spawn ./install.sh
 
-# Step 1: Accept license
-expect "Do you accept the terms of this license agreement?"
-send "yes\r"
-
-# Step 2: Select installation directory
-expect "Please choose the target directory"
-send "\r"
-
-# Step 3: Choose installation mode
-expect "Do you want to install the application for all users on this computer?"
-send "yes\r"
-
-# Step 4: Select modules to install
-expect "Please choose which modules to install."
-send "\r"
-
-# Step 5: Confirmation to proceed
-expect "Press Enter to continue with the installation."
-send "\r"
-
-# Step 6: Continue after file extraction
-expect "When you are done press Enter to continue."
-send "Y\r"
-
-# Step 7: Copy predefined Apache configuration files
-expect "Do you want to copy predefined conf. files into /etc/apache2?"
-send "yes\r"
-
-# Handle potential Apache restart errors gracefully
+# Handle initial welcome and license
 expect {
-    "Could not restart Apache httpd server!" {
-        send_user "\nWARNING: Apache restart failed (expected in Docker build)\n"
-        expect "Terminating..."
-        # Continue despite the error
+    "*Press \"Enter\" to continue with a clean installation*" {
+        send "\r"
         exp_continue
     }
-    "Do you want to initialize and configure PostgreSQL database for Polarion?" {
+    "*Do you accept the terms of this license agreement?*" {
         send "yes\r"
+        exp_continue
     }
-    timeout {
-        send_user "\nTimeout waiting for PostgreSQL question\n"
-        exit 1
+    "*SVN repository with default settings*" {
+        send "yes\r"
+        exp_continue
     }
-}
-
-# Step 9: Set password for 'polarion' database user
-expect "Please, set a password for user 'polarion' through which Polarion will connect to the database:"
-send "polarion\r"
-
-# Step 10: Third continuation prompt
-expect "When you are done press Enter to continue."
-send "Y\r"
-
-# Step 11: Initialize repository
-expect "Do you want initialize the repository now?"
-send "yes\r"
-
-# Step 12: Install Polarion sample data (optional)
-expect "Would you like install Polarion sample data?"
-send "yes\r"
-
-# Step 13: Choose not to start Polarion immediately (will be started by container script)
-expect "Do you want start Polarion now?"
-send "no\r"
-
-# Wait for installation to complete or handle early termination
-expect {
+    "*check and install the prerequisities*" {
+        send "yes\r"
+        exp_continue
+    }
+    "*target directory*" {
+        send "\r"
+        exp_continue
+    }
+    "*all users on this computer*" {
+        send "yes\r"
+        exp_continue
+    }
+    "*which modules to install*" {
+        send "\r"
+        exp_continue
+    }
+    "*continue with the installation*" {
+        send "\r"
+        exp_continue
+    }
+    "*When you are done press Enter to continue*" {
+        send "Y\r"
+        exp_continue
+    }
+    "*copy predefined conf. files into /etc/apache2*" {
+        send "yes\r"
+        exp_continue
+    }
+    "*Could not restart Apache httpd server*" {
+        send_user "\nWARNING: Apache restart failed (expected in Docker build)\n"
+        exp_continue
+    }
+    "*initialize and configure PostgreSQL database*" {
+        send "yes\r"
+        exp_continue
+    }
+    "*password for user 'polarion'*" {
+        send "polarion\r"
+        exp_continue
+    }
+    "*initialize the repository now*" {
+        send "yes\r"
+        exp_continue
+    }
+    "*install Polarion sample data*" {
+        send "yes\r"
+        exp_continue
+    }
+    "*start Polarion now*" {
+        send "no\r"
+        exp_continue
+    }
     eof {
         send_user "\nInstallation completed successfully\n"
         exit 0
     }
-    "ERROR:" {
-        send_user "\nHandling installation error...\n"
-        # If we get an error but PostgreSQL setup was successful, continue
-        exit 0
-    }
     timeout {
-        send_user "\nInstallation timed out\n"
+        send_user "\nTimeout during installation\n"
         exit 1
     }
 }
