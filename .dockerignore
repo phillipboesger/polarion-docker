@@ -1,0 +1,33 @@
+# Log files
+*.log
+*.tmp
+
+# Version control
+.git
+.gitignore
+
+# macOS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker files (avoid recursion)
+.dockerignore
+
+# Documentation
+README.md
+
+# Temporary files
+*.bak
+*.old
+*~

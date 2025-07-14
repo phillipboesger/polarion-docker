@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  polarion:
+    build:
+      context: .
+      dockerfile: dockerfile
+      platforms:
+        - linux/amd64  # Force x86_64 architecture for Rosetta compatibility
+    platform: linux/amd64  # Important for Apple Silicon Macs
+    container_name: polarion-v2410
+    ports:
+      - "80:80"         # Standard HTTP port
+      - "443:443"       # Standard HTTPS port
+      - "5432:5432"     # PostgreSQL port (if PostgreSQL runs in container)
+    volumes:
+      - polarion_data:/polarion_root/data
+      - polarion_logs:/polarion_root/logs
+      - polarion_config:/polarion_root/config
+    environment:
+      - POLARION_HOME=/polarion_root
+      - JAVA_OPTS=-Xmx4g -Xms4g
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+    restart: unless-stopped
+    networks:
+      - polarion_network
+
+volumes:
+  polarion_data:
+    driver: local
+  polarion_logs:
+    driver: local
+  polarion_config:
+    driver: local
+
+networks:
+  polarion_network:
+    driver: bridge
