@@ -2,6 +2,46 @@
 
 This setup enables running Polarion (x86-build) on a Mac with Apple Silicon using Docker and Rosetta.
 
+## 🚀 Quick Start
+
+### Option 1: Use Pre-built Image (Recommended)
+
+```bash
+# Pull the latest image
+docker pull your-dockerhub-username/polarion-docker:latest
+
+# Create and start container with 8GB memory
+docker create \
+  --name polarion \
+  --platform linux/amd64 \
+  -p 80:80 -p 443:443 \
+  -v polarion_data:/polarion_root/data \
+  -v polarion_logs:/polarion_root/logs \
+  -v polarion_config:/polarion_root/config \
+  -e JAVA_OPTS="-Xmx8g -Xms8g" \
+  your-dockerhub-username/polarion-docker:latest
+
+docker start polarion
+```
+
+### Option 2: Use Helper Script
+
+```bash
+./docker-standard.sh pull
+./docker-standard.sh create --memory=8g
+./docker-standard.sh start
+```
+
+### Option 3: Use Docker Compose
+
+```bash
+# Standard usage (pre-built image)
+docker-compose up -d
+
+# For development (local build)
+docker-compose -f docker-compose-build.yml up -d
+```
+
 ## 🔧 Prerequisites
 
 1. **Docker Desktop for Mac** - installed and running
@@ -18,7 +58,6 @@ This setup enables running Polarion (x86-build) on a Mac with Apple Silicon usin
 - **RAM**: 8GB (16GB recommended for optimal performance)
 - **Storage**: 10GB free space
 - **Docker Desktop**: Version 4.0 or later
-- **Apple Silicon**: M1, M1 Pro, M1 Max, M2, or newer
 
 ### Recommended Configuration
 
@@ -27,49 +66,66 @@ This setup enables running Polarion (x86-build) on a Mac with Apple Silicon usin
 - **Docker Desktop Settings**:
   - Memory: 8GB allocated to Docker
   - CPUs: 4 cores allocated to Docker
-  - Disk Image Size: At least 64GB
 
-## 🔐 Security Considerations
+## 🐳 Container Management
 
-- Default credentials are used for database setup (user: `polarion`, password: `polarion`)
-- SSL certificates are self-signed (for production, use proper certificates)
-- Container runs with elevated privileges for installation
-- Network ports are exposed on localhost only
-
-## 🚀 Quick Start
-
-### Initial Installation
+### Standard Docker Commands
 
 ```bash
-# Build and start container
-./build-and-run.sh
+# Pull latest image
+docker pull your-dockerhub-username/polarion-docker:latest
+
+# Create container with custom settings
+docker create \
+  --name polarion \
+  --platform linux/amd64 \
+  -p 80:80 -p 443:443 \
+  -v polarion_data:/polarion_root/data \
+  -v polarion_logs:/polarion_root/logs \
+  -v polarion_config:/polarion_root/config \
+  -e JAVA_OPTS="-Xmx8g -Xms8g -XX:+UseG1GC" \
+  your-dockerhub-username/polarion-docker:latest
+
+# Basic operations
+docker start polarion
+docker stop polarion
+docker restart polarion
+docker logs -f polarion
+docker rm polarion  # Remove container (keeps data)
 ```
 
-### Container Management
+### Helper Script Options
 
 ```bash
-# Manage containers
-./manage-polarion.sh [OPTION]
-
-# Available options:
-./manage-polarion.sh start    # Start container
-./manage-polarion.sh stop     # Stop container
-./manage-polarion.sh restart  # Restart container
-./manage-polarion.sh logs     # Show logs
-./manage-polarion.sh status   # Check status
-./manage-polarion.sh shell    # Login to container
-./manage-polarion.sh rebuild  # Rebuild
-./manage-polarion.sh cleanup  # Delete everything
+# Container management
+./docker-standard.sh pull                              # Pull latest image
+./docker-standard.sh create                            # Create with defaults (4GB)
+./docker-standard.sh create --memory=8g                # Create with 8GB memory
+./docker-standard.sh create --java-opts="-Xmx8g -XX:+UseG1GC"  # Custom Java options
+./docker-standard.sh start                             # Start container
+./docker-standard.sh stop                              # Stop container
+./docker-standard.sh restart                           # Restart container
+./docker-standard.sh logs                              # Show logs
+./docker-standard.sh status                            # Check status
+./docker-standard.sh remove                            # Remove container
 ```
 
-## 🌐 Access to Polarion
+### Docker Compose Usage
 
-After startup, Polarion is available at:
+| Use Case         | File                       | Command                                            |
+| ---------------- | -------------------------- | -------------------------------------------------- |
+| **Normal Usage** | `docker-compose.yml`       | `docker-compose up -d`                             |
+| **Development**  | `docker-compose-build.yml` | `docker-compose -f docker-compose-build.yml up -d` |
 
-- **HTTP**: http://localhost:80
-- **HTTPS**: https://localhost:443
+## 🌐 Access & Configuration
 
-## 📁 Data Persistence
+### URLs
+
+- **HTTP**: http://localhost
+- **HTTPS**: https://localhost
+- **Default Credentials**: user: `polarion`, password: `polarion`
+
+### Data Persistence
 
 Important data is stored in Docker volumes:
 
@@ -77,90 +133,113 @@ Important data is stored in Docker volumes:
 - `polarion_logs` - Log files
 - `polarion_config` - Configuration files
 
+### Java Configuration Examples
+
+```bash
+# Standard (4GB)
+-e JAVA_OPTS="-Xmx4g -Xms4g"
+
+# High Performance (8GB + G1GC)
+-e JAVA_OPTS="-Xmx8g -Xms8g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+
+# Production (16GB + optimizations)
+-e JAVA_OPTS="-Xmx16g -Xms16g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions"
+```
+
+## 🔄 CI/CD & Docker Hub Setup
+
+This repository includes automated builds via GitHub Actions.
+
+### For Repository Maintainers
+
+1. **Create Docker Hub account** at [hub.docker.com](https://hub.docker.com)
+2. **Generate Access Token**: Account Settings → Security → New Access Token
+3. **Set GitHub Secrets**:
+   ```
+   DOCKERHUB_USERNAME: your-docker-hub-username
+   DOCKERHUB_TOKEN: your-access-token
+   ```
+4. **Update image names** in all files:
+   ```bash
+   find . -name "*.sh" -o -name "*.yml" -o -name "*.md" | \
+     xargs sed -i '' 's/your-dockerhub-username/YOUR-ACTUAL-USERNAME/g'
+   ```
+5. **Push changes** → Automatic build starts
+
+### Available Tags
+
+- `latest` - Latest stable build
+- `v2410` - Specific Polarion version
+- Semantic versions (e.g., `v1.0.0`)
+
 ## 🔍 Troubleshooting
 
-### Container won't start
+### Container Issues
 
 ```bash
 # Check logs
-./manage-polarion.sh logs
+docker logs -f polarion
 
 # Check container status
-./manage-polarion.sh status
+docker ps -a
+
+# Access container shell
+docker exec -it polarion /bin/bash
 ```
 
 ### Performance Issues
 
-Since the container is emulated via Rosetta, performance may be lower than on native x86 systems.
+- Since the container runs via Rosetta, performance may be lower than native x86
+- Allocate more RAM/CPU cores in Docker Desktop settings
+- Use SSD storage for better I/O performance
 
 ### Rosetta Issues
 
 ```bash
-# Check Rosetta status
+# Check if Rosetta is running
 pgrep oahd
 
-# If not installed:
+# Install if missing
 softwareupdate --install-rosetta
 ```
-
-## 📋 Important Commands
-
-```bash
-# Manage Docker containers directly
-docker-compose up -d        # Start container
-docker-compose down         # Stop container
-docker-compose logs -f      # Show live logs
-
-# Login to container
-docker exec -it polarion-v2410 /bin/bash
-
-# Restart container
-docker-compose restart
-```
-
-## ⚡ Performance Tips
-
-1. **Allocate more RAM**: Increase RAM allocation in Docker Desktop
-2. **CPU cores**: Provide more CPU cores in Docker Desktop
-3. **Disk cache**: Use SSD storage for better I/O performance
 
 ## 🧪 Development
 
 ### Project Structure
 
 ```
-v2410/
-├── build-and-run.sh      # Main build and startup script
-├── manage-polarion.sh    # Container management script
-├── polarion_starter.sh   # Container startup script
-├── dockerfile           # Docker image definition
-├── docker-compose.yml   # Service orchestration
-├── install.expect       # Automated installation script
-├── polarion-linux.zip   # Polarion installation archive
-├── .dockerignore       # Docker build exclusions
-└── README.md           # This documentation
+polarion-docker/
+├── docker-compose.yml       # Standard usage (pre-built image)
+├── docker-compose-build.yml # Development (local build)
+├── dockerfile              # Docker image definition
+├── docker-standard.sh      # Helper script for container management
+├── examples.sh             # Interactive setup examples
+├── polarion_starter.sh     # Container startup script
+├── install.expect          # Automated installation script
+├── polarion-linux.zip      # Polarion installation (via Git LFS)
+└── .github/workflows/      # GitHub Actions for automated builds
 ```
 
-### Building from Source
+### Git LFS for Large Files
 
-1. Ensure `polarion-linux.zip` contains the correct Polarion installation files
-2. Modify environment variables in `docker-compose.yml` as needed
-3. Run the build script: `./build-and-run.sh`
-
-### Customization
-
-- **Memory allocation**: Edit `JAVA_OPTS` in `docker-compose.yml`
-- **Port mapping**: Modify port configurations in `docker-compose.yml`
-- **SSL certificates**: Replace default certificates in `polarion_starter.sh`
-
-## 🚀 Advanced Usage
-
-### Custom Java Options
+The Polarion ZIP file (734 MB) is managed via Git LFS:
 
 ```bash
-# Edit docker-compose.yml
-environment:
-  - JAVA_OPTS=-Xmx8g -Xms8g -XX:+UseG1GC
+# For updates
+cp /path/to/new/polarion-linux.zip .
+git add polarion-linux.zip
+git commit -m "Update Polarion to v24XX"
+git push  # → Triggers automatic build
+```
+
+### Local Development
+
+```bash
+# Build locally
+docker-compose -f docker-compose-build.yml up -d --build
+
+# Or use the build script
+./build-and-run.sh
 ```
 
 ## 📚 Version Information
@@ -170,3 +249,4 @@ environment:
 - **PostgreSQL Version**: 16
 - **Apache Version**: 2.4
 - **Ubuntu Base**: 24.04 LTS
+- **Architecture**: linux/amd64 (via Rosetta on Apple Silicon)

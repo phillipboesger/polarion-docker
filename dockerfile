@@ -24,7 +24,7 @@ ENV LC_ALL=en_US.UTF-8
 # Setup working directory
 WORKDIR /polarion_root
 
-# Copy and extract Polarion installation files
+# Copy and extract Polarion installation files (via Git LFS)
 COPY polarion-linux.zip ./
 RUN unzip polarion-linux.zip
 

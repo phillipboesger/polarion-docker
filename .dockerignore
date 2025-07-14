@@ -5,6 +5,7 @@
 # Version control
 .git
 .gitignore
+.github/
 
 # macOS specific files
 .DS_Store
@@ -27,7 +28,20 @@ Thumbs.db
 # Documentation
 README.md
 
+# Scripts that aren't needed in the image
+build-and-run.sh
+manage-polarion.sh
+manage-prebuilt.sh
+quick-start.sh
+examples.sh
+
+# Docker Compose files (not needed in image)
+docker-compose*.yml
+docker-compose-build.yml
+
 # Temporary files
 *.bak
 *.old
+*.backup
+*.zip.bak
 *~

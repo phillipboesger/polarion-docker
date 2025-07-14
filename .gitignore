@@ -1,2 +1,2 @@
-# ZIP-Dateien ignorieren
-*.zip
+# Polarion installation files (nur wenn NICHT mit LFS verwaltet)
+# *.zip
