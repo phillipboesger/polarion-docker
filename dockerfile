@@ -80,7 +80,7 @@ RUN echo '#!/bin/bash\necho "Service command mocked for Docker build: $*"\nexit 
 ENV PATH="/usr/local/bin:${PATH}"
 
 # Run Polarion installation with robust error handling
-RUN set -x && ./install-robust.expect || { \
+RUN set -x && ./install.expect || { \
   echo "Installation encountered errors, checking if core components installed..."; \
   if [ -d "/opt/polarion" ] && [ -f "/opt/polarion/polarion/version" ]; then \
   echo "Core Polarion installation detected, continuing..."; \
