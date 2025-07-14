@@ -3,7 +3,7 @@
 # Polarion Docker - Example Usage
 # This script shows different ways to create and manage Polarion containers
 
-DOCKER_IMAGE="your-dockerhub-username/polarion-docker:latest"
+DOCKER_IMAGE="phillipboesger/polarion-docker:latest"
 
 echo "Polarion Docker - Usage Examples"
 echo "================================"

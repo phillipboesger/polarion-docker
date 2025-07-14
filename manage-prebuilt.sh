@@ -4,7 +4,7 @@
 # This script manages a container created from a pre-built image
 
 CONTAINER_NAME="polarion-v2410"
-DOCKER_IMAGE="your-dockerhub-username/polarion-docker:latest"
+DOCKER_IMAGE="phillipboesger/polarion-docker:latest"
 
 show_help() {
     echo "Polarion Docker Management Script (Pre-built Image)"

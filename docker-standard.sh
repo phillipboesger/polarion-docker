@@ -3,7 +3,7 @@
 # Standard Docker Container Management for Polarion
 # Usage: ./docker-standard.sh [pull|create|start|stop|restart|logs|remove|status]
 
-DOCKER_IMAGE="your-dockerhub-username/polarion-docker:latest"
+DOCKER_IMAGE="phillipboesger/polarion-docker:latest"
 CONTAINER_NAME="polarion"
 
 show_help() {

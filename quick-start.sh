@@ -7,7 +7,7 @@ echo "🚀 Polarion Docker Quick Start - Pre-built Image"
 echo "==============================================="
 
 # Configuration
-DOCKER_IMAGE="your-dockerhub-username/polarion-docker:latest"
+DOCKER_IMAGE="phillipboesger/polarion-docker:latest"
 CONTAINER_NAME="polarion-v2410"
 
 # Check if Docker is running

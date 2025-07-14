@@ -8,7 +8,7 @@ This setup enables running Polarion (x86-build) on a Mac with Apple Silicon usin
 
 ```bash
 # Pull the latest image
-docker pull your-dockerhub-username/polarion-docker:latest
+docker pull phillipboesger/polarion-docker:latest
 
 # Create and start container with 8GB memory
 docker create \
@@ -19,7 +19,7 @@ docker create \
   -v polarion_logs:/polarion_root/logs \
   -v polarion_config:/polarion_root/config \
   -e JAVA_OPTS="-Xmx8g -Xms8g" \
-  your-dockerhub-username/polarion-docker:latest
+  phillipboesger/polarion-docker:latest
 
 docker start polarion
 ```
@@ -73,7 +73,7 @@ docker-compose -f docker-compose-build.yml up -d
 
 ```bash
 # Pull latest image
-docker pull your-dockerhub-username/polarion-docker:latest
+docker pull phillipboesger/polarion-docker:latest
 
 # Create container with custom settings
 docker create \
@@ -84,7 +84,7 @@ docker create \
   -v polarion_logs:/polarion_root/logs \
   -v polarion_config:/polarion_root/config \
   -e JAVA_OPTS="-Xmx8g -Xms8g -XX:+UseG1GC" \
-  your-dockerhub-username/polarion-docker:latest
+  phillipboesger/polarion-docker:latest
 
 # Basic operations
 docker start polarion
@@ -162,7 +162,7 @@ This repository includes automated builds via GitHub Actions.
 4. **Update image names** in all files:
    ```bash
    find . -name "*.sh" -o -name "*.yml" -o -name "*.md" | \
-     xargs sed -i '' 's/your-dockerhub-username/YOUR-ACTUAL-USERNAME/g'
+     xargs sed -i '' 's/phillipboesger/YOUR-ACTUAL-USERNAME/g'
    ```
 5. **Push changes** → Automatic build starts
 

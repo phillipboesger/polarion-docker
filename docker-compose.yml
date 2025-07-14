@@ -3,8 +3,8 @@ version: '3.8'
 services:
   polarion:
     # Standard Docker image - can be pulled from registry
-    # Replace 'your-dockerhub-username' with your actual Docker Hub username
-    image: your-dockerhub-username/polarion-docker:latest
+    # Replace 'phillipboesger' with your actual Docker Hub username
+    image: phillipboesger/polarion-docker:latest
     platform: linux/amd64  # Important for Apple Silicon Macs
     container_name: polarion
     ports:
