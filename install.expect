@@ -1,64 +1,57 @@
 #!/usr/bin/expect -f
 
-# Set timeout and enable debugging
-set timeout 600
-exp_internal 1
+# Automated Polarion Installation Script
+# This script automates the interactive Polarion installation process
 
-# Start Polarion installer
+# Set timeout for each expect command (in seconds)
+set timeout 30
+
+# Start the Polarion installation script
 spawn ./install.sh
 
-# Step 1: Accept license
-expect "Do you accept the terms of this license agreement?"
+# Step 1: Confirm clean installation
+expect "Press \"Enter\" to continue with a clean installation..."
+send "\r"
+
+# Step 2: Choose to use new local SVN repository
+expect "Do you want use a new local SVN repository with default settings?:\r\nType answer <yes|no>, default \[yes\]"
 send "yes\r"
 
-# Step 2: Select installation directory
-expect "Please choose the target directory"
-send "\r"
-
-# Step 3: Choose installation mode
-expect "Do you want to install the application for all users on this computer?"
+# Step 3: Check and install prerequisites
+expect "Would you like to check and install the prerequisities?\r\nType answer <yes|no>, default \[yes\]"
 send "yes\r"
 
-# Step 4: Select modules to install
-expect "Please choose which modules to install."
-send "\r"
-
-# Step 5: Confirmation to proceed
-expect "Press Enter to continue with the installation."
-send "\r"
-
-# Step 6: Continue after file extraction
+# Step 4: First continuation prompt
 expect "When you are done press Enter to continue."
+send "\r"
+
+# Step 5: First Y/n confirmation
+expect "Do you want to continue? \[Y/n\]"
 send "Y\r"
+
+# Step 6: Second Y/n confirmation
+expect "Do you want to continue? \[Y/n\]"
+send "Y\r"
+
+# Step 6a: Second continuation prompt
+expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
+send "\r"
 
 # Step 7: Copy predefined Apache configuration files
 expect "Do you want to copy predefined conf. files into /etc/apache2?"
 send "yes\r"
 
-# Handle potential Apache restart errors gracefully
-expect {
-    "Could not restart Apache httpd server!" {
-        send_user "\nWARNING: Apache restart failed (expected in Docker build)\n"
-        expect "Terminating..."
-        # Continue despite the error
-        exp_continue
-    }
-    "Do you want to initialize and configure PostgreSQL database for Polarion?" {
-        send "yes\r"
-    }
-    timeout {
-        send_user "\nTimeout waiting for PostgreSQL question\n"
-        exit 1
-    }
-}
+# Step 8: Initialize PostgreSQL database for Polarion
+expect "Do you want to initialize and configure PostgreSQL database for Polarion?"
+send "yes\r"
 
 # Step 9: Set password for 'polarion' database user
 expect "Please, set a password for user 'polarion' through which Polarion will connect to the database:"
 send "polarion\r"
 
 # Step 10: Third continuation prompt
-expect "When you are done press Enter to continue."
-send "Y\r"
+expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
+send "\r"
 
 # Step 11: Initialize repository
 expect "Do you want initialize the repository now?"
@@ -72,19 +65,5 @@ send "yes\r"
 expect "Do you want start Polarion now?"
 send "no\r"
 
-# Wait for installation to complete or handle early termination
-expect {
-    eof {
-        send_user "\nInstallation completed successfully\n"
-        exit 0
-    }
-    "ERROR:" {
-        send_user "\nHandling installation error...\n"
-        # If we get an error but PostgreSQL setup was successful, continue
-        exit 0
-    }
-    timeout {
-        send_user "\nInstallation timed out\n"
-        exit 1
-    }
-}
+# Wait for installation to complete
+expect eof
