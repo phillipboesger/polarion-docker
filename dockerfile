@@ -1,5 +1,5 @@
-# Explicitly use x86_64 platform for Apple Silicon Macs with Rosetta
-FROM --platform=linux/amd64 ubuntu:24.04
+# Base image for Polarion Docker container
+FROM ubuntu:24.04
 
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
