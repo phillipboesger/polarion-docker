@@ -28,6 +28,9 @@ send "\r"
 expect "Do you want to continue? \[Y/n\]"
 send "Y\r"
 
+expect "Do you want to continue? \[Y/n\]"
+send "Y\r"
+
 expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
 send "\r"
 
