@@ -25,12 +25,15 @@ send "yes\r"
 expect "When you are done press Enter to continue."
 send "\r"
 
+# Step 5: First Y/n confirmation
 expect "Do you want to continue? \[Y/n\]"
 send "Y\r"
 
+# Step 6: Second Y/n confirmation
 expect "Do you want to continue? \[Y/n\]"
 send "Y\r"
 
+# Step 6a: Second continuation prompt
 expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
 send "\r"
 
@@ -47,8 +50,8 @@ expect "Please, set a password for user 'polarion' through which Polarion will c
 send "polarion\r"
 
 # Step 10: Third continuation prompt
-expect "When you are done press Enter to continue."
-send "test\r"
+expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
+send "\r"
 
 # Step 11: Initialize repository
 expect "Do you want initialize the repository now?"
