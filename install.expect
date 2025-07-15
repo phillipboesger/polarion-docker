@@ -14,12 +14,15 @@ expect "Press \"Enter\" to continue with a clean installation..."
 send "\r"
 
 # Step 2: Choose to use new local SVN repository
-expect "Do you want use a new local SVN repository with default settings?:"
+expect "Do you want use a new local SVN repository with default settings?:\r\nType answer <yes|no>, default \[yes\]"
 send "yes\r"
 
 # Step 3: Check and install prerequisites
-expect "Would you like to check and install the prerequisities?"
+expect "Would you like to check and install the prerequisities?\r\nType answer <yes|no>, default \[yes\]"
 send "yes\r"
+
+expect "Do you want to continue? \[Y/n\]"
+send "Y\r"
 
 # Step 4: First continuation prompt
 expect "When you are done press Enter to continue."
