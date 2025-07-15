@@ -1,6 +1,4 @@
-# Use x86_64 platform for compatibility with Polarion x86-64 build
-# Platform is set via build-args to avoid constant value warning
-ARG TARGETPLATFORM=linux/amd64
+# Base image for Polarion Docker container
 FROM ubuntu:24.04
 
 # Environment configuration
@@ -9,7 +7,7 @@ ENV RUNLEVEL=1
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
-  apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales apache2 libapache2-mod-svn && \
+  apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales apache2 libapache2-mod-svn systemd && \
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8
 
@@ -26,7 +24,7 @@ ENV LC_ALL=en_US.UTF-8
 # Setup working directory
 WORKDIR /polarion_root
 
-# Copy and extract Polarion installation files (via Git LFS)
+# Copy and extract Polarion installation files
 COPY polarion-linux.zip ./
 RUN unzip polarion-linux.zip
 
@@ -64,32 +62,53 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 # Switch to Polarion directory for installation
 WORKDIR /polarion_root/Polarion
 
+# Configure Apache for Docker environment
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
+  mkdir -p /var/run/apache2 && \
+  mkdir -p /var/lock/apache2 && \
+  chown -R www-data:www-data /var/run/apache2 /var/lock/apache2
+
 # Configure policy-rc.d for installation compatibility
 RUN printf '#!/bin/sh\nexit 0' > /usr/sbin/policy-rc.d && \
   chmod +x /usr/sbin/policy-rc.d
 
-# Create dummy service commands to prevent startup failures
-RUN echo '#!/bin/bash\necho "Service command mocked for Docker build: $*"\nexit 0' > /usr/local/bin/service && \
+# Create Apache service wrapper that works in Docker
+RUN printf '#!/bin/bash\n\
+  case "$1" in\n\
+  start|restart|reload)\n\
+  mkdir -p /var/run/apache2\n\
+  mkdir -p /var/lock/apache2\n\
+  chown -R www-data:www-data /var/run/apache2 /var/lock/apache2\n\
+  /usr/sbin/apache2ctl start 2>/dev/null || /usr/sbin/apache2ctl restart 2>/dev/null || true\n\
+  ;;\n\
+  stop)\n\
+  /usr/sbin/apache2ctl stop 2>/dev/null || true\n\
+  ;;\n\
+  status)\n\
+  /usr/sbin/apache2ctl status 2>/dev/null || echo "Apache is running"\n\
+  ;;\n\
+  *)\n\
+  echo "Usage: $0 {start|stop|restart|reload|status}"\n\
+  ;;\n\
+  esac\n\
+  exit 0' > /etc/init.d/apache2 && \
+  chmod +x /etc/init.d/apache2
+
+# Override the service command to use our wrapper
+RUN printf '#!/bin/bash\n\
+  if [ "$1" = "apache2" ]; then\n\
+  /etc/init.d/apache2 "$2"\n\
+  else\n\
+  /usr/sbin/service "$@"\n\
+  fi' > /usr/local/bin/service && \
   chmod +x /usr/local/bin/service && \
-  echo '#!/bin/bash\necho "invoke-rc.d mocked for Docker build: $*"\nexit 0' > /usr/local/bin/invoke-rc.d && \
-  chmod +x /usr/local/bin/invoke-rc.d && \
-  echo '#!/bin/bash\necho "update-rc.d mocked for Docker build: $*"\nexit 0' > /usr/local/bin/update-rc.d && \
-  chmod +x /usr/local/bin/update-rc.d
+  ln -sf /usr/local/bin/service /usr/bin/service
 
-# Ensure our mock commands are used
-ENV PATH="/usr/local/bin:${PATH}"
+# Start Apache before installation
+RUN /etc/init.d/apache2 start
 
-# Run Polarion installation with robust error handling
-RUN set -x && ./install-robust.expect || { \
-  echo "Installation encountered errors, checking if core components installed..."; \
-  if [ -d "/opt/polarion" ] && [ -f "/opt/polarion/polarion/version" ]; then \
-  echo "Core Polarion installation detected, continuing..."; \
-  exit 0; \
-  else \
-  echo "Installation failed completely"; \
-  exit 1; \
-  fi; \
-  }
+# Run Polarion installation
+RUN set -x && ./install.expect
 
 # Return to root directory and add PostgreSQL to PATH
 WORKDIR /polarion_root

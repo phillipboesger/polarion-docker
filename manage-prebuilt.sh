@@ -3,8 +3,8 @@
 # Management script for pre-built Polarion Docker container
 # This script manages a container created from a pre-built image
 
-CONTAINER_NAME="polarion-v2410"
-DOCKER_IMAGE="phillipboesger/polarion-docker:latest"
+CONTAINER_NAME="polarion"
+DOCKER_IMAGE="phillipbosger/polarion-docker:latest"
 
 show_help() {
     echo "Polarion Docker Management Script (Pre-built Image)"

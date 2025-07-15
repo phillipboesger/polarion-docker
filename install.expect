@@ -14,30 +14,28 @@ expect "Press \"Enter\" to continue with a clean installation..."
 send "\r"
 
 # Step 2: Choose to use new local SVN repository
-expect "Do you want use a new local SVN repository with default settings?:"
+expect "Do you want use a new local SVN repository with default settings?:\r\nType answer <yes|no>, default \[yes\]"
 send "yes\r"
 
 # Step 3: Check and install prerequisites
-expect "Would you like to check and install the prerequisities?"
+expect "Would you like to check and install the prerequisities?\r\nType answer <yes|no>, default \[yes\]"
 send "yes\r"
 
 # Step 4: First continuation prompt
 expect "When you are done press Enter to continue."
 send "\r"
 
-# Step 5: Multiple confirmation prompts (appears 4 times during installation)
+# Step 5: First Y/n confirmation
 expect "Do you want to continue? \[Y/n\]"
 send "Y\r"
 
-# Handle repeated confirmation prompts
-for {set i 0} {$i < 4} {incr i} {
-    expect "Do you want to continue? \[Y/n\]"
-    send "Y\r"
-}
-
-# Step 6: Second continuation prompt
-expect "When you are done press Enter to continue."
+# Step 6: Second Y/n confirmation
+expect "Do you want to continue? \[Y/n\]"
 send "Y\r"
+
+# Step 6a: Second continuation prompt
+expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
+send "\r"
 
 # Step 7: Copy predefined Apache configuration files
 expect "Do you want to copy predefined conf. files into /etc/apache2?"
@@ -52,8 +50,8 @@ expect "Please, set a password for user 'polarion' through which Polarion will c
 send "polarion\r"
 
 # Step 10: Third continuation prompt
-expect "When you are done press Enter to continue."
-send "Y\r"
+expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
+send "\r"
 
 # Step 11: Initialize repository
 expect "Do you want initialize the repository now?"

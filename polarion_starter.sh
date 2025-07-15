@@ -115,8 +115,9 @@ elif [[ "$#" -gt 0 ]]; then
     TomcatServiceRequestSafeListedHostsValues=$(printf "%s," "$@")
     TomcatServiceRequestSafeListedHosts="TomcatService.request.safeListedHosts=${TomcatServiceRequestSafeListedHostsValues%,}" # Remove trailing comma
 else
-    echo "No values provided for TomcatService.request.safeListedHosts. Exiting"
-    exit 1
+    # Default allowed hosts if none provided
+    echo "No ALLOWED_HOSTS provided, using defaults: localhost,127.0.0.1,0.0.0.0"
+    TomcatServiceRequestSafeListedHosts="TomcatService.request.safeListedHosts=localhost,127.0.0.1,0.0.0.0"
 fi
 
 # Combine all parameters
