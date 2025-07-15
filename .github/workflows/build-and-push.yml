@@ -2,16 +2,11 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, v*]  # Include version branches
     tags: ["v*"]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, v*]  # Include version branches
   workflow_dispatch: # Manual trigger
-    inputs:
-      polarion_url:
-        description: "Polarion Download URL"
-        required: false
-        type: string
 
 env:
   REGISTRY: docker.io
@@ -55,6 +50,20 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Extract version from branch
+        id: version
+        run: |
+          if [[ "${{ github.ref_name }}" =~ ^v[0-9]+$ ]]; then
+            VERSION="${{ github.ref_name }}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "is_version_branch=true" >> $GITHUB_OUTPUT
+            echo "🏷️ Detected Polarion version branch: $VERSION"
+          else
+            echo "version=main" >> $GITHUB_OUTPUT
+            echo "is_version_branch=false" >> $GITHUB_OUTPUT
+            echo "📝 Building from main/master branch"
+          fi
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -66,7 +75,13 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=v2410
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.is_version_branch }}
+            type=raw,value=polarion-${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.is_version_branch }}
+          labels: |
+            org.opencontainers.image.title=Polarion Docker
+            org.opencontainers.image.description=Polarion ALM running in Docker
+            org.opencontainers.image.vendor=Avasis Solutions
+            polarion.version=${{ steps.version.outputs.version }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -88,6 +103,10 @@ jobs:
         run: |
           echo "## Docker Image Published 🐳" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.version.outputs.is_version_branch }}" == "true" ]]; then
+            echo "### Polarion Version: ${{ steps.version.outputs.version }} 🏷️" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "### Available Tags:" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" | sed 's/,/\n/g' >> $GITHUB_STEP_SUMMARY
@@ -95,7 +114,14 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Quick Start:" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker pull --platform linux/amd64 ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo "docker create --name polarion --platform linux/amd64 -p 80:80 -p 443:443 -e JAVA_OPTS=\"-Xmx8g -Xms8g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo "docker start polarion" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.version.outputs.is_version_branch }}" == "true" ]]; then
+            echo "# Polarion ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "docker pull --platform linux/amd64 ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "docker create --name polarion-${{ steps.version.outputs.version }} --platform linux/amd64 -p 80:80 -p 443:443 -e JAVA_OPTS=\"-Xmx8g -Xms8g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "docker start polarion-${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "docker pull --platform linux/amd64 ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+            echo "docker create --name polarion --platform linux/amd64 -p 80:80 -p 443:443 -e JAVA_OPTS=\"-Xmx8g -Xms8g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+            echo "docker start polarion" >> $GITHUB_STEP_SUMMARY
+          fi
           echo '```' >> $GITHUB_STEP_SUMMARY
