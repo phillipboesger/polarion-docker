@@ -46,21 +46,15 @@ sudo sh get-docker.sh
 
 ```bash
 # Pull and start Polarion (one command)
-docker run -d \
-  --name polarion \
-  --platform linux/amd64 \
-  -p 80:80 -p 443:443 \
-  -v polarion_data:/polarion_root/data \
-  -v polarion_logs:/polarion_root/logs \
-  -v polarion_config:/polarion_root/config \
-  -e JAVA_OPTS="-Xmx4g -Xms4g" \
-  phillipboesger/polarion-docker:latest
+docker pull --platform linux/amd64 docker.io/phillipboesger/polarion-docker:v2506
+docker create --name polarion-v2506 --platform linux/amd64 -p 80:80 -p 443:443 -e JAVA_OPTS="-Xmx8g -Xms8g" -e ALLOWED_HOSTS="localhost,127.0.0.1,0.0.0.0" docker.io/phillipboesger/polarion-docker:v2506
+docker start polarion-v2506
 ```
 
 ### 3. Access Polarion
 
 - **URL**: http://localhost
-- **Default Login**: user: `polarion`, password: `polarion`
+- **Default Login**: user: `admin`, password: `admin`
 
 That's it! Polarion is running. 🎉
 
@@ -69,7 +63,7 @@ That's it! Polarion is running. 🎉
 ### All Platforms
 
 - **Docker Desktop** or **Docker Engine** (latest version)
-- **8GB RAM minimum** (16GB recommended)
+- **4GB RAM minimum** (8GB recommended)
 - **10GB free disk space**
 
 ### macOS with Apple Silicon (M1/M2/M3)
@@ -101,33 +95,16 @@ _Tested and verified on macOS. Should work on Windows and Linux._
 
 ```bash
 # Start Polarion
-docker start polarion
+docker start polarion-vXXXX
 
 # Stop Polarion
-docker stop polarion
+docker stop polarion-vXXXX
 
 # View logs
-docker logs -f polarion
+docker logs -f polarion-vXXXX
 
 # Remove container (keeps data)
-docker rm polarion
-```
-
-### Helper Script (Optional)
-
-For easier management, use the included helper script:
-
-```bash
-# Download the repository for helper scripts
-git clone https://github.com/avasis-solutions/polarion-docker.git
-cd polarion-docker
-
-# Use helper script
-./docker-standard.sh pull                    # Pull latest image
-./docker-standard.sh create --memory=8g      # Create container with 8GB
-./docker-standard.sh start                   # Start container
-./docker-standard.sh logs                    # View logs
-./docker-standard.sh stop                    # Stop container
+docker rm polarion-vXXXX
 ```
 
 ### Docker Compose (Optional)
@@ -249,20 +226,6 @@ docker logs polarion
 #    Solution: Allocate more RAM to Docker Desktop
 ```
 
-### Performance Issues
-
-**macOS Apple Silicon:**
-
-- Performance is ~70-80% of native due to Rosetta emulation
-- Allocate more RAM in Docker Desktop settings
-- Use SSD storage for better I/O performance
-
-**All Platforms:**
-
-- Increase Docker memory allocation (Docker Desktop → Settings → Resources)
-- Allocate 8GB+ to Docker
-- Use fast storage (SSD preferred)
-
 ### Platform-Specific Issues
 
 **macOS:**
@@ -312,7 +275,7 @@ docker build --target=runtime -t polarion-slim .
 
 ### Version Information
 
-- **Polarion Version**: 2410
+- **Polarion Version**: 2506
 - **Java Version**: OpenJDK 17.0.8
 - **PostgreSQL Version**: 16
 - **Apache Version**: 2.4
