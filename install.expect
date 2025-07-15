@@ -21,11 +21,14 @@ send "yes\r"
 expect "Would you like to check and install the prerequisities?\r\nType answer <yes|no>, default \[yes\]"
 send "yes\r"
 
+# Step 4: First continuation prompt
+expect "When you are done press Enter to continue."
+send "\r"
+
 expect "Do you want to continue? \[Y/n\]"
 send "Y\r"
 
-# Step 4: First continuation prompt
-expect "When you are done press Enter to continue."
+expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
 send "\r"
 
 # Step 7: Copy predefined Apache configuration files
