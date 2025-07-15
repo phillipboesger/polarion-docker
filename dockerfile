@@ -7,7 +7,7 @@ ENV RUNLEVEL=1
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
-  apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales apache2 libapache2-mod-svn && \
+  apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales apache2 libapache2-mod-svn systemd && \
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8
 
