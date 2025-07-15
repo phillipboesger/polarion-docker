@@ -2,6 +2,7 @@
 
 # Script to update all version branches with main branch changes
 # while preserving the polarion-linux.zip file in each branch
+# Uses a smarter approach to avoid merge conflicts
 
 set -e
 
@@ -62,7 +63,7 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Function to update a single branch
+# Function to update a single branch using a fresh approach
 update_branch() {
     local branch="$1"
     
@@ -81,25 +82,29 @@ update_branch() {
         BACKUP_EXISTS=false
     fi
     
-    # Merge main into this branch
-    log "Merging main into $branch..."
-    if git merge main --no-edit; then
-        log "Merge successful"
-        
-        # Restore the backed up polarion-linux.zip if it existed
-        if [ "$BACKUP_EXISTS" = true ]; then
-            debug "Restoring polarion-linux.zip for $branch"
-            cp "/tmp/polarion-linux-${branch}.zip" "polarion-linux.zip"
-            
-            # Add and commit the restored file if there are changes
-            if ! git diff --quiet polarion-linux.zip; then
-                git add polarion-linux.zip
-                git commit -m "Restore polarion-linux.zip for $branch after merge from main"
-            fi
-            
-            # Clean up backup
-            rm "/tmp/polarion-linux-${branch}.zip"
-        fi
+    # Instead of merging, we'll replace all files except polarion-linux.zip
+    debug "Replacing files from main (except polarion-linux.zip)..."
+    
+    # Get list of files from main branch (excluding polarion-linux.zip)
+    git checkout main -- . || true
+    git reset HEAD polarion-linux.zip 2>/dev/null || true
+    
+    # Restore the backed up polarion-linux.zip if it existed
+    if [ "$BACKUP_EXISTS" = true ]; then
+        debug "Restoring polarion-linux.zip for $branch"
+        cp "/tmp/polarion-linux-${branch}.zip" "polarion-linux.zip"
+        rm "/tmp/polarion-linux-${branch}.zip"
+    fi
+    
+    # Check if there are any changes to commit
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        log "Committing updates for $branch..."
+        git add .
+        git commit -m "Update $branch with latest changes from main
+
+- Updated configuration and scripts from main branch
+- Preserved version-specific polarion-linux.zip file
+- Updated RAM defaults to 4GB"
         
         # Push the updated branch
         log "Pushing updated $branch to remote..."
@@ -107,7 +112,7 @@ update_branch() {
         
         log "✅ Successfully updated $branch"
     else
-        error "Merge failed for $branch. Please resolve conflicts manually."
+        log "📝 No changes needed for $branch"
     fi
     
     echo
