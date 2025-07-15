@@ -2,10 +2,10 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main, master, v*]  # Include version branches
+    branches: [main, master, v*] # Include version branches
     tags: ["v*"]
   pull_request:
-    branches: [main, master, v*]  # Include version branches
+    branches: [main, master, v*] # Include version branches
   workflow_dispatch: # Manual trigger
 
 env:
@@ -117,11 +117,11 @@ jobs:
           if [[ "${{ steps.version.outputs.is_version_branch }}" == "true" ]]; then
             echo "# Polarion ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
             echo "docker pull --platform linux/amd64 ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "docker create --name polarion-${{ steps.version.outputs.version }} --platform linux/amd64 -p 80:80 -p 443:443 -e JAVA_OPTS=\"-Xmx8g -Xms8g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "docker create --name polarion-${{ steps.version.outputs.version }} --platform linux/amd64 -p 80:80 -p 443:443 -e JAVA_OPTS=\"-Xmx4g -Xms4g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
             echo "docker start polarion-${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "docker pull --platform linux/amd64 ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-            echo "docker create --name polarion --platform linux/amd64 -p 80:80 -p 443:443 -e JAVA_OPTS=\"-Xmx8g -Xms8g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+            echo "docker create --name polarion --platform linux/amd64 -p 80:80 -p 443:443 -e JAVA_OPTS=\"-Xmx4g -Xms4g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
             echo "docker start polarion" >> $GITHUB_STEP_SUMMARY
           fi
           echo '```' >> $GITHUB_STEP_SUMMARY

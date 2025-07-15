@@ -53,7 +53,7 @@ docker run -d \
   -v polarion_data:/polarion_root/data \
   -v polarion_logs:/polarion_root/logs \
   -v polarion_config:/polarion_root/config \
-  -e JAVA_OPTS="-Xmx8g -Xms8g" \
+  -e JAVA_OPTS="-Xmx4g -Xms4g" \
   phillipboesger/polarion-docker:latest
 ```
 
