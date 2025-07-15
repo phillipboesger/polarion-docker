@@ -50,15 +50,13 @@ docker pull --platform linux/amd64 docker.io/phillipboesger/polarion-docker:late
 docker create --name polarion-v2506 --platform linux/amd64 -p 80:80 -e JAVA_OPTS="-Xmx4g -Xms4g" -e ALLOWED_HOSTS="localhost,127.0.0.1,0.0.0.0" docker.io/phillipboesger/polarion-docker:v2506
 docker start polarion-v2506
 ```
-
+**Replace the version information by any major version > 2310 that you want or use latest**
 ```bash
 # Pull and start Polarion (one command)
 docker pull --platform linux/amd64 docker.io/phillipboesger/polarion-docker:latest
 docker create --name polarion --platform linux/amd64 -p 80:80 -e JAVA_OPTS="-Xmx4g -Xms4g" -e ALLOWED_HOSTS="localhost,127.0.0.1,0.0.0.0" docker.io/phillipboesger/polarion-docker:latest
 docker start polarion-latest
 ```
-**Replace the version information by any major version > 2310 that you want or use latest**
-
 
 ### 3. Access Polarion
 
