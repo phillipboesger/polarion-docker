@@ -39,7 +39,7 @@ send "polarion\r"
 
 # Step 10: Third continuation prompt
 expect "When you are done press Enter to continue."
-send "yes\r"
+send "test\r"
 
 # Step 11: Initialize repository
 expect "Do you want initialize the repository now?"
