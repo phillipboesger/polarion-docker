@@ -2,7 +2,7 @@
 
 # Polarion Container Management Script
 
-CONTAINER_NAME="polarion-v2410"
+CONTAINER_NAME="polarion"
 COMPOSE_FILE="docker-compose.yml"
 
 function show_usage() {
@@ -100,9 +100,8 @@ case "$1" in
     "rebuild")
         check_docker
         echo "🔨 Rebuilding image and starting container..."
-        docker-compose down
-        docker buildx build --platform linux/amd64 -t polarion:v2410 .
-        docker-compose up -d
+        docker-compose -f docker-compose-build.yml down
+        docker-compose -f docker-compose-build.yml up -d --build
         ;;
     
     "cleanup")
@@ -111,7 +110,7 @@ case "$1" in
         read "REPLY?Are you sure? (y/N): "
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             docker-compose down -v
-            docker rmi polarion:v2410 2>/dev/null || true
+            docker rmi phillipboesger/polarion-docker:latest 2>/dev/null || true
             echo "🗑️  Cleanup completed"
         else
             echo "❌ Cancelled"

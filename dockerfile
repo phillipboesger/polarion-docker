@@ -1,7 +1,5 @@
-# Use x86_64 platform for compatibility with Polarion x86-64 build
-# Platform is set via build-args to avoid constant value warning
-ARG TARGETPLATFORM=linux/amd64
-FROM ubuntu:24.04
+# Explicitly use x86_64 platform for Apple Silicon Macs with Rosetta
+FROM --platform=linux/amd64 ubuntu:24.04
 
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
@@ -26,7 +24,7 @@ ENV LC_ALL=en_US.UTF-8
 # Setup working directory
 WORKDIR /polarion_root
 
-# Copy and extract Polarion installation files (via Git LFS)
+# Copy and extract Polarion installation files
 COPY polarion-linux.zip ./
 RUN unzip polarion-linux.zip
 
@@ -65,33 +63,11 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 WORKDIR /polarion_root/Polarion
 
 # Configure policy-rc.d for installation compatibility
-RUN printf '#!/bin/sh\nexit 0' > /usr/sbin/policy-rc.d && \
-  chmod +x /usr/sbin/policy-rc.d
+RUN printf '#!/bin/sh\nexit 0' > /usr/sbin/policy-rc.d
+RUN sed -i "s/^exit 101$/exit 0/" /usr/sbin/policy-rc.d
 
-# Create dummy service commands to prevent startup failures
-RUN echo '#!/bin/bash\necho "Service command mocked for Docker build: $*"\nexit 0' > /usr/local/bin/service && \
-  chmod +x /usr/local/bin/service && \
-  echo '#!/bin/bash\necho "invoke-rc.d mocked for Docker build: $*"\nexit 0' > /usr/local/bin/invoke-rc.d && \
-  chmod +x /usr/local/bin/invoke-rc.d && \
-  echo '#!/bin/bash\necho "update-rc.d mocked for Docker build: $*"\nexit 0' > /usr/local/bin/update-rc.d && \
-  chmod +x /usr/local/bin/update-rc.d && \
-  echo '#!/bin/bash\necho "systemctl mocked for Docker build: $*"\nexit 0' > /usr/local/bin/systemctl && \
-  chmod +x /usr/local/bin/systemctl
-
-# Ensure our mock commands are used
-ENV PATH="/usr/local/bin:${PATH}"
-
-# Run Polarion installation with robust error handling
-RUN set -x && timeout 1800 ./install.expect || { \
-  echo "Installation encountered errors, checking if core components installed..."; \
-  if [ -d "/opt/polarion" ] && [ -f "/opt/polarion/polarion/version" ]; then \
-  echo "Core Polarion installation detected, continuing..."; \
-  exit 0; \
-  else \
-  echo "Installation failed completely"; \
-  exit 1; \
-  fi; \
-  }
+# Run Polarion installation
+RUN set -x && ./install.expect
 
 # Return to root directory and add PostgreSQL to PATH
 WORKDIR /polarion_root
