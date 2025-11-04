@@ -26,8 +26,8 @@ WORKDIR /polarion_root
 
 # Copy and extract Polarion installation files
 COPY polarion-linux.zip ./
-RUN unzip polarion-linux.zip && \
-  chmod +x ./Polarion/install.sh
+RUN unzip polarion-linux.zip
+RUN ls -la ./Polarion/ && chmod +x ./Polarion/install.sh
 
 # Copy startup scripts and make them executable
 COPY polarion_starter.sh ./
