@@ -26,7 +26,11 @@ WORKDIR /polarion_root
 
 # Copy and extract Polarion installation files
 COPY polarion-linux.zip ./
-RUN unzip polarion-linux.zip
+RUN unzip -q polarion-linux.zip && \
+  echo "=== Contents after unzip ===" && \
+  ls -la ./ && \
+  echo "=== Looking for install.sh ===" && \
+  find . -name "install.sh" -type f
 
 # Copy startup script to root
 COPY polarion_starter.sh ./
@@ -60,9 +64,13 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 # Switch to Polarion directory for installation
 WORKDIR /polarion_root/Polarion
 
-# Copy install.expect to Polarion directory and make executable
+# Copy install.expect to Polarion directory and make both scripts executable
 COPY install.expect ./
-RUN chmod +x install.expect && chmod +x install.sh
+RUN echo "=== Current directory contents ===" && \
+  ls -la && \
+  echo "=== Making scripts executable ===" && \
+  chmod +x install.expect && \
+  if [ -f install.sh ]; then chmod +x install.sh; else echo "WARNING: install.sh not found!"; fi
 
 # Configure Apache for Docker environment
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
