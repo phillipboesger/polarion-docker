@@ -42,7 +42,7 @@ curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 ```
 
-### 2. Run Polarion
+### 2. Create Polarion Container
 
 ```bash
 # Pull and start Polarion (one command)
@@ -55,6 +55,13 @@ docker run -d \
   -v polarion_config:/polarion_root/config \
   -e JAVA_OPTS="-Xmx4g -Xms4g" \
   phillipboesger/polarion-docker:latest
+```
+**Replace the version information by any major version > 2310 that you want or use latest**
+```bash
+# Pull and start Polarion (one command)
+docker pull --platform linux/amd64 docker.io/phillipboesger/polarion-docker:latest
+docker create --name polarion --platform linux/amd64 -p 80:80 -e JAVA_OPTS="-Xmx4g -Xms4g" -e ALLOWED_HOSTS="localhost,127.0.0.1,0.0.0.0" docker.io/phillipboesger/polarion-docker:latest
+docker start polarion-latest
 ```
 
 ### 3. Access Polarion
@@ -163,7 +170,7 @@ docker-compose down
 
 ```bash
 # Default ports
--p 80:80 -p 443:443
+-p 80:80
 
 # Custom ports (e.g., if port 80 is occupied)
 -p 8080:80 -p 8443:443
