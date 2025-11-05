@@ -5,6 +5,11 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNLEVEL=1
 
+# Configure apt to be more resilient
+RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::http::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::ftp::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries
+
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
   apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales apache2 libapache2-mod-svn systemd && \
@@ -12,10 +17,9 @@ RUN apt-get -y update && \
   update-locale LANG=en_US.UTF-8
 
 # Install libc6 and create symlink for 64-bit compatibility
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends libc6 \
-  && mkdir -p /lib64 \
-  && ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
+RUN apt-get install -y --no-install-recommends libc6 && \
+  mkdir -p /lib64 && \
+  ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
 
 # Set locale environment
 ENV LANG=en_US.UTF-8
