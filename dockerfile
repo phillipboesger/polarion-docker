@@ -7,8 +7,8 @@ ENV RUNLEVEL=1
 
 # Configure apt to be more resilient
 RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
-    echo 'Acquire::http::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries && \
-    echo 'Acquire::ftp::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries
+  echo 'Acquire::http::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries && \
+  echo 'Acquire::ftp::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
