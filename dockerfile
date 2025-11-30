@@ -28,9 +28,13 @@ ENV LC_ALL=en_US.UTF-8
 # Setup working directory
 WORKDIR /polarion_root
 
-# Copy and extract Polarion installation files
-COPY polarion-linux.zip ./
-RUN unzip polarion-linux.zip && \
+# Download and extract Polarion installation files from Google Drive
+ARG POLARION_ZIP_URL
+RUN if [ -z "$POLARION_ZIP_URL" ]; then echo "POLARION_ZIP_URL build-arg is required" && exit 1; fi && \
+  apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && \
+  rm -rf /var/lib/apt/lists/* && \
+  curl -L "$POLARION_ZIP_URL" -o polarion-linux.zip && \
+  unzip polarion-linux.zip && \
   chmod +x ./Polarion/install.sh
 
 # Copy startup scripts and make them executable

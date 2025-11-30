@@ -25,20 +25,6 @@ jobs:
         with:
           lfs: true # Support für Git LFS
 
-      - name: Setup Git LFS
-        run: git lfs pull
-
-      - name: Check for Polarion file
-        id: check-polarion
-        run: |
-          if [ -f "polarion-linux.zip" ]; then
-            echo "polarion_exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Polarion ZIP found"
-          else
-            echo "polarion_exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Polarion ZIP not found - will try download during build"
-          fi
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -63,6 +49,58 @@ jobs:
             echo "is_version_branch=false" >> $GITHUB_OUTPUT
             echo "📝 Building from main/master branch"
           fi
+
+      - name: Resolve Polarion Google Drive download URL via API
+        id: polarion-file
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y python3-pip
+          pip3 install --quiet google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
+
+          python3 - << 'PY'
+          import json, os, sys
+          from google.oauth2 import service_account
+          from googleapiclient.discovery import build
+
+          sa_key = os.environ["GOOGLE_SERVICE_ACCOUNT_KEY"]
+          folder_id = os.environ["GOOGLE_DRIVE_FOLDER_ID"]
+          version = os.environ["VERSION"]
+
+          if version.startswith("v") and version[1:].isdigit():
+              ver_num = version[1:]
+          else:
+              sys.stderr.write(f"No Polarion mapping for non-version branch {version}\n")
+              sys.exit(1)
+
+          target_name = f"PolarionALM_{ver_num}.zip"
+
+          info = json.loads(sa_key)
+          creds = service_account.Credentials.from_service_account_info(
+              info,
+              scopes=["https://www.googleapis.com/auth/drive.readonly"],
+          )
+
+          service = build("drive", "v3", credentials=creds)
+
+          query = f"'{folder_id}' in parents and name = '{target_name}' and trashed = false"
+          resp = service.files().list(q=query, fields="files(id,name)", pageSize=1).execute()
+          files = resp.get("files", [])
+          if not files:
+              sys.stderr.write(f"No file named {target_name} found in folder {folder_id}\n")
+              sys.exit(1)
+
+          file_id = files[0]["id"]
+          download_url = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+
+          output_path = os.environ["GITHUB_OUTPUT"]
+          with open(output_path, "a", encoding="utf-8") as f:
+              f.write(f"url={download_url}\n")
+
+          print(f"Resolved {target_name} to id={file_id}")
+          PY
 
       - name: Extract metadata
         id: meta
@@ -95,6 +133,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             TARGETPLATFORM=linux/amd64
+            POLARION_ZIP_URL=${{ steps.polarion-file.outputs.url }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
