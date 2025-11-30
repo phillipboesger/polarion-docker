@@ -153,6 +153,92 @@ docker-compose up -d
 docker-compose down
 ```
 
+## 🔧 Remote Debugging (JDWP)
+
+Polarion is started with JDWP (Java Debug Wire Protocol) enabled so that you can remotely debug the running JVM from VS Code or any other Java IDE.
+
+### How JDWP is configured
+
+- The container exposes JDWP on port **5005**.
+- `docker-compose.yml` maps it by default as:
+  ```yaml
+  ports:
+    - "5005:5005" # JDWP debug port
+  ```
+- Inside the container, Polarion’s JVM is started with:
+  ```
+  -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+  ```
+- This configuration is injected via `polarion_starter.sh` into `/opt/polarion/etc/config.sh` (variable `PSVN_JServer_opt`).
+- JDWP can be toggled via the environment variable `JDWP_ENABLED` (default: `true`).
+
+### Start debugging from VS Code
+
+1. Ensure the container is running:
+   ```bash
+   docker ps
+   ```
+2. Open VS Code in the `polarion-docker` folder.
+3. Go to **Run and Debug** (Ctrl+Shift+D).
+4. Select the configuration **"Debug Polarion Container"**.
+5. Press the green **Start Debugging** button.
+
+Once attached, you can:
+
+- Set breakpoints in your Polarion / plugin Java sources.
+- Step through code (F10, F11, Shift+F11).
+- Inspect variables, call stack, and threads.
+
+### Example VS Code launch configuration
+
+The repository already contains a ready-to-use launch configuration in `.vscode/launch.json`. For reference, a minimal configuration looks like this:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Polarion Container",
+      "type": "java",
+      "request": "attach",
+      "hostName": "127.0.0.1",
+      "port": 5005,
+      "presentation": {
+        "group": "Polarion",
+        "order": 1
+      }
+    }
+  ]
+}
+```
+
+You can adapt the `hostName` and `port` if you change the Docker port mapping.
+
+### JDWP port and configuration
+
+- **Default JDWP port (inside container)**: `5005`
+- **Default mapping in `docker-compose.yml`**: `5005:5005`
+- **Toggle JDWP**: set `JDWP_ENABLED=false` in `docker-compose.yml` if you want to disable debugging:
+  ```yaml
+  environment:
+    - JDWP_ENABLED=false
+  ```
+
+For more details and troubleshooting tips, see [DEBUGGING.md](./DEBUGGING.md).
+
+## 🧩 Plugin Development
+
+For developing custom Polarion plugins with live reloading and debugging:
+
+See [PLUGIN-DEVELOPMENT.md](./PLUGIN-DEVELOPMENT.md) for a complete step-by-step setup guide.
+
+**In short:**
+
+1. Mount your plugin source (and compiled classes) into the container via `docker-compose.yml`.
+2. Let your IDE compile automatically so the container always sees the latest classes.
+3. Attach the VS Code debugger using the **"Debug Polarion Container"** configuration.
+4. Trigger your plugin functionality in Polarion and hit breakpoints without rebuilding images or redeploying JARs. 🚀
+
 ## ⚙️ Configuration Options
 
 ### Memory Settings

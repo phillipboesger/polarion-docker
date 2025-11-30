@@ -120,5 +120,8 @@ RUN set -x && ./install.expect
 WORKDIR /polarion_root
 ENV PATH="/usr/lib/postgresql/16/bin:${PATH}"
 
+# Set environment variables for debugging support
+ENV JDWP_ENABLED="true"
+
 # Set startup command
 ENTRYPOINT ["./polarion_starter.sh"]
