@@ -68,6 +68,7 @@ docker start polarion-latest
 
 - **URL**: http://localhost
 - **Default Login**: user: `polarion`, password: `polarion`
+- **Default Login**: user: `polarion`, password: `polarion`
 
 That's it! Polarion is running. 🎉
 
@@ -76,6 +77,7 @@ That's it! Polarion is running. 🎉
 ### All Platforms
 
 - **Docker Desktop** or **Docker Engine** (latest version)
+- **8GB RAM minimum** (16GB recommended)
 - **8GB RAM minimum** (16GB recommended)
 - **10GB free disk space**
 
@@ -109,14 +111,35 @@ _Tested and verified on macOS. Should work on Windows and Linux._
 ```bash
 # Start Polarion
 docker start polarion
+docker start polarion
 
 # Stop Polarion
+docker stop polarion
 docker stop polarion
 
 # View logs
 docker logs -f polarion
+docker logs -f polarion
 
 # Remove container (keeps data)
+docker rm polarion
+```
+
+### Helper Script (Optional)
+
+For easier management, use the included helper script:
+
+```bash
+# Download the repository for helper scripts
+git clone https://github.com/avasis-solutions/polarion-docker.git
+cd polarion-docker
+
+# Use helper script
+./docker-standard.sh pull                    # Pull latest image
+./docker-standard.sh create --memory=8g      # Create container with 8GB
+./docker-standard.sh start                   # Start container
+./docker-standard.sh logs                    # View logs
+./docker-standard.sh stop                    # Stop container
 docker rm polarion
 ```
 
@@ -270,6 +293,20 @@ docker logs polarion
 - Allocate 8GB+ to Docker
 - Use fast storage (SSD preferred)
 
+### Performance Issues
+
+**macOS Apple Silicon:**
+
+- Performance is ~70-80% of native due to Rosetta emulation
+- Allocate more RAM in Docker Desktop settings
+- Use SSD storage for better I/O performance
+
+**All Platforms:**
+
+- Increase Docker memory allocation (Docker Desktop → Settings → Resources)
+- Allocate 8GB+ to Docker
+- Use fast storage (SSD preferred)
+
 ### Platform-Specific Issues
 
 **macOS:**
@@ -319,6 +356,7 @@ docker build --target=runtime -t polarion-slim .
 
 ### Version Information
 
+- **Polarion Version**: 2410
 - **Polarion Version**: 2410
 - **Java Version**: OpenJDK 17.0.8
 - **PostgreSQL Version**: 16
