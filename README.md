@@ -285,16 +285,13 @@ These volumes persist even when the container is removed.
    git checkout -b vXXXX  # Replace XX with version number
    ```
 
-2. **Replace the Polarion ZIP file:**
+2. **Update the Polarion ZIP source configuration:**
 
    ```bash
-   # Remove old version
-   git rm polarion-linux.zip
-
-   # Add new version (make sure it's exactly named "polarion-linux.zip")
-   cp /path/to/new/polarion-linux.zip .
-   git lfs track "*.zip"
-   git add polarion-linux.zip
+   # Polarion installation ZIP files are no longer versioned
+   # inside this repository. They are downloaded automatically
+   # during the Docker build from a central Google Drive folder
+   # based on the branch version (e.g. v2410, v2506, v2512).
    git commit -m "Update Polarion to vXXXX"
    ```
 

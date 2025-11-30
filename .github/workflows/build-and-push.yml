@@ -25,20 +25,6 @@ jobs:
         with:
           lfs: true # Support für Git LFS
 
-      - name: Setup Git LFS
-        run: git lfs pull
-
-      - name: Check for Polarion file
-        id: check-polarion
-        run: |
-          if [ -f "polarion-linux.zip" ]; then
-            echo "polarion_exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Polarion ZIP found"
-          else
-            echo "polarion_exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Polarion ZIP not found - will try download during build"
-          fi
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -63,6 +49,17 @@ jobs:
             echo "is_version_branch=false" >> $GITHUB_OUTPUT
             echo "📝 Building from main/master branch"
           fi
+
+      - name: Download Polarion ZIP from Google Drive via API
+        id: polarion-file
+        env:
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y python3-pip
+          pip3 install --quiet google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
+          python3 scripts/download_polarion_zip.py
 
       - name: Extract metadata
         id: meta
