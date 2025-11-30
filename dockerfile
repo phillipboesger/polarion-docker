@@ -28,7 +28,7 @@ ENV LC_ALL=en_US.UTF-8
 # Setup working directory
 WORKDIR /polarion_root
 
-# Copy and extract Polarion installation files
+# Copy and extract Polarion installation files (downloaded in CI from Google Drive)
 COPY polarion-linux.zip ./
 RUN unzip -q polarion-linux.zip && \
   echo "=== Contents after unzip ===" && \
@@ -127,6 +127,9 @@ RUN set -x && ./install.expect
 # Return to root directory and add PostgreSQL to PATH
 WORKDIR /polarion_root
 ENV PATH="/usr/lib/postgresql/16/bin:${PATH}"
+
+# Set environment variables for debugging support
+ENV JDWP_ENABLED="true"
 
 # Set startup command
 ENTRYPOINT ["./polarion_starter.sh"]

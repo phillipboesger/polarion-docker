@@ -3,7 +3,6 @@
 # Large Files mit Git LFS
 # Polarion ZIP-Datei wird über Git LFS verwaltet
 *.zip filter=lfs diff=lfs merge=lfs -text
-polarion-linux.zip filter=lfs diff=lfs merge=lfs -text
 # Andere große Dateien
 *.tar.gz filter=lfs diff=lfs merge=lfs -text
 *.iso filter=lfs diff=lfs merge=lfs -text
