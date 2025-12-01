@@ -131,31 +131,48 @@ DURATION=$((END_TIME - START_TIME))
 echo "✅ Done in ${DURATION}s."
 ```
 
-3. Global VS Code Configuration
+3. VS Code configuration in the repository
 
-To enable these features across all your Polarion projects without per-project configuration, we use global User Settings.
+This repository already provides preconfigured tasks in `.vscode/tasks.json` that you can use out of the box:
 
-3.1 Global Tasks (tasks.json) 1. Open Command Palette (Cmd+Shift+P / Ctrl+Shift+P). 2. Type “Tasks: Open User Tasks”. 3. Add the following tasks configuration.
-Important: Update the command path to match your script location.
+- `Polarion: Full Redeploy` – builds your current plugin project and deploys it into the container.
+- `Polarion: Live Logs (Docker)` – streams all server logs from the Polarion container.
+- `Polarion: Live Errors ONLY (Docker)` – streams only errors/exceptions from the logs.
+
+How to use the repo tasks:
+
+1. Open this repository in VS Code.
+2. Make sure `redeploy.sh` is located relative to your workspace as expected by `.vscode/tasks.json` (default: `${workspaceFolder}/../redeploy.sh`).
+3. Open the Command Palette (Cmd+Shift+P / Ctrl+Shift+P) → **Tasks: Run Task**.
+4. Select one of the tasks, e.g. `Polarion: Full Redeploy`.
+
+> Note: The tasks in this repo are intentionally configured without user-specific paths so they work on any machine that uses the same repository.
+
+3.1 Optional global user tasks
+
+If you want to have the same tasks available globally (for all workspaces) as **user tasks**, you can additionally add them to your user `tasks.json`. Steps:
+
+1. Open the Command Palette (Cmd+Shift+P / Ctrl+Shift+P).
+2. Choose **Tasks: Open User Tasks**.
+3. Add (or create) the following configuration and only adjust the paths to match your environment:
 
 ```json
 {
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Polarion: Redeploy Active File",
+      "label": "Polarion: Full Redeploy",
       "type": "shell",
       "command": "~/scripts/redeploy.sh",
       "args": ["${file}", "polarion", "boesger"],
       "presentation": {
         "reveal": "always",
-        "panel": "shared",
-        "clear": true
+        "panel": "shared"
       },
       "problemMatcher": []
     },
     {
-      "label": "Polarion: Live Logs (Errors Only)",
+      "label": "Polarion: Live Logs (Docker)",
       "type": "process",
       "command": "docker",
       "args": [
@@ -164,7 +181,7 @@ Important: Update the command path to match your script location.
         "polarion",
         "sh",
         "-c",
-        "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1) | grep --line-buffered -E 'ERROR|Exception|Caused by'"
+        "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1)"
       ],
       "presentation": {
         "echo": false,
@@ -177,7 +194,7 @@ Important: Update the command path to match your script location.
       "problemMatcher": []
     },
     {
-      "label": "Polarion: Live Logs (All)",
+      "label": "Polarion: Live Errors ONLY (Docker)",
       "type": "process",
       "command": "docker",
       "args": [
@@ -186,7 +203,7 @@ Important: Update the command path to match your script location.
         "polarion",
         "sh",
         "-c",
-        "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1)"
+        "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1) | grep --line-buffered -E 'ERROR|Exception|Caused by'"
       ],
       "presentation": {
         "echo": false,
