@@ -45,15 +45,12 @@ sudo sh get-docker.sh
 ### 2. Create Polarion Container
 
 ```bash
-# Pull and start Polarion (one command)
+# Pull and start Polarion (minimal example)
 docker run -d \
   --name polarion \
   --platform linux/amd64 \
   -p 80:80 -p 443:443 \
   -p 5005:5005 \
-  -v polarion_data:/polarion_root/data \
-  -v polarion_logs:/polarion_root/logs \
-  -v polarion_config:/polarion_root/config \
   -e JAVA_OPTS="-Xmx4g -Xms4g" \
   -e JDWP_ENABLED=true \
   phillipboesger/polarion-docker:latest
@@ -65,7 +62,6 @@ docker run -d \
 
 - **URL**: http://localhost
 - **Default Login**: user: `polarion`, password: `polarion`
-- **Default Login**: user: `polarion`, password: `polarion`
 
 That's it! Polarion is running. 🎉
 
@@ -74,7 +70,6 @@ That's it! Polarion is running. 🎉
 ### All Platforms
 
 - **Docker Desktop** or **Docker Engine** (latest version)
-- **8GB RAM minimum** (16GB recommended)
 - **8GB RAM minimum** (16GB recommended)
 - **10GB free disk space**
 
@@ -262,15 +257,21 @@ See [PLUGIN-DEVELOPMENT.md](./PLUGIN-DEVELOPMENT.md) for a complete step-by-step
 # Access via: http://localhost:8080
 ```
 
-### Data Persistence
+### Data Persistence & Local Mounts
 
-Your Polarion data is automatically saved in Docker volumes:
+For better transparency and easier backup, you can map Polarions data
+directories directly to host folders instead of anonymous Docker volumes.
 
-- `polarion_data` - Application data and projects
-- `polarion_logs` - Log files
-- `polarion_config` - Configuration files
+**Example host paths (adapt for your environment):**
 
-These volumes persist even when the container is removed.
+```bash
+-v "/Users/your-user/Polarion/repo:/opt/polarion/repo" \
+-v "/Users/your-user/Polarion/extensions:/opt/polarion/polarion/extensions" \
+```
+
+If you do **not** configure these mounts, Polarion falls back to the
+default behavior inside the container and uses internal Docker-managed
+storage.
 
 ## 🔄 Development & Updates
 

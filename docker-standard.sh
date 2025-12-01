@@ -104,9 +104,6 @@ create_container() {
         --name ${container_name} \
         --platform linux/amd64 \
         ${ports} \
-        -v polarion_data:/polarion_root/data \
-        -v polarion_logs:/polarion_root/logs \
-        -v polarion_config:/polarion_root/config \
         -e POLARION_HOME=/polarion_root \
         -e JAVA_OPTS="${java_opts}" \
         -e ALLOWED_HOSTS="localhost,127.0.0.1,0.0.0.0" \

@@ -12,10 +12,13 @@ services:
       - "443:443"       # HTTPS port
       - "5432:5432"     # PostgreSQL port
       - "5005:5005"     # JDWP Debug port
+    # Optional: map data, logs and config to host folders to
+    # centralize and back up Polarion data outside the container.
+    # Use example paths and adapt them for your environment.
     volumes:
-      - polarion_data:/polarion_root/data
-      - polarion_logs:/polarion_root/logs
-      - polarion_config:/polarion_root/config
+      - ./data:/polarion_root/data
+      - ./logs:/polarion_root/logs
+      - ./config:/polarion_root/config
       # DEVELOPMENT: Uncomment to enable hot-reload for custom plugins
       # Mount your local plugin directory to enable live code changes without rebuild
       # Example: Your plugin project structure should be:
@@ -36,8 +39,3 @@ services:
       # - POLARION_DEV_MODE=true
       # - OSGI_DEBUG=true
     restart: unless-stopped
-
-volumes:
-  polarion_data:
-  polarion_logs:
-  polarion_config:
