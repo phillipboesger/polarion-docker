@@ -113,15 +113,18 @@ fi
 echo "🗑️ [2.5/5] Cleaning old versions of '$BUNDLE_NAME'..."
 docker exec "$CONTAINER_NAME" sh -c "rm -f ${PLUGIN_DEST}${BUNDLE_NAME}_*.jar ${PLUGIN_DEST}${BUNDLE_NAME}-*.jar"
 
-echo "📦 [3/5] Copying $(basename "$JAR_FILE_NAME")..."
-docker cp "$JAR_FILE_NAME" "$CONTAINER_NAME:$PLUGIN_DEST"
+echo "⏹️ [3/5] Stopping Polarion Service..."
+docker exec "$CONTAINER_NAME" service polarion stop
 
-echo "🧹 [4/5] Clearing Cache..."
+echo "🧹 [4/5] Clearing Cache while service is stopped..."
 docker exec "$CONTAINER_NAME" rm -rf "$CACHE_PATH"
 docker exec "$CONTAINER_NAME" rm -rf "$METADATA_PATH"
 
-echo "🔄 [5/5] Restarting Polarion Service..."
-docker exec "$CONTAINER_NAME" service polarion restart
+echo "📦 [5/6] Copying $(basename "$JAR_FILE_NAME")..."
+docker cp "$JAR_FILE_NAME" "$CONTAINER_NAME:$PLUGIN_DEST"
+
+echo "▶️ [6/6] Starting Polarion Service..."
+docker exec "$CONTAINER_NAME" service polarion start
 
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
