@@ -5,7 +5,7 @@ This guide describes how to configure Visual Studio Code for efficient Polarion 
 ## 1. Prerequisites
 
 - **Docker:** A running Polarion container with **Port 5005** exposed.  
-  *Note:* Ensure the container starts with JDWP enabled (e.g., `-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005`).
+  _Note:_ Ensure the container starts with JDWP enabled (e.g., `-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005`).
 - **VS Code:** Installed with the **Extension Pack for Java** (Red Hat/Microsoft).
 - **Maven:** Installed locally or via wrapper.
 - **Scripts Folder:** A central folder for automation scripts (e.g., `~/scripts/`).
@@ -25,7 +25,7 @@ This script handles the build process, cleans old plugin versions from the conta
 # $1: File or Directory path (Source context from VS Code)
 # $2: Container Name (default: polarion)
 # $3: Extension Name/Target Folder (default: boesger)
-INPUT_PATH="$1"         
+INPUT_PATH="$1"
 CONTAINER_NAME="$2"
 EXTENSION_NAME="$3"
 
@@ -135,103 +135,101 @@ echo "✅ Done in ${DURATION}s."
 
 To enable these features across all your Polarion projects without per-project configuration, we use global User Settings.
 
-3.1 Global Tasks (tasks.json)
-	1.	Open Command Palette (Cmd+Shift+P / Ctrl+Shift+P).
-	2.	Type “Tasks: Open User Tasks”.
-	3.	Add the following tasks configuration.
+3.1 Global Tasks (tasks.json) 1. Open Command Palette (Cmd+Shift+P / Ctrl+Shift+P). 2. Type “Tasks: Open User Tasks”. 3. Add the following tasks configuration.
 Important: Update the command path to match your script location.
 
 ```json
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Polarion: Redeploy Active File",
-            "type": "shell",
-            "command": "~/scripts/redeploy.sh",
-            "args": [
-                "${file}",
-                "polarion",
-                "boesger"
-            ],
-            "presentation": {
-                "reveal": "always",
-                "panel": "shared",
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Polarion: Live Logs (Errors Only)",
-            "type": "process",
-            "command": "docker",
-            "args": [
-                "exec", "-i", "polarion", "sh", "-c",
-                "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1) | grep --line-buffered -E 'ERROR|Exception|Caused by'"
-            ],
-            "presentation": {
-                "echo": false,
-                "reveal": "always",
-                "focus": false,
-                "panel": "new",
-                "group": "polarion-logs"
-            },
-            "isBackground": true,
-            "problemMatcher": []
-        },
-        {
-            "label": "Polarion: Live Logs (All)",
-            "type": "process",
-            "command": "docker",
-            "args": [
-                "exec", "-i", "polarion", "sh", "-c",
-                "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1)"
-            ],
-            "presentation": {
-                "echo": false,
-                "reveal": "always",
-                "focus": false,
-                "panel": "new",
-                "group": "polarion-logs"
-            },
-            "isBackground": true,
-            "problemMatcher": []
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Polarion: Redeploy Active File",
+      "type": "shell",
+      "command": "~/scripts/redeploy.sh",
+      "args": ["${file}", "polarion", "boesger"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Live Logs (Errors Only)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "polarion",
+        "sh",
+        "-c",
+        "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1) | grep --line-buffered -E 'ERROR|Exception|Caused by'"
+      ],
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "group": "polarion-logs"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Live Logs (All)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "polarion",
+        "sh",
+        "-c",
+        "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1)"
+      ],
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "group": "polarion-logs"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
 }
 ```
 
-3.2 Global Debugging & Settings (settings.json)
-	1.	Open Command Palette.
-	2.	Type “Preferences: Open User Settings (JSON)”.
-	3.	Add the following configuration to enable One-Click Debugging and performance tuning.
+3.2 Global Debugging & Settings (settings.json) 1. Open Command Palette. 2. Type “Preferences: Open User Settings (JSON)”. 3. Add the following configuration to enable One-Click Debugging and performance tuning.
 
 ```json
 {
-    // ... existing settings ...
+  // ... existing settings ...
 
-    // 1. Global Launch Configuration for Remote Debugging
-    "launch": {
-        "version": "0.2.0",
-        "configurations": [
-            {
-                "type": "java",
-                "name": "Global: Attach to Polarion (5005)",
-                "request": "attach",
-                "hostName": "127.0.0.1",
-                "port": 5005,
-                // Automatically resolves source code from open workspace folders
-                "projectName": "${fileWorkspaceFolderBasename}"
-            }
-        ]
-    },
+  // 1. Global Launch Configuration for Remote Debugging
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "java",
+        "name": "Global: Attach to Polarion (5005)",
+        "request": "attach",
+        "hostName": "127.0.0.1",
+        "port": 5005,
+        // Automatically resolves source code from open workspace folders
+        "projectName": "${fileWorkspaceFolderBasename}"
+      }
+    ]
+  },
 
-    // 2. Java Performance Tuning for Large Projects
-    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable",
+  // 2. Java Performance Tuning for Large Projects
+  "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable",
 
-    // 3. Enable Hot Code Replace (HCR)
-    "java.debug.settings.hotCodeReplace": "auto",
-    "java.autobuild.enabled": true
+  // 3. Enable Hot Code Replace (HCR)
+  "java.debug.settings.hotCodeReplace": "auto",
+  "java.autobuild.enabled": true
 }
 ```
 
@@ -239,24 +237,13 @@ Important: Update the command path to match your script location.
 
 A. Deploying Changes (Structural)
 
-Use this when you add classes, change plugin.xml, or add dependencies.
-	1.	Open a file in the project you want to deploy (e.g., MyClass.java).
-	2.	Ensure the cursor is active in the editor.
-	3.	Press Cmd+Shift+P -> Run Task -> Polarion: Redeploy Active File.
-	4.	Wait for the “✅ Done” message in the terminal.
+Use this when you add classes, change plugin.xml, or add dependencies. 1. Open a file in the project you want to deploy (e.g., MyClass.java). 2. Ensure the cursor is active in the editor. 3. Press Cmd+Shift+P -> Run Task -> Polarion: Redeploy Active File. 4. Wait for the “✅ Done” message in the terminal.
 
 B. Debugging & Hot Code Replace (Logic)
 
-Use this for logic changes inside method bodies.
-	1.	Open the Run and Debug view (Cmd+Shift+D).
-	2.	Select Global: Attach to Polarion (5005).
-	3.	Press F5 or the green play button.
+Use this for logic changes inside method bodies. 1. Open the Run and Debug view (Cmd+Shift+D). 2. Select Global: Attach to Polarion (5005). 3. Press F5 or the green play button.
 Note: Code changes within methods are hot-swapped automatically on save (Cmd+S).
 
 C. Viewing Logs
 
-To see server errors without leaving VS Code:
-	1.	Press Cmd+Shift+P -> Run Task.
-	2.	Select Polarion: Live Logs (Errors Only).
-	3.	A new terminal panel will open, streaming exceptions from the Docker container in real-time.
-
+To see server errors without leaving VS Code: 1. Press Cmd+Shift+P -> Run Task. 2. Select Polarion: Live Logs (Errors Only). 3. A new terminal panel will open, streaming exceptions from the Docker container in real-time.
