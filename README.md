@@ -50,21 +50,16 @@ docker run -d \
   --name polarion \
   --platform linux/amd64 \
   -p 80:80 -p 443:443 \
+  -p 5005:5005 \
   -v polarion_data:/polarion_root/data \
   -v polarion_logs:/polarion_root/logs \
   -v polarion_config:/polarion_root/config \
   -e JAVA_OPTS="-Xmx4g -Xms4g" \
+  -e JDWP_ENABLED=true \
   phillipboesger/polarion-docker:latest
 ```
 
 **Replace the version information by any major version > 2310 that you want or use latest**
-
-```bash
-# Pull and start Polarion (one command)
-docker pull --platform linux/amd64 docker.io/phillipboesger/polarion-docker:latest
-docker create --name polarion --platform linux/amd64 -p 80:80 -e JAVA_OPTS="-Xmx4g -Xms4g" -e ALLOWED_HOSTS="localhost,127.0.0.1,0.0.0.0" docker.io/phillipboesger/polarion-docker:latest
-docker start polarion-latest
-```
 
 ### 3. Access Polarion
 
@@ -113,35 +108,14 @@ _Tested and verified on macOS. Should work on Windows and Linux._
 ```bash
 # Start Polarion
 docker start polarion
-docker start polarion
 
 # Stop Polarion
-docker stop polarion
 docker stop polarion
 
 # View logs
 docker logs -f polarion
-docker logs -f polarion
 
 # Remove container (keeps data)
-docker rm polarion
-```
-
-### Helper Script (Optional)
-
-For easier management, use the included helper script:
-
-```bash
-# Download the repository for helper scripts
-git clone https://github.com/avasis-solutions/polarion-docker.git
-cd polarion-docker
-
-# Use helper script
-./docker-standard.sh pull                    # Pull latest image
-./docker-standard.sh create --memory=8g      # Create container with 8GB
-./docker-standard.sh start                   # Start container
-./docker-standard.sh logs                    # View logs
-./docker-standard.sh stop                    # Stop container
 docker rm polarion
 ```
 
@@ -345,7 +319,7 @@ These volumes persist even when the container is removed.
 git clone https://github.com/avasis-solutions/polarion-docker.git
 cd polarion-docker
 
-# Build locally
+# Build locally (incl. JDWP debug port 5005)
 docker-compose -f docker-compose-build.yml up -d --build
 ```
 
@@ -363,20 +337,6 @@ docker logs polarion
 # 2. Insufficient memory
 #    Solution: Allocate more RAM to Docker Desktop
 ```
-
-### Performance Issues
-
-**macOS Apple Silicon:**
-
-- Performance is ~70-80% of native due to Rosetta emulation
-- Allocate more RAM in Docker Desktop settings
-- Use SSD storage for better I/O performance
-
-**All Platforms:**
-
-- Increase Docker memory allocation (Docker Desktop → Settings → Resources)
-- Allocate 8GB+ to Docker
-- Use fast storage (SSD preferred)
 
 ### Performance Issues
 
@@ -441,7 +401,6 @@ docker build --target=runtime -t polarion-slim .
 
 ### Version Information
 
-- **Polarion Version**: 2410
 - **Polarion Version**: 2410
 - **Java Version**: OpenJDK 17.0.8
 - **PostgreSQL Version**: 16
