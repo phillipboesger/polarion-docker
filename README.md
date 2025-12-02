@@ -45,26 +45,18 @@ sudo sh get-docker.sh
 ### 2. Create Polarion Container
 
 ```bash
-# Pull and start Polarion (one command)
+# Pull and start Polarion (minimal example)
 docker run -d \
   --name polarion \
   --platform linux/amd64 \
   -p 80:80 -p 443:443 \
-  -v polarion_data:/polarion_root/data \
-  -v polarion_logs:/polarion_root/logs \
-  -v polarion_config:/polarion_root/config \
+  -p 5005:5005 \
   -e JAVA_OPTS="-Xmx4g -Xms4g" \
+  -e JDWP_ENABLED=true \
   phillipboesger/polarion-docker:latest
 ```
 
 **Replace the version information by any major version > 2310 that you want or use latest**
-
-```bash
-# Pull and start Polarion (one command)
-docker pull --platform linux/amd64 docker.io/phillipboesger/polarion-docker:latest
-docker create --name polarion --platform linux/amd64 -p 80:80 -e JAVA_OPTS="-Xmx4g -Xms4g" -e ALLOWED_HOSTS="localhost,127.0.0.1,0.0.0.0" docker.io/phillipboesger/polarion-docker:latest
-docker start polarion-latest
-```
 
 ### 3. Access Polarion
 
@@ -265,15 +257,21 @@ See [PLUGIN-DEVELOPMENT.md](./PLUGIN-DEVELOPMENT.md) for a complete step-by-step
 # Access via: http://localhost:8080
 ```
 
-### Data Persistence
+### Data Persistence & Local Mounts
 
-Your Polarion data is automatically saved in Docker volumes:
+For better transparency and easier backup, you can map Polarions data
+directories directly to host folders instead of anonymous Docker volumes.
 
-- `polarion_data` - Application data and projects
-- `polarion_logs` - Log files
-- `polarion_config` - Configuration files
+**Example host paths (adapt for your environment):**
 
-These volumes persist even when the container is removed.
+```bash
+-v "/Users/your-user/Polarion/repo:/opt/polarion/repo" \
+-v "/Users/your-user/Polarion/extensions:/opt/polarion/polarion/extensions" \
+```
+
+If you do **not** configure these mounts, Polarion falls back to the
+default behavior inside the container and uses internal Docker-managed
+storage.
 
 ## 🔄 Development & Updates
 
@@ -322,7 +320,7 @@ These volumes persist even when the container is removed.
 git clone https://github.com/avasis-solutions/polarion-docker.git
 cd polarion-docker
 
-# Build locally
+# Build locally (incl. JDWP debug port 5005)
 docker-compose -f docker-compose-build.yml up -d --build
 ```
 

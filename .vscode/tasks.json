@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Polarion: Live Logs (Docker)",
+      "type": "shell",
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "polarion",
+        "sh",
+        "-c",
+        "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1)"
+      ],
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Polarion: Live Errors ONLY (Docker)",
+      "type": "process",
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "polarion",
+        "sh",
+        "-c",
+        "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1) | grep --line-buffered -E 'ERROR|Exception|Caused by'"
+      ],
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "group": "polarion-logs"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Full Redeploy",
+      "type": "shell",
+      "command": "${workspaceFolder}/../redeploy.sh",
+      "args": [
+        "${file}",
+        "polarion",
+        "boesger"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

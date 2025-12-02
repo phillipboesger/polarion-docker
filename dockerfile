@@ -30,15 +30,15 @@ WORKDIR /polarion_root
 
 # Copy and extract Polarion installation files (downloaded in CI from Google Drive)
 COPY polarion-linux.zip ./
-RUN unzip polarion-linux.zip && \
-  chmod +x ./Polarion/install.sh
+RUN unzip -q polarion-linux.zip && \
+  echo "=== Contents after unzip ===" && \
+  ls -la ./ && \
+  echo "=== Looking for install.sh ===" && \
+  find . -name "install.sh" -type f
 
-# Copy startup scripts and make them executable
+# Copy startup script to root
 COPY polarion_starter.sh ./
 RUN chmod +x polarion_starter.sh
-
-COPY install.expect ./Polarion/
-RUN chmod +x ./Polarion/install.expect
 
 # Download and install OpenJDK 17
 RUN wget --no-check-certificate https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.8%2B7/OpenJDK17U-jdk_x64_linux_hotspot_17.0.8_7.tar.gz && \
@@ -67,6 +67,14 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 
 # Switch to Polarion directory for installation
 WORKDIR /polarion_root/Polarion
+
+# Copy install.expect to Polarion directory and make both scripts executable
+COPY install.expect ./
+RUN echo "=== Current directory contents ===" && \
+  ls -la && \
+  echo "=== Making scripts executable ===" && \
+  chmod +x install.expect && \
+  if [ -f install.sh ]; then chmod +x install.sh; else echo "WARNING: install.sh not found!"; fi
 
 # Configure Apache for Docker environment
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \

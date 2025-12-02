@@ -13,10 +13,6 @@ services:
       - "80:80"         # Standard HTTP port
       - "443:443"       # Standard HTTPS port
       - "5432:5432"     # PostgreSQL port (if PostgreSQL runs in container)
-    volumes:
-      - polarion_data:/polarion_root/data
-      - polarion_logs:/polarion_root/logs
-      - polarion_config:/polarion_root/config
     environment:
       - POLARION_HOME=/polarion_root
       - JAVA_OPTS=-Xmx4g -Xms4g
@@ -24,14 +20,6 @@ services:
     restart: unless-stopped
     networks:
       - polarion_network
-
-volumes:
-  polarion_data:
-    driver: local
-  polarion_logs:
-    driver: local
-  polarion_config:
-    driver: local
 
 networks:
   polarion_network:

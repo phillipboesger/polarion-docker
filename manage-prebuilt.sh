@@ -50,9 +50,6 @@ start_container() {
             -p 80:80 \
             -p 443:443 \
             -p 5432:5432 \
-            -v polarion_data:/polarion_root/data \
-            -v polarion_logs:/polarion_root/logs \
-            -v polarion_config:/polarion_root/config \
             -e POLARION_HOME=/polarion_root \
             -e JAVA_OPTS="-Xmx4g -Xms4g" \
             -e ALLOWED_HOSTS="localhost,127.0.0.1,0.0.0.0" \
@@ -157,9 +154,6 @@ cleanup() {
         # Stop and remove container
         docker stop ${CONTAINER_NAME} >/dev/null 2>&1
         docker rm ${CONTAINER_NAME} >/dev/null 2>&1
-        
-        # Remove volumes
-        docker volume rm polarion_data polarion_logs polarion_config >/dev/null 2>&1
         
         # Remove image
         docker rmi ${DOCKER_IMAGE} >/dev/null 2>&1
