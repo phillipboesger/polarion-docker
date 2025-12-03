@@ -77,25 +77,11 @@ RUN echo "=== Current directory contents ===" && \
   chmod +x install.expect && \
   if [ -f install.sh ]; then chmod +x install.sh; else echo "WARNING: install.sh not found!"; fi
 
-##
-## Apache-Basiskonfiguration und Vorab-Download relevanter Pakete
-##
-
 # Configure Apache for Docker environment
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
   mkdir -p /var/run/apache2 && \
   mkdir -p /var/lock/apache2 && \
   chown -R www-data:www-data /var/run/apache2 /var/lock/apache2
-
-# Pre-download Apache/Polarion-related packages into APT cache
-RUN apt-get update && \
-  apt-get install --download-only -y \
-  apache2 \
-  subversion \
-  libapache2-mod-svn \
-  libswt-gtk-4-java \
-  apache2-utils \
-  libaprutil1-dbd-pgsql
 
 # Configure policy-rc.d for installation compatibility
 RUN printf '#!/bin/sh\nexit 0' > /usr/sbin/policy-rc.d && \
