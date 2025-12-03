@@ -12,7 +12,7 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
-  apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales apache2 libapache2-mod-svn systemd && \
+  apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql systemd && \
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8
 
@@ -77,11 +77,25 @@ RUN echo "=== Current directory contents ===" && \
   chmod +x install.expect && \
   if [ -f install.sh ]; then chmod +x install.sh; else echo "WARNING: install.sh not found!"; fi
 
+##
+## Apache-Basiskonfiguration und Vorab-Download relevanter Pakete
+##
+
 # Configure Apache for Docker environment
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
   mkdir -p /var/run/apache2 && \
   mkdir -p /var/lock/apache2 && \
   chown -R www-data:www-data /var/run/apache2 /var/lock/apache2
+
+# Pre-download Apache/Polarion-related packages into APT cache
+RUN apt-get update && \
+  apt-get install --download-only -y \
+  apache2 \
+  subversion \
+  libapache2-mod-svn \
+  libswt-gtk-4-java \
+  apache2-utils \
+  libaprutil1-dbd-pgsql
 
 # Configure policy-rc.d for installation compatibility
 RUN printf '#!/bin/sh\nexit 0' > /usr/sbin/policy-rc.d && \
