@@ -40,21 +40,21 @@ RUN unzip -q polarion-linux.zip && \
 COPY polarion_starter.sh ./
 RUN chmod +x polarion_starter.sh
 
-# Download and install OpenJDK 17
-RUN wget --no-check-certificate https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.8%2B7/OpenJDK17U-jdk_x64_linux_hotspot_17.0.8_7.tar.gz && \
+# Download and install OpenJDK 21 (Temurin)
+RUN wget --no-check-certificate https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz && \
   mkdir -p /usr/lib/jvm && \
-  tar -zxf OpenJDK17U-jdk_x64_linux_hotspot_17.0.8_7.tar.gz -C /usr/lib/jvm
+  tar -zxf OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz -C /usr/lib/jvm
 
-# Configure Java alternatives
-RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-17.0.8+7/bin/java 100 && \
-  update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/jdk-17.0.8+7/bin/jar 100 && \
-  update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/jdk-17.0.8+7/bin/javac 100 && \
-  update-alternatives --set jar /usr/lib/jvm/jdk-17.0.8+7/bin/jar && \
-  update-alternatives --set javac /usr/lib/jvm/jdk-17.0.8+7/bin/javac
+# Configure Java alternatives for JDK 21
+RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-21.0.4+7/bin/java 100 && \
+  update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/jdk-21.0.4+7/bin/jar 100 && \
+  update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/jdk-21.0.4+7/bin/javac 100 && \
+  update-alternatives --set jar /usr/lib/jvm/jdk-21.0.4+7/bin/jar && \
+  update-alternatives --set javac /usr/lib/jvm/jdk-21.0.4+7/bin/javac
 
 # Set Java environment variables
-ENV JAVA_HOME="/usr/lib/jvm/jdk-17.0.8+7" \
-  JDK_HOME="/usr/lib/jvm/jdk-17.0.8+7"
+ENV JAVA_HOME="/usr/lib/jvm/jdk-21.0.4+7" \
+  JDK_HOME="/usr/lib/jvm/jdk-21.0.4+7"
 
 # Add Java environment to system environment
 RUN echo "JAVA_HOME=\"$JAVA_HOME\"" >> /etc/environment && \
@@ -63,7 +63,8 @@ RUN echo "JAVA_HOME=\"$JAVA_HOME\"" >> /etc/environment && \
 # Verify Java installation
 RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
   echo "JAVA_HOME=$JAVA_HOME" && \
-  echo "JDK_HOME=$JDK_HOME"   
+  echo "JDK_HOME=$JDK_HOME"  && \
+  java -version
 
 # Switch to Polarion directory for installation
 WORKDIR /polarion_root/Polarion
@@ -128,7 +129,7 @@ RUN set -x && ./install.expect
 WORKDIR /polarion_root
 ENV PATH="/usr/lib/postgresql/16/bin:${PATH}"
 
-# Set environment variables for debugging support
+# Set environment variables for debugging support (default: enabled)
 ENV JDWP_ENABLED="true"
 
 # Set startup command
