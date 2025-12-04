@@ -62,7 +62,8 @@ expect "Would you like install Polarion sample data?"
 send "yes\r"
 
 # Step 13: Choose not to start Polarion immediately (will be started by container script)
-expect "Do you want start Polarion now?\r\nType answer <yes|no>, default \[yes\]"
+expect "Do you want start Polarion now?"
+expect "Type answer <yes|no>, default \[yes\]"
 send "no\r"
 
 # Wait for installation to complete
