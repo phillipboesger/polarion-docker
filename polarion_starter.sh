@@ -75,6 +75,15 @@ if ! grep -q "^ServerName" /etc/apache2/apache2.conf; then
 fi
 service apache2 start
 
+# Configure redirect from / to /polarion/
+if [ ! -f /etc/apache2/conf-available/polarion-redirect.conf ]; then
+    cat >/etc/apache2/conf-available/polarion-redirect.conf << 'EOF'
+RedirectMatch ^/$ /polarion/
+EOF
+    a2enconf polarion-redirect
+    service apache2 reload
+fi
+
 # Configure JDWP debugging by modifying config.sh before service start
 CONFIG_FILE="/opt/polarion/etc/config.sh"
 if [[ -z "$JDWP_ENABLED" ]] || [[ "$JDWP_ENABLED" == "true" ]]; then
