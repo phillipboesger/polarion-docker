@@ -22,16 +22,16 @@ expect "Would you like to check and install the prerequisities?\r\nType answer <
 send "yes\r"
 
 # Step 4: First continuation prompt
-expect "When you are done press Enter to continue."
+expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
 send "\r"
 
 # Step 5: First Y/n confirmation
-expect "Do you want to continue? \[Y/n\]"
-send "Y\r"
+#expect "Do you want to continue? \[Y/n\]"
+#send "Y\r"
 
 # Step 6: Second Y/n confirmation
-expect "Do you want to continue? \[Y/n\]"
-send "Y\r"
+#expect "Do you want to continue? \[Y/n\]"
+#send "Y\r"
 
 # Step 6a: Second continuation prompt
 expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
