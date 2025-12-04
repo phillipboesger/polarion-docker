@@ -3,8 +3,8 @@
 # Polarion Container Startup Script
 # This script configures and starts all necessary services for Polarion
 
-# Start PostgreSQL database (version 17)
-sudo -u postgres /usr/lib/postgresql/17/bin/pg_ctl -D /opt/polarion/data/postgres-data -l /opt/polarion/data/postgres-data/log.out -o "-p 5433" start
+# Start PostgreSQL database
+sudo -u postgres /usr/lib/postgresql/16/bin/pg_ctl -D /opt/polarion/data/postgres-data -l /opt/polarion/data/postgres-data/log.out -o "-p 5433" start
 
 # Fix repository URLs in polarion.properties for container environment
 # Replace localhost with 127.0.0.1 for proper container networking
@@ -12,90 +12,8 @@ sed -i 's|base.url=http://localhost|base.url=http://127.0.0.1|g' /opt/polarion/e
 sed -i 's|repo=http://localhost/repo|repo=http://127.0.0.1/repo|g' /opt/polarion/etc/polarion.properties
 sed -i 's|controlHostname=localhost|controlHostname=127.0.0.1|g' /opt/polarion/etc/polarion.properties
 
-# Update Polarion properties with correct container-specific settings
-cat >> /opt/polarion/etc/polarion.properties << 'PROPS_EOF'
-
-# Container-specific configuration fixes
-com.polarion.svn.url=http://127.0.0.1/repo
-PROPS_EOF
-
 # Fix repository URLs in existing configuration files to use 127.0.0.1 instead of localhost
 find /opt/polarion -name "*.properties" -exec sed -i 's/localhost/127.0.0.1/g' {} \;
-
-# Enable required Apache modules for Polarion functionality
-a2enmod proxy
-a2enmod proxy_ajp
-a2enmod ssl
-a2enmod rewrite
-a2enmod dav_svn
-
-# Create Polarion virtual host configuration with SVN support
-cat > /etc/apache2/sites-available/polarion.conf << 'EOF'
-<VirtualHost *:80>
-    ServerName localhost
-    DocumentRoot /var/www/html
-    
-    ProxyPreserveHost On
-    ProxyRequests Off
-    
-    # SVN repository is handled by mod_dav_svn, not proxied
-    # This must come BEFORE any other proxy rules
-    ProxyPass /repo !
-    
-    # Proxy to Polarion via AJP
-    ProxyPass /polarion ajp://127.0.0.1:8889/polarion
-    ProxyPassReverse /polarion ajp://127.0.0.1:8889/polarion
-    
-    # Proxy root to Polarion (but exclude /repo)
-    ProxyPass / ajp://127.0.0.1:8889/polarion/
-    ProxyPassReverse / ajp://127.0.0.1:8889/polarion/
-    
-    ErrorLog ${APACHE_LOG_DIR}/polarion_error.log
-    CustomLog ${APACHE_LOG_DIR}/polarion_access.log combined
-</VirtualHost>
-
-# Configure HTTPS virtual host with SSL support
-<VirtualHost *:443>
-    ServerName localhost
-    DocumentRoot /var/www/html
-    
-    # Enable SSL
-    SSLEngine on
-    SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem
-    SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
-    
-    # Proxy configuration
-    ProxyPreserveHost On
-    ProxyRequests Off
-    
-    # SVN repository is handled by mod_dav_svn, not proxied
-    # This must come BEFORE any other proxy rules
-    ProxyPass /repo !
-    
-    # Proxy to Polarion via AJP protocol
-    ProxyPass /polarion ajp://127.0.0.1:8889/polarion
-    ProxyPassReverse /polarion ajp://127.0.0.1:8889/polarion
-    
-    # Proxy root to Polarion (but exclude /repo)
-    ProxyPass / ajp://127.0.0.1:8889/polarion/
-    ProxyPassReverse / ajp://127.0.0.1:8889/polarion/
-    
-    # Logging configuration
-    ErrorLog ${APACHE_LOG_DIR}/polarion_ssl_error.log
-    CustomLog ${APACHE_LOG_DIR}/polarion_ssl_access.log combined
-</VirtualHost>
-EOF
-
-# Enable the Polarion site and disable default Apache site
-a2ensite polarion
-a2dissite 000-default
-
-# Fix Apache ports.conf to avoid duplicate Listen directives
-sed -i '/^Listen 80$/d; /^Listen 443$/d' /etc/apache2/ports.conf
-sed -i '4i Listen 80' /etc/apache2/ports.conf
-
-# Start Apache web server
-service apache2 start
 
 # Configure Polarion properties file
 FILE="/opt/polarion/etc/polarion.properties"

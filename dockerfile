@@ -129,9 +129,9 @@ RUN echo "=== Current directory contents ===" && \
 # Run Polarion installation
 RUN set -x && ./install.expect
 
-# Return to root directory and add PostgreSQL to PATH
+# Return to root directory and add PostgreSQL 16 to PATH
 WORKDIR /polarion_root
-ENV PATH="/usr/lib/postgresql/17/bin:${PATH}"
+ENV PATH="/usr/lib/postgresql/16/bin:${PATH}"
 
 # Set environment variables for debugging support (default: enabled)
 ENV JDWP_ENABLED="true"
