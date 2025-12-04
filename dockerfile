@@ -12,7 +12,9 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
-  apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql systemd && \
+  apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales \
+  apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql systemd \
+  postgresql-17 postgresql-client-17 postgresql-contrib-17 && \
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8
 
@@ -127,7 +129,7 @@ RUN set -x && ./install.expect
 
 # Return to root directory and add PostgreSQL to PATH
 WORKDIR /polarion_root
-ENV PATH="/usr/lib/postgresql/16/bin:${PATH}"
+ENV PATH="/usr/lib/postgresql/17/bin:${PATH}"
 
 # Set environment variables for debugging support (default: enabled)
 ENV JDWP_ENABLED="true"

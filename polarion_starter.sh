@@ -3,8 +3,8 @@
 # Polarion Container Startup Script
 # This script configures and starts all necessary services for Polarion
 
-# Start PostgreSQL database
-sudo -u postgres /usr/lib/postgresql/16/bin/pg_ctl -D /opt/polarion/data/postgres-data -l /opt/polarion/data/postgres-data/log.out -o "-p 5433" start
+# Start PostgreSQL database (version 17)
+sudo -u postgres /usr/lib/postgresql/17/bin/pg_ctl -D /opt/polarion/data/postgres-data -l /opt/polarion/data/postgres-data/log.out -o "-p 5433" start
 
 # Fix repository URLs in polarion.properties for container environment
 # Replace localhost with 127.0.0.1 for proper container networking
