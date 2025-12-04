@@ -69,13 +69,19 @@ echo "# End property file" >> "$FILE"
 
 echo "Polarion Properties Updated Successfully."
 
+# Ensure Apache has a ServerName to avoid startup warning and start Apache
+if ! grep -q "^ServerName" /etc/apache2/apache2.conf; then
+    echo "ServerName localhost" >> /etc/apache2/apache2.conf
+fi
+service apache2 start
+
 # Configure JDWP debugging by modifying config.sh before service start
 CONFIG_FILE="/opt/polarion/etc/config.sh"
 if [[ -z "$JDWP_ENABLED" ]] || [[ "$JDWP_ENABLED" == "true" ]]; then
     # Add JDWP parameters to PSVN_JServer_opt by injecting after "-server \
-    sed -i '/export PSVN_JServer_opt="-server \\/{
+    sed -i '/export PSVN_JServer_opt="-server \\\/{
         N
-        s/export PSVN_JServer_opt="-server \\/export PSVN_JServer_opt="-server \\\n  -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \\/
+        s/export PSVN_JServer_opt="-server \\\/export PSVN_JServer_opt="-server \\\n+  -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \\\/
     }' "$CONFIG_FILE"
     echo "JDWP debugging will be enabled on port 5005"
 else
