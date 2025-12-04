@@ -23,7 +23,11 @@ OTHER_PARAMS=(
     "com.siemens.polarion.rest.enabled=true"
     "com.siemens.polarion.rest.swaggerUi.enabled=true"
     "com.siemens.polarion.rest.cors.allowedOrigins=*"
+    "com.siemens.polarion.tomcat.cors.allowedOrigins=*"
+    "com.siemens.polarion.tomcat.cors.allowedHeaders=*"
+    "com.siemens.polarion.tomcat.cors.allowedMethods=*"
     "com.siemens.polarion.license.salt.enabled=false"
+    "com.siemens.polarion.analytics.enabled=false"
 )
 
 # Configure allowed hosts for Tomcat service
