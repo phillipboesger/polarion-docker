@@ -15,7 +15,7 @@ services:
     environment:
       # These can be customized when creating the container
       - POLARION_HOME=/polarion_root
-      - JAVA_OPTS=-Xmx4g -Xms4g
+      - JAVA_OPTS=-Xmx8g -Xms8g
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
       - JDWP_ENABLED=true
     restart: unless-stopped

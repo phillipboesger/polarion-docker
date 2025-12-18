@@ -90,11 +90,29 @@ fi
 
 # Configure JDWP debugging by modifying config.sh before service start
 CONFIG_FILE="/opt/polarion/etc/config.sh"
+
+# Configure Memory settings from JAVA_OPTS
+if [[ -n "$JAVA_OPTS" ]]; then
+    echo "Applying JAVA_OPTS: $JAVA_OPTS"
+    # Extract Xms and Xmx if present
+    NEW_XMS=$(echo "$JAVA_OPTS" | grep -o '\-Xms[0-9]*[mMgG]')
+    NEW_XMX=$(echo "$JAVA_OPTS" | grep -o '\-Xmx[0-9]*[mMgG]')
+
+    if [[ -n "$NEW_XMS" ]]; then
+        sed -i "s/-Xms[0-9]*[mMgG]/$NEW_XMS/g" "$CONFIG_FILE"
+        echo "Updated Xms to $NEW_XMS"
+    fi
+    if [[ -n "$NEW_XMX" ]]; then
+        sed -i "s/-Xmx[0-9]*[mMgG]/$NEW_XMX/g" "$CONFIG_FILE"
+        echo "Updated Xmx to $NEW_XMX"
+    fi
+fi
+
 if [[ -z "$JDWP_ENABLED" ]] || [[ "$JDWP_ENABLED" == "true" ]]; then
     # Add JDWP parameters to PSVN_JServer_opt by injecting after "-server \
-    sed -i '/export PSVN_JServer_opt="-server \\\/{
+    sed -i '/export PSVN_JServer_opt="-server \\/{
         N
-        s/export PSVN_JServer_opt="-server \\\/export PSVN_JServer_opt="-server \\\n  -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \\\/
+        s/export PSVN_JServer_opt="-server \\/export PSVN_JServer_opt="-server \\\n  -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \\/
     }' "$CONFIG_FILE"
     echo "JDWP debugging will be enabled on port 5005"
 else
