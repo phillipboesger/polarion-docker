@@ -50,6 +50,7 @@ docker run -d \
   --name polarion \
   --platform linux/amd64 \
   -p 80:80 -p 443:443 \
+  -p 5433:5433 \
   -p 5005:5005 \
   -e JAVA_OPTS="-Xmx4g -Xms4g" \
   -e JDWP_ENABLED=true \

@@ -49,7 +49,7 @@ start_container() {
             --platform linux/amd64 \
             -p 80:80 \
             -p 443:443 \
-            -p 5432:5432 \
+            -p 5433:5433 \
             -e POLARION_HOME=/polarion_root \
             -e JAVA_OPTS="-Xmx4g -Xms4g" \
             -e ALLOWED_HOSTS="localhost,127.0.0.1,0.0.0.0" \

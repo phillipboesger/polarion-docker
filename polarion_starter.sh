@@ -3,6 +3,16 @@
 # Polarion Container Startup Script
 # This script configures and starts all necessary services for Polarion
 
+# Configure PostgreSQL to listen on all addresses
+if ! grep -q "listen_addresses = '*'" /opt/polarion/data/postgres-data/postgresql.conf; then
+    echo "listen_addresses = '*'" >> /opt/polarion/data/postgres-data/postgresql.conf
+fi
+
+# Configure pg_hba.conf to allow external connections (access to all databases including history)
+if ! grep -q "host all all 0.0.0.0/0 md5" /opt/polarion/data/postgres-data/pg_hba.conf; then
+    echo "host all all 0.0.0.0/0 md5" >> /opt/polarion/data/postgres-data/pg_hba.conf
+fi
+
 # Start PostgreSQL database
 sudo -u postgres /usr/lib/postgresql/16/bin/pg_ctl -D /opt/polarion/data/postgres-data -l /opt/polarion/data/postgres-data/log.out -o "-p 5433" start
 
@@ -28,6 +38,7 @@ OTHER_PARAMS=(
     "com.siemens.polarion.tomcat.cors.allowedMethods=*"
     "com.siemens.polarion.license.salt.enabled=false"
     "com.siemens.polarion.analytics.enabled=false"
+    "com.polarion.platform.internalPG=polarion:polarion@localhost:5433"
 )
 
 # Configure allowed hosts for Tomcat service

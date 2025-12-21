@@ -53,7 +53,7 @@ create_container() {
     # Default values
     local memory="4g"
     local java_opts=""
-    local ports="-p 80:80 -p 443:443 -p 5432:5432"
+    local ports="-p 80:80 -p 443:443 -p 5433:5433"
     local container_name=${CONTAINER_NAME}
     
     # Parse arguments
