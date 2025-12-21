@@ -80,6 +80,55 @@ jobs:
             org.opencontainers.image.vendor=Avasis Solutions
             polarion.version=${{ steps.version.outputs.version }}
 
+      - name: Build and load for testing
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: polarion:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test Docker Image
+        run: |
+          echo "🚀 Starting container for testing..."
+          docker run -d --name polarion-test -p 5433:5433 -p 5005:5005 polarion:test
+
+          echo "⏳ Waiting for PostgreSQL to be ready..."
+          # Loop to check if port 5433 is open and responding
+          timeout 120s bash -c 'until nc -z localhost 5433; do sleep 2; done'
+
+          echo "🔍 Verifying Database Connection..."
+          # Install postgresql-client to test actual connection
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+
+          # Try to connect (this verifies pg_hba.conf and listen_addresses)
+          # We use PGPASSWORD to pass the password 'polarion'
+          export PGPASSWORD=polarion
+          if psql -h localhost -p 5433 -U polarion -d polarion -c '\l'; then
+            echo "✅ Database connection successful! (Port 5433)"
+          else
+            echo "❌ Database connection failed!"
+            echo "=== Container Logs ==="
+            docker logs polarion-test
+            exit 1
+          fi
+
+          echo "🔍 Verifying JDWP Debug Port (5005)..."
+          if timeout 10s bash -c 'until nc -z localhost 5005; do sleep 1; done'; then
+             echo "✅ JDWP Port 5005 is open"
+          else
+             echo "❌ JDWP Port 5005 is closed"
+             echo "=== Container Logs ==="
+             docker logs polarion-test
+             exit 1
+          fi
+
+          echo "🧹 Cleaning up..."
+          docker rm -f polarion-test
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         timeout-minutes: 60
