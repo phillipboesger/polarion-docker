@@ -105,7 +105,14 @@ jobs:
       - name: Test Docker Image
         run: |
           echo "🚀 Starting container for testing..."
-          docker run -d --name polarion-test -p 5433:5433 -p 5005:5005 polarion:test
+          docker run -d \
+            --name polarion-test \
+            -p 80:80 -p 443:443 \
+            -p 5433:5433 \
+            -p 5005:5005 \
+            -e JAVA_OPTS="-Xmx4g -Xms4g" \
+            -e JDWP_ENABLED=true \
+            polarion:test
 
           echo "⏳ Waiting for PostgreSQL to be ready..."
           # Loop to check if port 5433 is open and responding
@@ -174,11 +181,11 @@ jobs:
           if [[ "${{ steps.version.outputs.is_version_branch }}" == "true" ]]; then
             echo "# Polarion ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
             echo "docker pull --platform linux/amd64 ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "docker create --name polarion-${{ steps.version.outputs.version }} --platform linux/amd64 -p 80:80 -p 443:443 -e JAVA_OPTS=\"-Xmx4g -Xms4g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "docker create --name polarion-${{ steps.version.outputs.version }} --platform linux/amd64 -p 80:80 -p 443:443 -p 5433:5433 -p 5005:5005 -e JAVA_OPTS=\"-Xmx4g -Xms4g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" -e JDWP_ENABLED=true ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
             echo "docker start polarion-${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "docker pull --platform linux/amd64 ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-            echo "docker create --name polarion --platform linux/amd64 -p 80:80 -p 443:443 -e JAVA_OPTS=\"-Xmx4g -Xms4g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+            echo "docker create --name polarion --platform linux/amd64 -p 80:80 -p 443:443 -p 5433:5433 -p 5005:5005 -e JAVA_OPTS=\"-Xmx4g -Xms4g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" -e JDWP_ENABLED=true ${{ env.REGISTRY }}/phillipboesger/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
             echo "docker start polarion" >> $GITHUB_STEP_SUMMARY
           fi
           echo '```' >> $GITHUB_STEP_SUMMARY
