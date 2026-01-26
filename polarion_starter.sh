@@ -134,13 +134,16 @@ if [[ -n "$JAVA_OPTS" ]]; then
 fi
 
 if [[ -z "$JDWP_ENABLED" ]] || [[ "$JDWP_ENABLED" == "true" ]]; then
-    # Add JDWP parameters to PSVN_JServer_opt by injecting after "-server \
-    sed -i '/export PSVN_JServer_opt="-server \\/{
-        N
-        s/export PSVN_JServer_opt="-server \\/export PSVN_JServer_opt="-server \\\n  -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \\/
-    }' "$CONFIG_FILE"
-    echo "JDWP debugging will be enabled on port 5005"
+    # 1. Zuerst alle existierenden jdwp-Zeilen entfernen, um Duplikate zu vermeiden
+    sed -i '/-agentlib:jdwp/d' "$CONFIG_FILE"
+
+    # 2. Den Agenten sauber neu einfügen
+    sed -i '/export PSVN_JServer_opt="-server \\/a \  -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \\' "$CONFIG_FILE"
+    
+    echo "JDWP debugging enabled on port 5005 (Duplicates cleaned)"
 else
+    # Falls JDWP deaktiviert ist, stellen wir sicher, dass es auch aus der Datei verschwindet
+    sed -i '/-agentlib:jdwp/d' "$CONFIG_FILE"
     echo "JDWP debugging disabled"
 fi
 
