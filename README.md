@@ -42,7 +42,17 @@ curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 ```
 
-### 2. Create Polarion Container
+### 2. Login to Registry
+
+If the image is private, you must authenticate first:
+
+```bash
+# Login to GitHub Container Registry
+# You need a GitHub Personal Access Token (classic) with 'read:packages' scope
+echo "YOUR_GITHUB_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+```
+
+### 3. Create Polarion Container
 
 ```bash
 # Pull and start Polarion (minimal example)
@@ -54,12 +64,12 @@ docker run -d \
   -p 5005:5005 \
   -e JAVA_OPTS="-Xmx4g -Xms4g" \
   -e JDWP_ENABLED=true \
-  phillipboesger/polarion-docker:latest
+  ghcr.io/phillipboesger/polarion-docker:latest
 ```
 
 **Replace the version information by any major version > 2310 that you want or use latest**
 
-### 3. Access Polarion
+### 4. Access Polarion
 
 - **URL**: http://localhost
 - **Default Login**: user: `polarion`, password: `polarion`
@@ -302,8 +312,8 @@ storage.
 
    # GitHub Actions will automatically build the image
    # Wait for build to complete, then test:
-   docker pull phillipboesger/polarion-docker:latest
-   docker run --rm -p 8080:80 phillipboesger/polarion-docker:latest
+   docker pull ghcr.io/phillipboesger/polarion-docker:latest
+   docker run --rm -p 8080:80 ghcr.io/phillipboesger/polarion-docker:latest
    ```
 
 4. **Merge to main:**
