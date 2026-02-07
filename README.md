@@ -42,7 +42,7 @@ curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 ```
 
-### 2. Login to Registry
+### 2. Login to Registry (Optional)
 
 If the image is private, you must authenticate first:
 
@@ -52,10 +52,11 @@ If the image is private, you must authenticate first:
 echo "YOUR_GITHUB_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 ```
 
-### 3. Create Polarion Container
+### 2. Create Polarion Container
 
 ```bash
 # Pull and start Polarion (minimal example)
+# Note: --platform linux/amd64 is required for Apple Silicon Macs
 docker run -d \
   --name polarion \
   --platform linux/amd64 \
@@ -312,8 +313,8 @@ storage.
 
    # GitHub Actions will automatically build the image
    # Wait for build to complete, then test:
-   docker pull ghcr.io/phillipboesger/polarion-docker:latest
-   docker run --rm -p 8080:80 ghcr.io/phillipboesger/polarion-docker:latest
+   docker pull --platform linux/amd64 ghcr.io/phillipboesger/polarion-docker:latest
+   docker run --rm --platform linux/amd64 -p 8080:80 ghcr.io/phillipboesger/polarion-docker:latest
    ```
 
 4. **Merge to main:**

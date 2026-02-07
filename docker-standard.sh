@@ -15,6 +15,7 @@ show_help() {
     echo "Commands:"
     echo "  pull                     Pull latest image from registry"
     echo "  create [OPTIONS]         Create container with custom settings"
+    echo "  import <file>            Import image from file"
     echo "  start                    Start existing container"
     echo "  stop                     Stop running container"
     echo "  restart                  Restart container"
@@ -249,6 +250,15 @@ case "${1:-help}" in
         ;;
     "stop")
         stop_container
+        ;;
+    "import")
+         if [ -z "$2" ]; then
+            echo "❌ Error: Please specify the file to import."
+            echo "Usage: $0 import <filename.tar.gz>"
+            exit 1
+        fi
+        echo "📦 Importing image from $2..."
+        docker load -i "$2" && echo "✅ Import successful."
         ;;
     "restart")
         restart_container
