@@ -144,23 +144,6 @@ docker logs -f polarion
 docker rm polarion
 ```
 
-### Helper Script (Optional)
-
-For easier management, use the included helper script:
-
-```bash
-# Download the repository for helper scripts
-git clone https://github.com/phillipboesger/polarion-docker.git
-cd polarion-docker
-
-# Use helper script
-./docker-standard.sh pull                    # Pull latest image
-./docker-standard.sh create --memory=8g      # Create container with 8GB
-./docker-standard.sh start                   # Start container
-./docker-standard.sh logs                    # View logs
-./docker-standard.sh stop                    # Stop container
-```
-
 ### Docker Compose (Optional)
 
 ```bash

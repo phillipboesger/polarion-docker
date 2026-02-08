@@ -79,53 +79,6 @@ RUN echo "=== Current directory contents ===" && \
   chmod +x install.expect && \
   if [ -f install.sh ]; then chmod +x install.sh; else echo "WARNING: install.sh not found!"; fi
 
-# Apache-Setup wird vorerst deaktiviert, um zu sehen,
-# wie weit Polarion seine eigene Apache-Installation übernimmt.
-## Configure Apache for Docker environment
-# RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf && \
-#   mkdir -p /var/run/apache2 && \
-#   mkdir -p /var/lock/apache2 && \
-#   chown -R www-data:www-data /var/run/apache2 /var/lock/apache2
-
-## Configure policy-rc.d for installation compatibility
-# RUN printf '#!/bin/sh\nexit 0' > /usr/sbin/policy-rc.d && \
-#   chmod +x /usr/sbin/policy-rc.d
-
-## Create Apache service wrapper that works in Docker
-# RUN printf '#!/bin/bash\n\
-#   case "$1" in\n\
-#   start|restart|reload)\n\
-#   mkdir -p /var/run/apache2\n\
-#   mkdir -p /var/lock/apache2\n\
-#   chown -R www-data:www-data /var/run/apache2 /var/lock/apache2\n\
-#   /usr/sbin/apache2ctl start 2>/dev/null || /usr/sbin/apache2ctl restart 2>/dev/null || true\n\
-#   ;;\n\
-#   stop)\n\
-#   /usr/sbin/apache2ctl stop 2>/dev/null || true\n\
-#   ;;\n\
-#   status)\n\
-#   /usr/sbin/apache2ctl status 2>/dev/null || echo "Apache is running"\n\
-#   ;;\n\
-#   *)\n\
-#   echo "Usage: $0 {start|stop|restart|reload|status}"\n\
-#   ;;\n\
-#   esac\n\
-#   exit 0' > /etc/init.d/apache2 && \
-#   chmod +x /etc/init.d/apache2
-
-## Override the service command to use our wrapper
-# RUN printf '#!/bin/bash\n\
-#   if [ "$1" = "apache2" ]; then\n\
-#   /etc/init.d/apache2 "$2"\n\
-#   else\n\
-#   /usr/sbin/service "$@"\n\
-#   fi' > /usr/local/bin/service && \
-#   chmod +x /usr/local/bin/service && \
-#   ln -sf /usr/local/bin/service /usr/bin/service
-
-## Start Apache before installation
-# RUN /etc/init.d/apache2 start
-
 # Run Polarion installation
 RUN set -x && ./install.expect
 

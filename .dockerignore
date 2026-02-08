@@ -28,8 +28,6 @@ Thumbs.db
 # Documentation
 README.md
 
-# Scripts that aren't needed in the image
-docker-standard.sh
 scripts/
 
 # Docker Compose files (not needed in image)
