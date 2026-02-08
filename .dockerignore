@@ -29,15 +29,12 @@ Thumbs.db
 README.md
 
 # Scripts that aren't needed in the image
-build-and-run.sh
-manage-polarion.sh
-manage-prebuilt.sh
-quick-start.sh
-examples.sh
+docker-standard.sh
+scripts/
 
 # Docker Compose files (not needed in image)
 docker-compose*.yml
-docker-compose-build.yml
+docker-compose.dev.yml
 
 # Temporary files
 *.bak

@@ -150,7 +150,7 @@ For easier management, use the included helper script:
 
 ```bash
 # Download the repository for helper scripts
-git clone https://github.com/avasis-solutions/polarion-docker.git
+git clone https://github.com/phillipboesger/polarion-docker.git
 cd polarion-docker
 
 # Use helper script
@@ -165,7 +165,7 @@ cd polarion-docker
 
 ```bash
 # Clone repository
-git clone https://github.com/avasis-solutions/polarion-docker.git
+git clone https://github.com/phillipboesger/polarion-docker.git
 cd polarion-docker
 
 # Start with Docker Compose
@@ -246,7 +246,6 @@ You can adapt the `hostName` and `port` if you change the Docker port mapping.
     - JDWP_ENABLED=false
   ```
 
-For more details and troubleshooting tips, see [DEBUGGING.md](./DEBUGGING.md).
 
 ## 🧩 Plugin Development
 
@@ -347,11 +346,11 @@ storage.
 
 ```bash
 # Clone repository
-git clone https://github.com/avasis-solutions/polarion-docker.git
+git clone https://github.com/phillipboesger/polarion-docker.git
 cd polarion-docker
 
 # Build locally (incl. JDWP debug port 5005)
-docker-compose -f docker-compose-build.yml up -d --build
+docker-compose -f docker-compose.dev.yml up -d --build
 ```
 
 ## 🔍 Troubleshooting

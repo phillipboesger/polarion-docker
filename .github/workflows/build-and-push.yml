@@ -88,7 +88,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=Polarion Docker
             org.opencontainers.image.description=Polarion ALM running in Docker
-            org.opencontainers.image.vendor=Avasis Solutions
+            org.opencontainers.image.vendor=Phillip Bösger
             polarion.version=${{ steps.version.outputs.version }}
 
       - name: Build and load for testing
