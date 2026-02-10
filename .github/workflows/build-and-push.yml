@@ -148,6 +148,11 @@ jobs:
           # Wait for log files to appear
           timeout 60s bash -c 'until docker exec polarion-test ls /opt/polarion/data/logs/main/*.log >/dev/null 2>&1; do sleep 2; done'
 
+          echo "📜 Streaming Polarion logs..."
+          # Start tailing in background to show progress
+          docker exec polarion-test sh -c "tail -F \$(ls -t /opt/polarion/data/logs/main/*.log | head -n 1)" &
+          TAIL_PID=$!
+
           # Poll logs for "Phase 9" (give it up to 10 minutes) with Error checking
           MAX_RETRIES=60 # 60 * 10s = 600s = 10 min
           RETRY_COUNT=0
@@ -157,6 +162,7 @@ jobs:
             # 1. Check for Success
             if docker exec polarion-test sh -c "grep -q \"Phase 9\" /opt/polarion/data/logs/main/*.log" 2>/dev/null; then
                echo "✅ Polarion reached Phase 9 (Startup Sequence Complete)"
+               kill $TAIL_PID 2>/dev/null || true
                SUCCESS=true
                break
             fi
@@ -164,8 +170,11 @@ jobs:
             # 2. Check for Critical Errors
             if docker exec polarion-test sh -c "grep -E -q \"ERROR|Exception|Caused by\" /opt/polarion/data/logs/main/*.log" 2>/dev/null; then
                echo "❌ Detected Java Error/Exception in logs! Aborting..."
+               kill $TAIL_PID 2>/dev/null || true
                echo "=== Error Snippet from Logs ==="
                docker exec polarion-test sh -c "grep -E -C 5 \"ERROR|Exception|Caused by\" /opt/polarion/data/logs/main/*.log | tail -n 50"
+               echo "=== Service Startup Log (/var/log/polarion/polarion.log) ==="
+               docker exec polarion-test sh -c "cat /var/log/polarion/polarion.log || echo 'File not found'"
                exit 1
             fi
             
@@ -174,28 +183,14 @@ jobs:
             RETRY_COUNT=$((RETRY_COUNT+1))
           done
 
+          kill $TAIL_PID 2>/dev/null || true
+
           if [ "$SUCCESS" = "false" ]; then
              echo "❌ Timed out waiting for Polarion Phase 9"
              echo "=== Last 200 lines of Polarion Log ==="
              docker exec polarion-test sh -c "tail -n 200 /opt/polarion/data/logs/main/*.log"
-             exit 1
-          fi
-
-          echo "🧹 Cleaning up..."
-          docker rm -f polarion-test
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        timeout-minutes: 60
-        with:
-          context: .
-          file: ./dockerfile
-          platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            TARGETPLATFORM=linux/amd64
+             echo "=== Service Startup Log (/var/log/polarion/polarion.log) ==="
+             docker exec polarion-test sh -c "cat /var/log/polarion/polarion.log || echo 'File not found'"
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
