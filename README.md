@@ -53,8 +53,8 @@ If you have access:
       -p 5005:5005 \
       -e JAVA_OPTS="-Xmx8g -Xms8g" \
       -e JDWP_ENABLED=true \
-			--volume polarion_repo:/opt/polarion/data/svn/repo \
-  		--volume polarion_extensions:/opt/polarion/polarion/extensions \
+      --volume polarion_repo:/opt/polarion/data/svn/repo \
+      --volume polarion_extensions:/opt/polarion/polarion/extensions \
       ghcr.io/phillipboesger/polarion-docker:latest
     ```
 *(Replace `polarion:latest` with the appropriate image name depending on how you built or pulled it)*
