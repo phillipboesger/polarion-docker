@@ -144,6 +144,43 @@ jobs:
              exit 1
           fi
 
+          echo "🔍 Verifying Polarion Service Startup (9 Phases)..."
+          # Wait for log files to appear
+          timeout 60s bash -c 'until docker exec polarion-test ls /opt/polarion/data/logs/main/*.log >/dev/null 2>&1; do sleep 2; done'
+
+          # Poll logs for "Phase 9" (give it up to 10 minutes) with Error checking
+          MAX_RETRIES=60 # 60 * 10s = 600s = 10 min
+          RETRY_COUNT=0
+          SUCCESS=false
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            # 1. Check for Success
+            if docker exec polarion-test sh -c "grep -q \"Phase 9\" /opt/polarion/data/logs/main/*.log" 2>/dev/null; then
+               echo "✅ Polarion reached Phase 9 (Startup Sequence Complete)"
+               SUCCESS=true
+               break
+            fi
+
+            # 2. Check for Critical Errors
+            if docker exec polarion-test sh -c "grep -E -q \"ERROR|Exception|Caused by\" /opt/polarion/data/logs/main/*.log" 2>/dev/null; then
+               echo "❌ Detected Java Error/Exception in logs! Aborting..."
+               echo "=== Error Snippet from Logs ==="
+               docker exec polarion-test sh -c "grep -E -C 5 \"ERROR|Exception|Caused by\" /opt/polarion/data/logs/main/*.log | tail -n 50"
+               exit 1
+            fi
+            
+            echo "⏳ Waiting for Phase 9... (Attempt $((RETRY_COUNT+1))/$MAX_RETRIES)"
+            sleep 10
+            RETRY_COUNT=$((RETRY_COUNT+1))
+          done
+
+          if [ "$SUCCESS" = "false" ]; then
+             echo "❌ Timed out waiting for Polarion Phase 9"
+             echo "=== Last 200 lines of Polarion Log ==="
+             docker exec polarion-test sh -c "tail -n 200 /opt/polarion/data/logs/main/*.log"
+             exit 1
+          fi
+
           echo "🧹 Cleaning up..."
           docker rm -f polarion-test
 
