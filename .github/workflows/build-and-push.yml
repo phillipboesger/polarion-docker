@@ -149,8 +149,8 @@ jobs:
           timeout 60s bash -c 'until docker exec polarion-test ls /opt/polarion/data/logs/main/*.log >/dev/null 2>&1; do sleep 2; done'
 
           echo "📜 Streaming Polarion logs..."
-          # Start tailing in background to show progress
-          docker exec polarion-test sh -c "tail -F \$(ls -t /opt/polarion/data/logs/main/*.log | head -n 1)" &
+          # Start tailing in background to show progress from the main service log
+          docker exec polarion-test tail -F /var/log/polarion/polarion.log &
           TAIL_PID=$!
 
           # Poll logs for "Phase 9" (give it up to 10 minutes) with Error checking
