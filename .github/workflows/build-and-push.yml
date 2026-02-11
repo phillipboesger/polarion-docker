@@ -33,8 +33,6 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          lfs: true # Support für Git LFS
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -114,6 +112,15 @@ jobs:
             -e JDWP_ENABLED=true \
             polarion:test
 
+          echo "⏳ Monitoring JVM startup..."
+          # Give it a moment to crash if VM options are wrong
+          sleep 10
+          if docker logs polarion-test 2>&1 | grep -E -q "Unrecognized VM option|Could not create the Java Virtual Machine|Program will exit"; then
+             echo "❌ FATAL: JVM failed to start! Check your JAVA_OPTS or polarion.ini."
+             docker logs polarion-test
+             exit 1
+          fi
+
           echo "⏳ Waiting for PostgreSQL to be ready..."
           timeout 120s bash -c 'until nc -z localhost 5433; do sleep 2; done'
 
@@ -129,41 +136,47 @@ jobs:
           fi
 
           echo "🔍 Verifying JDWP Debug Port (5005)..."
-          if timeout 10s bash -c 'until nc -z localhost 5005; do sleep 1; done'; then
+          if timeout 15s bash -c 'until nc -z localhost 5005; do sleep 1; done'; then
              echo "✅ JDWP Port 5005 is open"
           else
              echo "❌ JDWP Port 5005 is closed"
              exit 1
           fi
 
-          echo "⏳ Waiting for log file to appear..."
-          timeout 120s bash -c 'until docker exec polarion-test ls /var/log/polarion/polarion.log >/dev/null 2>&1; do sleep 2; done'
+          echo "⏳ Waiting for log file /var/log/polarion/polarion.log..."
+          timeout 120s bash -c 'until docker exec polarion-test ls /var/log/polarion/polarion.log >/dev/null 2>&1; do sleep 5; done'
 
-          echo "📜 Streaming Polarion logs..."
+          echo "📜 Streaming Polarion logs live..."
           docker exec polarion-test tail -f /var/log/polarion/polarion.log &
           TAIL_PID=$!
 
-          MAX_RETRIES=60 # 10 Minuten
+          MAX_RETRIES=60 # 10 Minutes (60 * 10s)
           RETRY_COUNT=0
           SUCCESS=false
 
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            # 1. Check auf SUCCESS (dein variabler Block)
+            # 1. Check for the variable Success Block
             if docker exec polarion-test grep -q "Polarion started:  \[ TIME .* \]" /var/log/polarion/polarion.log 2>/dev/null; then
-               echo -e "\n✅ Polarion successfully started (Time block detected)!"
+               echo -e "\n✅ SUCCESS: Polarion startup sequence completed!"
                SUCCESS=true
                break
             fi
 
-            # 2. Check auf ECHTE Fehler (ignoriert Lizenzfehler)
-            if docker exec polarion-test sh -c "grep -E 'ERROR|Exception|Caused by' /var/log/polarion/polarion.log | grep -v 'ActivationException' | grep -v 'No valid license found'" | grep -q "."; then
-               echo -e "\n❌ Detected critical error in logs! Aborting..."
-               # Zeige den Fehler kurz an
+            # 2. Check for Critical Errors (ignoring License and JDWP handshake warnings)
+            if docker exec polarion-test sh -c "grep -E 'ERROR|Exception|Caused by|Unrecognized VM option' /var/log/polarion/polarion.log | grep -v 'ActivationException' | grep -v 'No valid license found' | grep -v 'handshake failed'" | grep -q "."; then
+               echo -e "\n❌ FATAL ERROR detected in logs! Aborting..."
                docker exec polarion-test sh -c "grep -E -C 3 'ERROR|Exception|Caused by' /var/log/polarion/polarion.log | grep -v 'ActivationException' | tail -n 20"
                kill $TAIL_PID 2>/dev/null || true
                exit 1
             fi
             
+            # 3. Check if container is still running
+            if [ $(docker inspect -f '{{.State.Running}}' polarion-test) != "true" ]; then
+               echo -e "\n❌ Container crashed unexpectedly!"
+               docker logs polarion-test
+               exit 1
+            fi
+
             echo -n "."
             sleep 10
             RETRY_COUNT=$((RETRY_COUNT+1))
@@ -172,7 +185,7 @@ jobs:
           kill $TAIL_PID 2>/dev/null || true
 
           if [ "$SUCCESS" = "false" ]; then
-             echo "❌ Timed out waiting for Polarion start block."
+             echo -e "\n❌ Timed out waiting for Polarion Phase 9 / Start Block."
              exit 1
           fi
 
@@ -205,14 +218,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Quick Start:" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ steps.version.outputs.is_version_branch }}" == "true" ]]; then
-            echo "# Polarion ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "docker pull --platform linux/amd64 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "docker create --name polarion-${{ steps.version.outputs.version }} --platform linux/amd64 -p 80:80 -p 443:443 -p 5433:5433 -p 5005:5005 -e JAVA_OPTS=\"-Xmx4g -Xms4g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" -e JDWP_ENABLED=true ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-            echo "docker start polarion-${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "docker pull --platform linux/amd64 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-            echo "docker create --name polarion --platform linux/amd64 -p 80:80 -p 443:443 -p 5433:5433 -p 5005:5005 -e JAVA_OPTS=\"-Xmx4g -Xms4g\" -e ALLOWED_HOSTS=\"localhost,127.0.0.1,0.0.0.0\" -e JDWP_ENABLED=true ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-            echo "docker start polarion" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "# Running the published image" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -p 80:80 -p 443:443 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
