@@ -24,10 +24,7 @@ jobs:
         run: |
           echo "Disk space before cleanup:"
           df -h
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/share/dotnet /opt/ghc "/usr/local/share/boost" "$AGENT_TOOLSDIRECTORY"
           echo "Disk space after cleanup:"
           df -h
 
@@ -114,8 +111,29 @@ jobs:
             -e JDWP_ENABLED=true \
             polarion:test
 
-          echo "⏳ Waiting for log file to appear..."
-          # Warte bis die Log-Datei existiert
+          echo "⏳ Waiting for PostgreSQL (5433)..."
+          timeout 120s bash -c 'until nc -z localhost 5433; do sleep 2; done'
+
+          echo "🔍 Verifying Database Connection..."
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          export PGPASSWORD=polarion
+          if psql -h localhost -p 5433 -U polarion -d polarion -c '\l'; then
+            echo "✅ Database connection successful!"
+          else
+            echo "❌ Database connection failed!"
+            docker logs polarion-test
+            exit 1
+          fi
+
+          echo "🔍 Verifying JDWP Port (5005)..."
+          if timeout 15s bash -c 'until nc -z localhost 5005; do sleep 1; done'; then
+             echo "✅ JDWP Port 5005 is open"
+          else
+             echo "❌ JDWP Port 5005 is closed"
+             exit 1
+          fi
+
+          echo "⏳ Waiting for log file to be created..."
           timeout 120s bash -c 'until docker exec polarion-test ls /var/log/polarion/polarion.log >/dev/null 2>&1; do sleep 5; done'
 
           echo "📜 Streaming Polarion logs live..."
@@ -125,36 +143,31 @@ jobs:
           MAX_RETRIES=60 # 10 Minuten
           SUCCESS=false
 
-          for i in $(seq 1 $MAX_RETRIES); do
-            # 1. Erfolg prüfen (Phase 9)
-            if docker exec polarion-test grep -q "Phase 9" /var/log/polarion/polarion.log 2>/dev/null; then
-               echo -e "\n✅ Polarion reached Phase 9 (Startup Complete)!"
+          while [ $(docker inspect -f '{{.State.Running}}' polarion-test) = "true" ]; do
+            # Check auf deinen spezifischen Startup-Block
+            if docker exec polarion-test grep -q "Polarion started:  \[ TIME .* \]" /var/log/polarion/polarion.log 2>/dev/null; then
+               echo -e "\n✅ Polarion successfully started!"
                SUCCESS=true
                break
             fi
 
-            # 2. Auf kritische Fehler prüfen (vorzeitiger Abbruch)
-            if docker exec polarion-test grep -E -q "FATAL|LifecycleException|Address already in use" /var/log/polarion/polarion.log 2>/dev/null; then
-               echo -e "\n❌ Critical error detected in logs!"
+            # Check auf Fehler
+            if docker exec polarion-test grep -E -q "FATAL|LifecycleException|OutOfMemoryError" /var/log/polarion/polarion.log 2>/dev/null; then
+               echo -e "\n❌ Critical Error detected in logs!"
                break
             fi
             
-            echo -n "."
+            # Timeout Check
+            ((count++))
+            if [ $count -gt $MAX_RETRIES ]; then break; fi
             sleep 10
+            echo -n "."
           done
 
           kill $TAIL_PID 2>/dev/null || true
 
-          if [ "$SUCCESS" = "true" ]; then
-             echo "Finalizing: Checking HTTP status..."
-             sleep 5
-             if curl -sI http://localhost | grep -q "200\|302"; then
-                echo "✅ Web UI is reachable."
-             else
-                echo "⚠️ Polarion is up, but HTTP check failed. Proceeding anyway..."
-             fi
-          else
-             echo -e "\n❌ Startup failed or timed out. Dumping last 100 lines:"
+          if [ "$SUCCESS" != "true" ]; then
+             echo -e "\n❌ Startup failed or timed out."
              docker exec polarion-test tail -n 100 /var/log/polarion/polarion.log
              exit 1
           fi
@@ -176,3 +189,17 @@ jobs:
         run: |
           echo "## Docker Build Summary 🐳" >> $GITHUB_STEP_SUMMARY
           echo "Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ "${{ steps.version.outputs.is_version_branch }}" == "true" ]]; then
+            echo "### Polarion Version: ${{ steps.version.outputs.version }} 🏷️" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "### Available Tags:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" | sed 's/,/\n/g' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Quick Start:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker run --name polarion -p 80:80 -p 443:443 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
