@@ -89,10 +89,10 @@ def main() -> None:
             print(f"Download {int(status.progress() * 100)}%.")
 
     fh.seek(0)
-    with open("polarion-linux.zip", "wb") as f:
+    with open("data/polarion-linux.zip", "wb") as f:
         f.write(fh.read())
 
-    print(f"Downloaded {target_name} to polarion-linux.zip")
+    print(f"Downloaded {target_name} to data/polarion-linux.zip")
 
 
 if __name__ == "__main__":
