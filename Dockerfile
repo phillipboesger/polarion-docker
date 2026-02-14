@@ -43,7 +43,7 @@ RUN --mount=type=bind,source=./data/,target=/data/ \
 	echo "=== Contents after unzip ===" && \
 	ls -la ./ && \
 	echo "=== Looking for install.sh ===" && \
-	find . -name "install.sh" -type f
+	test -f "Polarion/install.sh"
 
 # Copy modular entrypoint scripts
 COPY entrypoint.d/ /opt/polarion/entrypoint.d/
