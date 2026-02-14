@@ -33,7 +33,7 @@ WORKDIR /polarion_root
 # Extract Polarion installation files
 # Supports local build by picking up any zip starting with "polarion" or "Polarion"
 RUN --mount=type=bind,source=./data/,target=/data/ \
-	unzip -q /data/polarion*.zip && \
+	unzip -q "$(find /data -iname polarion*.zip)" && \
 	echo "=== Contents after unzip ===" && \
 	ls -la ./ && \
 	echo "=== Looking for install.sh ===" && \
