@@ -18,11 +18,13 @@ RUN apt-get -y update && \
 	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql systemd \
 	postgresql postgresql-client postgresql-contrib && \
 	locale-gen en_US.UTF-8 && \
-	update-locale LANG=en_US.UTF-8
+	update-locale LANG=en_US.UTF-8 && \
+	apt-get install -y --no-install-recommends libc6 && \
+	apt-get clean && \
+	rm -rf /var/lib/apt/lists/*
 
-# Install libc6 and create symlink for 64-bit compatibility
-RUN apt-get install -y --no-install-recommends libc6 && \
-	mkdir -p /lib64 && \
+# Create libc6 symlink for 64-bit compatibility and postgres symlink for genericity
+RUN mkdir -p /lib64 && \
 	ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
 
 # Set locale environment
