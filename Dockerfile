@@ -81,17 +81,14 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 	echo "JDK_HOME=$JDK_HOME"  && \
 	java -version
 
-# Switch to Polarion directory for installation
-WORKDIR /polarion_root/Polarion
-
 # Copy install.expect to Polarion directory and make both scripts executable
-COPY --chmod=755 --chown=0:0 install.expect ./
+COPY --chmod=755 --chown=0:0 install.expect Polarion/
 
 # Run Polarion installation
-RUN set -x && ./install.expect
+RUN set -x && cd Polarion && \
+	./install.expect
 
-# Return to root directory and add PostgreSQL 16 to PATH
-WORKDIR /polarion_root
+# Add PostgreSQL to PATH
 ENV PATH="/usr/lib/postgresql/current/bin:${PATH}"
 
 # Set environment variables for debugging support (default: enabled)
