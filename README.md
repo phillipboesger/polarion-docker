@@ -21,8 +21,9 @@ There are two ways to use this image: building it yourself (recommended for most
 Since Polarion requires a license and the installation media is proprietary, you can build this Docker image locally using your own Polarion ZIP file.
 
 1.  **Download** the Polarion for Linux ZIP distribution (e.g., `Polarion-2404.zip`) from Siemens.
-2.  **Place** the downloaded ZIP file in the root directory of this repository.
+2.  **Place** the downloaded ZIP file in the data directory of this repository.
     *   *Note: The build script automatically picks up any file matching `polarion*.zip`.*
+    *   *Note: On Linux systems with SELinux enabled, set the context on `data` with `chcon -Rt 'container_file_t' data/`.*
 3.  **Build** the Docker image:
     ```bash
     docker build -t polarion .

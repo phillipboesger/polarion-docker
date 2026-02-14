@@ -30,10 +30,10 @@ ENV LC_ALL=en_US.UTF-8
 # Setup working directory
 WORKDIR /polarion_root
 
-# Copy and extract Polarion installation files (downloaded in CI from Google Drive)
+# Extract Polarion installation files
 # Supports local build by picking up any zip starting with "polarion" or "Polarion"
-COPY polarion*.zip ./
-RUN unzip -q polarion*.zip && \
+RUN --mount=type=bind,source=./data/,target=/data/ \
+	unzip -q /data/polarion*.zip && \
 	echo "=== Contents after unzip ===" && \
 	ls -la ./ && \
 	echo "=== Looking for install.sh ===" && \
