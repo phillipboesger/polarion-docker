@@ -11,60 +11,65 @@ spawn bash ./install.sh
 
 # Step 1: Confirm clean installation
 expect "Press \"Enter\" to continue with a clean installation..."
-send "\r"
+send "\n"
 
 # Step 2: Choose to use new local SVN repository
-expect "Do you want use a new local SVN repository with default settings?:\r\nType answer <yes|no>, default \[yes\]"
-send "yes\r"
+expect "Do you want use a new local SVN repository with default settings?:"
+expect "Type answer "
+send "yes\n"
 
 # Step 3: Check and install prerequisites
-expect "Would you like to check and install the prerequisities?\r\nType answer <yes|no>, default \[yes\]"
-send "yes\r"
+expect "Would you like to check and install the prerequisities?"
+expect "Type answer "
+send "yes\n"
 
 # Step 4: First continuation prompt
-expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
-send "\r"
+expect "When you are done press Enter to continue."
+expect "You can re-run it later."
+send "\n"
 
 # Step 5: First Y/n confirmation
 #expect "Do you want to continue? \[Y/n\]"
-#send "Y\r"
+#send "Y\n"
 
 # Step 6: Second Y/n confirmation
 #expect "Do you want to continue? \[Y/n\]"
-#send "Y\r"
+#send "Y\n"
 
 # Step 6a: Second continuation prompt
-expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
-send "\r"
+expect "When you are done press Enter to continue."
+expect "Or press \"Ctrl+C\" to halt the script. You can re-run it later."
+send "\n"
 
 # Step 7: Copy predefined Apache configuration files
 expect "Do you want to copy predefined conf. files into /etc/apache2?"
-send "yes\r"
+send "yes\n"
 
 # Step 8: Initialize PostgreSQL database for Polarion
 expect "Do you want to initialize and configure PostgreSQL database for Polarion?"
-send "yes\r"
+send "yes\n"
 
 # Step 9: Set password for 'polarion' database user
 expect "Please, set a password for user 'polarion' through which Polarion will connect to the database:"
-send "polarion\r"
+send "polarion\n"
 
 # Step 10: Third continuation prompt
-expect "When you are done press Enter to continue. \r\nOr press \"Ctrl+C\" to halt the script. You can re-run it later."
-send "\r"
+expect -timeout 60 "When you are done press Enter to continue."
+expect "Or press \"Ctrl+C\" to halt the script. You can re-run it later."
+send "\n"
 
 # Step 11: Initialize repository
 expect "Do you want initialize the repository now?"
-send "yes\r"
+send "yes\n"
 
 # Step 12: Install Polarion sample data (optional)
 expect "Would you like install Polarion sample data?"
-send "yes\r"
+send "yes\n"
 
 # Step 13: Choose not to start Polarion immediately (will be started by container script)
 expect "Do you want start Polarion now?"
-expect "Type answer <yes|no>, default \[yes\]"
-send "no\r"
+expect "Type answer "
+send "no\n"
 
 # Wait for installation to complete
 expect eof
