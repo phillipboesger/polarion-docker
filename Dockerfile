@@ -1,6 +1,8 @@
 # Base image for Polarion Docker container
 FROM ubuntu:24.04
 
+ARG JDK_SOURCE=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
+
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNLEVEL=1
@@ -48,21 +50,22 @@ COPY polarion_starter.sh ./
 RUN chmod +x polarion_starter.sh
 
 # Download and install OpenJDK 21 (Temurin)
-RUN wget -O jdk.tar.gz --no-check-certificate https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz && \
+RUN wget -O jdk.tar.gz --no-check-certificate "${JDK_SOURCE}" && \
 	mkdir -p /usr/lib/jvm && \
 	tar -zxf jdk.tar.gz -C /usr/lib/jvm && \
 	rm jdk.tar.gz
 
 # Configure Java alternatives for JDK 21
-RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-21.0.4+7/bin/java 100 && \
-	update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/jdk-21.0.4+7/bin/jar 100 && \
-	update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/jdk-21.0.4+7/bin/javac 100 && \
-	update-alternatives --set jar /usr/lib/jvm/jdk-21.0.4+7/bin/jar && \
-	update-alternatives --set javac /usr/lib/jvm/jdk-21.0.4+7/bin/javac
+RUN ln -sf /usr/lib/jvm/* /usr/lib/jvm/current && \
+	update-alternatives --install /usr/bin/java java /usr/lib/jvm/current/bin/java 100 && \
+	update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/current/bin/jar 100 && \
+	update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/current/bin/javac 100 && \
+	update-alternatives --set jar /usr/lib/jvm/current/bin/jar && \
+	update-alternatives --set javac /usr/lib/jvm/current/bin/javac
 
 # Set Java environment variables
-ENV JAVA_HOME="/usr/lib/jvm/jdk-21.0.4+7" \
-	JDK_HOME="/usr/lib/jvm/jdk-21.0.4+7"
+ENV JAVA_HOME="/usr/lib/jvm/current" \
+	JDK_HOME="/usr/lib/jvm/current"
 
 # Add Java environment to system environment
 RUN echo "JAVA_HOME=\"$JAVA_HOME\"" >> /etc/environment && \
