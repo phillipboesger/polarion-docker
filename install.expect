@@ -9,6 +9,12 @@ set timeout 30
 # Start the Polarion installation script
 spawn bash ./install.sh
 
+# Fail if timeout is reached without match
+expect_before {
+    failed {exit 1}
+    timeout {exit 1}
+}
+
 # Step 1: Confirm clean installation
 expect "Press \"Enter\" to continue with a clean installation..."
 send "\n"
