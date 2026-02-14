@@ -7,7 +7,7 @@
 set timeout 30
 
 # Start the Polarion installation script
-spawn ./install.sh
+spawn bash ./install.sh
 
 # Step 1: Confirm clean installation
 expect "Press \"Enter\" to continue with a clean installation..."

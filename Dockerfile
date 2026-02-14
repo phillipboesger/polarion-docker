@@ -85,12 +85,7 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 WORKDIR /polarion_root/Polarion
 
 # Copy install.expect to Polarion directory and make both scripts executable
-COPY install.expect ./
-RUN echo "=== Current directory contents ===" && \
-	ls -la && \
-	echo "=== Making scripts executable ===" && \
-	chmod +x install.expect && \
-	if [ -f install.sh ]; then chmod +x install.sh; else echo "WARNING: install.sh not found!"; fi
+COPY --chmod=755 --chown=0:0 install.expect ./
 
 # Run Polarion installation
 RUN set -x && ./install.expect
