@@ -86,7 +86,9 @@ COPY --chmod=755 --chown=0:0 install.expect Polarion/
 
 # Run Polarion installation
 RUN set -x && cd Polarion && \
-	./install.expect
+	./install.expect && \
+	apt-get clean && \
+	rm -rf /var/lib/apt/lists/*
 
 # Add PostgreSQL to PATH
 ENV PATH="/usr/lib/postgresql/current/bin:${PATH}"
