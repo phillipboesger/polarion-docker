@@ -48,9 +48,10 @@ COPY polarion_starter.sh ./
 RUN chmod +x polarion_starter.sh
 
 # Download and install OpenJDK 21 (Temurin)
-RUN wget --no-check-certificate https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz && \
+RUN wget -O jdk.tar.gz --no-check-certificate https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz && \
 	mkdir -p /usr/lib/jvm && \
-	tar -zxf OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz -C /usr/lib/jvm
+	tar -zxf jdk.tar.gz -C /usr/lib/jvm && \
+	rm jdk.tar.gz
 
 # Configure Java alternatives for JDK 21
 RUN update-alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-21.0.4+7/bin/java 100 && \
