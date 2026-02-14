@@ -1,5 +1,6 @@
 # Base image for Polarion Docker container
-FROM ubuntu:24.04
+ARG SOURCE_IMAGE=ubuntu:24.04
+FROM $SOURCE_IMAGE
 
 ARG JDK_SOURCE=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
 
