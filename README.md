@@ -48,7 +48,7 @@ If you have access:
     docker run -d \
       --name polarion \
       --platform linux/amd64 \
-      -p 80:80 -p 443:443 \
+      -p 80:80 \
       -p 5433:5433 \
       -p 5005:5005 \
       -e JAVA_OPTS="-Xmx8g -Xms8g" \
@@ -121,6 +121,6 @@ For developing custom plugins with live reloading, refer to [PLUGIN-DEVELOPMENT.
 
 ## 🔍 Troubleshooting
 
-*   **Port Conflicts:** Ensure ports 80, 443, and 5433 are free.
+*   **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free.
 *   **Memory:** Polarion is heavy. Assign at least 8GB RAM to Docker Desktop.
 *   **Access Denied:** If pulling `ghcr.io/...` fails, ensure you have requested and been granted access by the owner, or build locally (Option A).
