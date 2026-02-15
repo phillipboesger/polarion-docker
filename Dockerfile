@@ -102,5 +102,8 @@ ENV PATH="/usr/lib/postgresql/current/bin:${PATH}"
 # Set environment variables for debugging support (default: enabled)
 ENV JDWP_ENABLED="true"
 
+# Set exposed ports
+EXPOSE 80/tcp
+
 # Set startup command
 ENTRYPOINT ["./polarion_starter.sh"]
