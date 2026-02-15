@@ -105,7 +105,7 @@ jobs:
           echo "🚀 Starting container for testing..."
           docker run -d \
             --name polarion-test \
-            -p 80:80 -p 443:443 \
+            -p 80:80 \
             -p 5433:5433 \
             -p 5005:5005 \
             -e JAVA_OPTS="-Xmx4g -Xms4g" \
@@ -220,5 +220,5 @@ jobs:
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "# Running the published image" >> $GITHUB_STEP_SUMMARY
           echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "docker run -p 80:80 -p 443:443 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -p 80:80 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
