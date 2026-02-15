@@ -19,6 +19,17 @@ services:
       - JAVA_OPTS=-Xmx4g -Xms4g
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
       - JDWP_ENABLED=true
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost/polarion/
+      interval: 5s
+      timeout: 2s
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
     networks:
       - polarion_network
