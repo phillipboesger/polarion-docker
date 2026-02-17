@@ -45,7 +45,7 @@
     {
       "label": "Polarion: Full Redeploy",
       "type": "shell",
-      "command": "${workspaceFolder}/../redeploy.sh",
+      "command": "${workspaceFolder}/scripts/redeploy.sh",
       "args": [
         "${file}",
         "polarion",
