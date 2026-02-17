@@ -94,7 +94,7 @@ echo "🧹 [4/5] Clearing Cache while service is stopped..."
 docker exec "$CONTAINER_NAME" rm -rf "$CACHE_PATH"
 docker exec "$CONTAINER_NAME" rm -rf "$METADATA_PATH"
 
-echo "📦 [5/6] Copying $(basename "$JAR_FILE_NAME")..."
+echo "📦 [5/6] Copying ${JAR_BASENAME}..."
 docker cp "$JAR_FILE_NAME" "$CONTAINER_NAME:$PLUGIN_DEST"
 
 echo "▶️ [6/6] Starting Polarion Service..."
