@@ -66,7 +66,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "🔍 Identifying JAR..."
-JAR_FILE_NAME=$(ls target/*.jar | grep -v 'original-' | grep -v 'sources' | grep -v 'javadoc' | head -n 1)
+JAR_FILE_NAME="$(find target/*.jar -maxdepth 0 ! -name '*original-*' ! -name '*sources*' ! -name '*javadoc*' | head -n 1)"
 
 if [ -z "$JAR_FILE_NAME" ]; then
     echo "❌ No suitable JAR found in target/!"
@@ -85,7 +85,7 @@ if [ "$BUNDLE_NAME" == "$JAR_BASENAME" ]; then
 fi
 
 echo "🗑️ [2.5/5] Cleaning old versions of '$BUNDLE_NAME'..."
-docker exec "$CONTAINER_NAME" sh -c "rm -f ${PLUGIN_DEST}${BUNDLE_NAME}_*.jar ${PLUGIN_DEST}${BUNDLE_NAME}-*.jar"
+docker exec "$CONTAINER_NAME" find "${PLUGIN_DEST}" -name "${BUNDLE_NAME}[_-]*.jar" -delete
 
 echo "⏹️ [3/5] Stopping Polarion Service..."
 docker exec "$CONTAINER_NAME" service polarion stop
