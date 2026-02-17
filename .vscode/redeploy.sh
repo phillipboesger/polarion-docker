@@ -77,11 +77,11 @@ echo "📂 [2/5] Ensuring directory structure inside Docker..."
 docker exec "$CONTAINER_NAME" mkdir -p "$PLUGIN_DEST"
 
 # --- SMART CLEANUP LOGIC ---
-JAR_BASENAME=$(basename "$JAR_FILE_NAME")
+JAR_BASENAME="$(basename "$JAR_FILE_NAME")"
 BUNDLE_NAME="${JAR_BASENAME%%_*}" # Extract name before version
 
 if [ "$BUNDLE_NAME" == "$JAR_BASENAME" ]; then
-    BUNDLE_NAME=$(echo "$JAR_BASENAME" | sed -E 's/-[0-9].*//')
+    BUNDLE_NAME="$(echo "$JAR_BASENAME" | sed -E 's/-[0-9].*//')"
 fi
 
 echo "🗑️ [2.5/5] Cleaning old versions of '$BUNDLE_NAME'..."
