@@ -20,7 +20,7 @@ To use it, call it with the path to your plugin's project, the name of your Pola
 ./scripts/redeploy.sh ../path/to/your/extension polarion extname
 ```
 
-3. VS Code configuration in the repository
+## 3. VS Code configuration in the repository
 
 This repository already provides preconfigured tasks in `.vscode/tasks.json` that you can use out of the box:
 
@@ -37,13 +37,14 @@ How to use the repo tasks:
 
 > Note: The tasks in this repo are intentionally configured without user-specific paths so they work on any machine that uses the same repository.
 
-3.1 Optional global user tasks
+### 3.1 Optional global user tasks
 
 If you want to have the same tasks available globally (for all workspaces) as **user tasks**, you can additionally add them to your user `tasks.json`. Steps:
 
-1. Open the Command Palette (Cmd+Shift+P / Ctrl+Shift+P).
-2. Choose **Tasks: Open User Tasks**.
-3. Add (or create) the following configuration and only adjust the paths to match your environment:
+1. Copy the redeployment script globally: `mkdir -p ~/scripts && cp ./scripts/redeploy.sh ~/scripts/redeploy.sh && chmod +x ~/scripts/redeploy.sh`
+2. Open the Command Palette (Cmd+Shift+P / Ctrl+Shift+P).
+3. Choose **Tasks: Open User Tasks**.
+4. Add (or create) the following configuration and only adjust the paths to match your environment:
 
 ```json
 {
@@ -108,7 +109,11 @@ If you want to have the same tasks available globally (for all workspaces) as **
 }
 ```
 
-3.2 Global Debugging & Settings (settings.json) 1. Open Command Palette. 2. Type “Preferences: Open User Settings (JSON)”. 3. Add the following configuration to enable One-Click Debugging and performance tuning.
+### 3.2 Global Debugging & Settings (settings.json)
+
+1. Open Command Palette.
+2. Type “Preferences: Open User Settings (JSON)”.
+3. Add the following configuration to enable One-Click Debugging and performance tuning.
 
 ```json
 {
@@ -139,17 +144,31 @@ If you want to have the same tasks available globally (for all workspaces) as **
 }
 ```
 
-4. Developer Workflow
+## 4. Developer Workflow
 
-A. Deploying Changes (Structural)
+### 4.1 Deploying Changes (Structural)
 
-Use this when you add classes, change plugin.xml, or add dependencies. 1. Open a file in the project you want to deploy (e.g., MyClass.java). 2. Ensure the cursor is active in the editor. 3. Press Cmd+Shift+P -> Run Task -> Polarion: Redeploy Active File. 4. Wait for the “✅ Done” message in the terminal.
+Use this when you add classes, change plugin.xml, or add dependencies.
 
-B. Debugging & Hot Code Replace (Logic)
+1. Open a file in the project you want to deploy (e.g., MyClass.java).
+2. Ensure the cursor is active in the editor.
+3. Press Cmd+Shift+P -> Run Task -> Polarion: Redeploy Active File.
+4. Wait for the “✅ Done” message in the terminal.
 
-Use this for logic changes inside method bodies. 1. Open the Run and Debug view (Cmd+Shift+D). 2. Select Global: Attach to Polarion (5005). 3. Press F5 or the green play button.
+### 4.2 Debugging & Hot Code Replace (Logic)
+
+Use this for logic changes inside method bodies.
+
+1. Open the Run and Debug view (Cmd+Shift+D).
+2. Select Global: Attach to Polarion (5005).
+3. Press F5 or the green play button.
+
 Note: Code changes within methods are hot-swapped automatically on save (Cmd+S).
 
-C. Viewing Logs
+### 4.3 Viewing Logs
 
-To see server errors without leaving VS Code: 1. Press Cmd+Shift+P -> Run Task. 2. Select Polarion: Live Logs (Errors Only). 3. A new terminal panel will open, streaming exceptions from the Docker container in real-time.
+To see server errors without leaving VS Code:
+
+1. Press Cmd+Shift+P -> Run Task.
+2. Select Polarion: Live Logs (Errors Only).
+3. A new terminal panel will open, streaming exceptions from the Docker container in real-time.
