@@ -4,16 +4,12 @@
 # $1: File or Directory path (Source context from VS Code)
 # $2: Container Name (default: polarion)
 # $3: Extension Name/Target Folder (default: boesger)
-INPUT_PATH="$1"         
-CONTAINER_NAME="$2"
-EXTENSION_NAME="$3"
+INPUT_PATH="$1"
+CONTAINER_NAME="${2:-polarion}"
+EXTENSION_NAME="${3:-boesger}"
 
 # Start timer
 START_TIME=$(date +%s)
-
-# Set defaults
-: "${CONTAINER_NAME:=polarion}"
-: "${EXTENSION_NAME:=boesger}"
 
 # Check: Was input provided?
 if [ -z "$INPUT_PATH" ]; then
