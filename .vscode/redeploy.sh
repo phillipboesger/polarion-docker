@@ -45,8 +45,7 @@ if [ $FOUND_POM -eq 0 ]; then
     exit 1
 fi
 
-PROJECT_ROOT="$PWD"
-echo "📂 Project Root detected: $PROJECT_ROOT"
+echo "📂 Project Root detected: $PWD"
 
 # --- CONFIGURATION ---
 PLUGIN_DEST="/opt/polarion/polarion/extensions/$EXTENSION_NAME/eclipse/plugins/"
