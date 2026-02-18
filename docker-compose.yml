@@ -9,7 +9,6 @@ services:
     container_name: polarion
     ports:
       - "80:80"         # HTTP port
-      - "443:443"       # HTTPS port
       - "5433:5433"     # PostgreSQL port
       - "5005:5005"     # JDWP Debug port
     environment:
