@@ -24,7 +24,7 @@ RUN apt-get -y update && \
 	rm -rf /var/lib/apt/lists/*
 
 # Add postgres symlink for genericity
-RUN ln -sf /usr/lib/postgresql/* /usr/lib/postgresql/current
+RUN ln -s /usr/lib/postgresql/* /usr/lib/postgresql/current
 
 # Set locale environment
 ENV LANG=en_US.UTF-8
@@ -57,7 +57,7 @@ RUN wget -O jdk.tar.gz --no-check-certificate "${JDK_SOURCE}" && \
 	rm jdk.tar.gz
 
 # Configure Java alternatives for JDK 21
-RUN ln -sf /usr/lib/jvm/* /usr/lib/jvm/current && \
+RUN ln -s /usr/lib/jvm/* /usr/lib/jvm/current && \
 	update-alternatives --install /usr/bin/java java /usr/lib/jvm/current/bin/java 100 && \
 	update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/current/bin/jar 100 && \
 	update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/current/bin/javac 100 && \
