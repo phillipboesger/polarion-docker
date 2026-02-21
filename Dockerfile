@@ -43,7 +43,7 @@ RUN --mount=type=bind,source=./data/,target=/data/ \
 	echo "=== Contents after unzip ===" && \
 	ls -la ./ && \
 	echo "=== Looking for install.sh ===" && \
-	find . -name "install.sh" -type f
+	test -f "Polarion/install.sh"
 
 # Copy modular entrypoint scripts
 COPY entrypoint.d/ /opt/polarion/entrypoint.d/
@@ -81,22 +81,16 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 	echo "JDK_HOME=$JDK_HOME"  && \
 	java -version
 
-# Switch to Polarion directory for installation
-WORKDIR /polarion_root/Polarion
-
 # Copy install.expect to Polarion directory and make both scripts executable
-COPY install.expect ./
-RUN echo "=== Current directory contents ===" && \
-	ls -la && \
-	echo "=== Making scripts executable ===" && \
-	chmod +x install.expect && \
-	if [ -f install.sh ]; then chmod +x install.sh; else echo "WARNING: install.sh not found!"; fi
+COPY --chmod=755 --chown=0:0 install.expect Polarion/
 
 # Run Polarion installation
-RUN set -x && ./install.expect
+RUN set -x && cd Polarion && \
+	./install.expect && \
+	apt-get clean && \
+	rm -rf /var/lib/apt/lists/*
 
-# Return to root directory and add PostgreSQL 16 to PATH
-WORKDIR /polarion_root
+# Add PostgreSQL to PATH
 ENV PATH="/usr/lib/postgresql/current/bin:${PATH}"
 
 # Set environment variables for debugging support (default: enabled)
