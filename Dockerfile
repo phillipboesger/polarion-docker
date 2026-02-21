@@ -17,19 +17,16 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
-	apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales \
-	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql systemd \
+	apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
+	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
 	postgresql postgresql-client postgresql-contrib && \
 	locale-gen en_US.UTF-8 && \
 	update-locale LANG=en_US.UTF-8 && \
-	apt-get install -y --no-install-recommends libc6 && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
-# Create libc6 symlink for 64-bit compatibility and postgres symlink for genericity
-RUN mkdir -p /lib64 && \
-	ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 && \
-	ln -sf /usr/lib/postgresql/* /usr/lib/postgresql/current
+# Add postgres symlink for genericity
+RUN ln -sf /usr/lib/postgresql/* /usr/lib/postgresql/current
 
 # Set locale environment
 ENV LANG=en_US.UTF-8

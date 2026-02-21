@@ -20,9 +20,11 @@ services:
     healthcheck:
       test:
         - CMD
-        - curl
-        - --fail
-        - --silent
+        - wget
+        - -o
+        - /dev/null
+        - -O
+        - /dev/null
         - http://localhost/polarion/
       interval: 5s
       timeout: 2s
