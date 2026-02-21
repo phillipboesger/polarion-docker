@@ -3,10 +3,10 @@
 # --- PARAMETERS ---
 # $1: File or Directory path (Source context from VS Code)
 # $2: Container Name (default: polarion)
-# $3: Extension Name/Target Folder (default: boesger)
+# $3: Extension Name/Target Folder (default: custom)
 INPUT_PATH="$1"
 CONTAINER_NAME="${2:-polarion}"
-EXTENSION_NAME="${3:-boesger}"
+EXTENSION_NAME="${3:-custom}"
 
 # Start timer
 START_TIME=$(date +%s)
