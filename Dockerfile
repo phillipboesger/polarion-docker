@@ -38,15 +38,6 @@ ENV LC_ALL=en_US.UTF-8
 # Setup working directory
 WORKDIR /polarion_root
 
-# Extract Polarion installation files
-# Supports local build by picking up any zip starting with "polarion" or "Polarion"
-RUN --mount=type=bind,source=./data/,target=/data/ \
-	unzip -q "$(find /data -iname polarion*.zip)" && \
-	echo "=== Contents after unzip ===" && \
-	ls -la ./ && \
-	echo "=== Looking for install.sh ===" && \
-	test -f "Polarion/install.sh"
-
 # Copy modular entrypoint scripts
 COPY entrypoint.d/ /opt/polarion/entrypoint.d/
 RUN chmod +x /opt/polarion/entrypoint.d/*.sh
@@ -84,11 +75,16 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 	java -version
 
 # Copy install.expect to Polarion directory and make both scripts executable
-COPY --chmod=755 --chown=0:0 install.expect Polarion/
+COPY --chmod=755 --chown=0:0 install.expect ./
 
-# Run Polarion installation
-RUN set -x && cd Polarion && \
-	./install.expect && \
+# Unzip Polarion and install it
+RUN --mount=type=bind,source=./data/,target=/data/ \
+	set -x && \
+	unzip -q "$(find /data -iname polarion*.zip)" && \
+	cd Polarion && \
+	../install.expect && \
+	cd .. && \
+	rm -r Polarion && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
