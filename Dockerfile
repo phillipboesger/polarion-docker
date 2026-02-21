@@ -4,6 +4,8 @@ FROM $SOURCE_IMAGE
 
 ARG JDK_SOURCE=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
 
+ARG POSTGRESQL_VERSION=16
+
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNLEVEL=1
@@ -91,7 +93,7 @@ RUN set -x && cd Polarion && \
 	rm -rf /var/lib/apt/lists/*
 
 # Add PostgreSQL to PATH
-ENV PATH="/usr/lib/postgresql/current/bin:${PATH}"
+ENV PATH="/usr/lib/postgresql/${POSTGRESQL_VERSION}/bin:${PATH}"
 
 # Set environment variables for debugging support (default: enabled)
 ENV JDWP_ENABLED="true"
