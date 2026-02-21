@@ -26,7 +26,10 @@ Since Polarion requires a license and the installation media is proprietary, you
     *   *Note: On Linux systems with SELinux enabled, set the context on `data` with `chcon -Rt 'container_file_t' data/`.*
 3.  **Build** the Docker image:
     ```bash
+    # With Docker
     docker build -t polarion .
+    # With Podman
+    podman build --network private -t polarion .
     ```
 
 ### Option B: Pre-built Images
