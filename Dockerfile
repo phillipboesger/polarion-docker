@@ -4,8 +4,6 @@ FROM $SOURCE_IMAGE
 
 ARG JDK_SOURCE=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
 
-ARG POSTGRESQL_VERSION=16
-
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNLEVEL=1
@@ -17,19 +15,16 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
-	apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales \
-	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql systemd \
+	apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
+	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
 	postgresql postgresql-client postgresql-contrib && \
 	locale-gen en_US.UTF-8 && \
 	update-locale LANG=en_US.UTF-8 && \
-	apt-get install -y --no-install-recommends libc6 && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
-# Create libc6 symlink for 64-bit compatibility and postgres symlink for genericity
-RUN mkdir -p /lib64 && \
-	ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 && \
-	ln -sf /usr/lib/postgresql/* /usr/lib/postgresql/current
+# Add postgres symlink for genericity
+RUN ln -s /usr/lib/postgresql/* /usr/lib/postgresql/current
 
 # Set locale environment
 ENV LANG=en_US.UTF-8
@@ -62,7 +57,7 @@ RUN wget -O jdk.tar.gz --no-check-certificate "${JDK_SOURCE}" && \
 	rm jdk.tar.gz
 
 # Configure Java alternatives for JDK 21
-RUN ln -sf /usr/lib/jvm/* /usr/lib/jvm/current && \
+RUN ln -s /usr/lib/jvm/* /usr/lib/jvm/current && \
 	update-alternatives --install /usr/bin/java java /usr/lib/jvm/current/bin/java 100 && \
 	update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/current/bin/jar 100 && \
 	update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/current/bin/javac 100 && \
@@ -93,7 +88,7 @@ RUN set -x && cd Polarion && \
 	rm -rf /var/lib/apt/lists/*
 
 # Add PostgreSQL to PATH
-ENV PATH="/usr/lib/postgresql/${POSTGRESQL_VERSION}/bin:${PATH}"
+ENV PATH="/usr/lib/postgresql/current/bin:${PATH}"
 
 # Set environment variables for debugging support (default: enabled)
 ENV JDWP_ENABLED="true"
