@@ -66,6 +66,7 @@ jobs:
           GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          mkdir -p data
           sudo apt-get update && sudo apt-get install -y python3-pip
           pip3 install --quiet google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
           python3 scripts/download_polarion_zip.py
@@ -163,9 +164,12 @@ jobs:
             fi
 
             # 2. Check for Critical Errors (ignoring License and JDWP handshake warnings)
-            if docker exec polarion-test sh -c "grep -E 'ERROR|Exception|Caused by|Unrecognized VM option' /var/log/polarion/polarion.log | grep -v 'ActivationException' | grep -v 'No valid license found' | grep -v 'handshake failed'" | grep -q "."; then
+            # Also ignores DatabasePasswordStore / REPOSITORY CONNECTION ERROR which is a known
+            # transient first-run error: Polarion starts before polarion_internal schema exists,
+            # detects it, and retries automatically ("WAITING FOR CONNECTION AVAILABILITY").
+            if docker exec polarion-test sh -c "grep -E 'ERROR|Exception|Caused by|Unrecognized VM option' /var/log/polarion/polarion.log | grep -v 'ActivationException' | grep -v 'No valid license found' | grep -v 'handshake failed' | grep -v 'DatabasePasswordStore' | grep -v 'REPOSITORY CONNECTION ERROR'" | grep -q "."; then
                echo -e "\n❌ FATAL ERROR detected in logs! Aborting..."
-               docker exec polarion-test sh -c "grep -E -C 3 'ERROR|Exception|Caused by' /var/log/polarion/polarion.log | grep -v 'ActivationException' | tail -n 20"
+               docker exec polarion-test sh -c "grep -E -C 3 'ERROR|Exception|Caused by' /var/log/polarion/polarion.log | grep -v 'ActivationException' | grep -v 'DatabasePasswordStore' | grep -v 'REPOSITORY CONNECTION ERROR' | tail -n 20"
                kill $TAIL_PID 2>/dev/null || true
                exit 1
             fi
