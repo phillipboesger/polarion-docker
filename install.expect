@@ -4,7 +4,7 @@
 # This script automates the interactive Polarion installation process
 
 # Set timeout for each expect command (in seconds)
-set timeout 30
+set timeout 60
 
 # Start the Polarion installation script
 spawn bash ./install.sh
