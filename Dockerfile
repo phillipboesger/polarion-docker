@@ -17,7 +17,7 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 RUN apt-get -y update && \
 	apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales \
 	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql systemd \
-	postgresql postgresql-client postgresql-contrib && \
+	postgresql postgresql-client postgresql-contrib util-linux-extra && \
 	locale-gen en_US.UTF-8 && \
 	update-locale LANG=en_US.UTF-8 && \
 	apt-get install -y --no-install-recommends libc6 && \
@@ -87,6 +87,9 @@ COPY --chmod=755 --chown=0:0 install.expect Polarion/
 # Run Polarion installation
 RUN set -x && cd Polarion && \
 	./install.expect && \
+	pgid="$(ps -e | awk '/postgres/{print$1;exit}')" && \
+	kill -INT "$pgid" && \
+	waitpid -t 10 -e "$pgid" && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
