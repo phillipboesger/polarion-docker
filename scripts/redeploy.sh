@@ -3,17 +3,13 @@
 # --- PARAMETERS ---
 # $1: File or Directory path (Source context from VS Code)
 # $2: Container Name (default: polarion)
-# $3: Extension Name/Target Folder (default: boesger)
-INPUT_PATH="$1"         
-CONTAINER_NAME="$2"
-EXTENSION_NAME="$3"
+# $3: Extension Name/Target Folder (default: custom)
+INPUT_PATH="$1"
+CONTAINER_NAME="${2:-polarion}"
+EXTENSION_NAME="${3:-custom}"
 
 # Start timer
 START_TIME=$(date +%s)
-
-# Set defaults
-: "${CONTAINER_NAME:=polarion}"
-: "${EXTENSION_NAME:=boesger}"
 
 # Check: Was input provided?
 if [ -z "$INPUT_PATH" ]; then
@@ -49,8 +45,7 @@ if [ $FOUND_POM -eq 0 ]; then
     exit 1
 fi
 
-PROJECT_ROOT="$PWD"
-echo "📂 Project Root detected: $PROJECT_ROOT"
+echo "📂 Project Root detected: $PWD"
 
 # --- CONFIGURATION ---
 PLUGIN_DEST="/opt/polarion/polarion/extensions/$EXTENSION_NAME/eclipse/plugins/"
@@ -71,7 +66,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "🔍 Identifying JAR..."
-JAR_FILE_NAME=$(ls target/*.jar | grep -v 'original-' | grep -v 'sources' | grep -v 'javadoc' | head -n 1)
+JAR_FILE_NAME="$(find target/*.jar -maxdepth 0 ! -name '*original-*' ! -name '*sources*' ! -name '*javadoc*' | head -n 1)"
 
 if [ -z "$JAR_FILE_NAME" ]; then
     echo "❌ No suitable JAR found in target/!"
@@ -82,24 +77,23 @@ echo "📂 [2/5] Ensuring directory structure inside Docker..."
 docker exec "$CONTAINER_NAME" mkdir -p "$PLUGIN_DEST"
 
 # --- SMART CLEANUP LOGIC ---
-JAR_BASENAME=$(basename "$JAR_FILE_NAME")
+JAR_BASENAME="$(basename "$JAR_FILE_NAME")"
 BUNDLE_NAME="${JAR_BASENAME%%_*}" # Extract name before version
 
 if [ "$BUNDLE_NAME" == "$JAR_BASENAME" ]; then
-    BUNDLE_NAME=$(echo "$JAR_BASENAME" | sed -E 's/-[0-9].*//')
+    BUNDLE_NAME="$(echo "$JAR_BASENAME" | sed -E 's/-[0-9].*//')"
 fi
 
 echo "🗑️ [2.5/5] Cleaning old versions of '$BUNDLE_NAME'..."
-docker exec "$CONTAINER_NAME" sh -c "rm -f ${PLUGIN_DEST}${BUNDLE_NAME}_*.jar ${PLUGIN_DEST}${BUNDLE_NAME}-*.jar"
+docker exec "$CONTAINER_NAME" find "${PLUGIN_DEST}" -name "${BUNDLE_NAME}[_-]*.jar" -delete
 
 echo "⏹️ [3/5] Stopping Polarion Service..."
 docker exec "$CONTAINER_NAME" service polarion stop
 
 echo "🧹 [4/5] Clearing Cache while service is stopped..."
-docker exec "$CONTAINER_NAME" rm -rf "$CACHE_PATH"
-docker exec "$CONTAINER_NAME" rm -rf "$METADATA_PATH"
+docker exec "$CONTAINER_NAME" rm -rf "$CACHE_PATH" "$METADATA_PATH"
 
-echo "📦 [5/6] Copying $(basename "$JAR_FILE_NAME")..."
+echo "📦 [5/6] Copying ${JAR_BASENAME}..."
 docker cp "$JAR_FILE_NAME" "$CONTAINER_NAME:$PLUGIN_DEST"
 
 echo "▶️ [6/6] Starting Polarion Service..."

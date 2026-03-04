@@ -4,8 +4,6 @@ on:
   push:
     branches: [main, master, v*] # Include version branches
     tags: ["v*"]
-  pull_request:
-    branches: [main, master, v*] # Include version branches
   workflow_dispatch: # Manual trigger
 
 env:
@@ -190,7 +188,6 @@ jobs:
           fi
 
       - name: Build and push final image
-        if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -203,7 +200,6 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate artifact summary
-        if: github.event_name != 'pull_request'
         run: |
           echo "## Docker Image Published 🐳" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
