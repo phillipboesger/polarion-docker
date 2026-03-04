@@ -15,19 +15,16 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
-	apt-get -y install sudo unzip expect curl wget mc nano iputils-ping net-tools iproute2 gnupg software-properties-common locales \
-	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql systemd \
+	apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
+	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
 	postgresql postgresql-client postgresql-contrib && \
 	locale-gen en_US.UTF-8 && \
 	update-locale LANG=en_US.UTF-8 && \
-	apt-get install -y --no-install-recommends libc6 && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
-# Create libc6 symlink for 64-bit compatibility and postgres symlink for genericity
-RUN mkdir -p /lib64 && \
-	ln -sf /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2 && \
-	ln -sf /usr/lib/postgresql/* /usr/lib/postgresql/current
+# Add postgres symlink for genericity
+RUN ln -s /usr/lib/postgresql/* /usr/lib/postgresql/current
 
 # Set locale environment
 ENV LANG=en_US.UTF-8
@@ -35,15 +32,6 @@ ENV LC_ALL=en_US.UTF-8
 
 # Setup working directory
 WORKDIR /polarion_root
-
-# Extract Polarion installation files
-# Supports local build by picking up any zip starting with "polarion" or "Polarion"
-RUN --mount=type=bind,source=./data/,target=/data/ \
-	unzip -q "$(find /data -iname polarion*.zip)" && \
-	echo "=== Contents after unzip ===" && \
-	ls -la ./ && \
-	echo "=== Looking for install.sh ===" && \
-	test -f "Polarion/install.sh"
 
 # Copy modular entrypoint scripts
 COPY entrypoint.d/ /opt/polarion/entrypoint.d/
@@ -60,7 +48,7 @@ RUN wget -O jdk.tar.gz --no-check-certificate "${JDK_SOURCE}" && \
 	rm jdk.tar.gz
 
 # Configure Java alternatives for JDK 21
-RUN ln -sf /usr/lib/jvm/* /usr/lib/jvm/current && \
+RUN ln -s /usr/lib/jvm/* /usr/lib/jvm/current && \
 	update-alternatives --install /usr/bin/java java /usr/lib/jvm/current/bin/java 100 && \
 	update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/current/bin/jar 100 && \
 	update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/current/bin/javac 100 && \
@@ -82,11 +70,16 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 	java -version
 
 # Copy install.expect to Polarion directory and make both scripts executable
-COPY --chmod=755 --chown=0:0 install.expect Polarion/
+COPY --chmod=755 --chown=0:0 install.expect ./
 
-# Run Polarion installation
-RUN set -x && cd Polarion && \
-	./install.expect && \
+# Unzip Polarion and install it
+RUN --mount=type=bind,source=./data/,target=/data/ \
+	set -x && \
+	unzip -q "$(find /data -iname polarion*.zip)" && \
+	cd Polarion && \
+	../install.expect && \
+	cd .. && \
+	rm -r Polarion && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
