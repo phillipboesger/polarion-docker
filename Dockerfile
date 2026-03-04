@@ -2,7 +2,7 @@
 ARG SOURCE_IMAGE=ubuntu:24.04
 FROM $SOURCE_IMAGE
 
-ARG JDK_SOURCE=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
+ARG JDK_SOURCE=https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.12%2B7/OpenJDK17U-jdk_x64_linux_hotspot_17.0.12_7.tar.gz
 
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
@@ -41,13 +41,13 @@ RUN chmod +x /opt/polarion/entrypoint.d/*.sh
 COPY polarion_starter.sh ./
 RUN chmod +x polarion_starter.sh
 
-# Download and install OpenJDK 21 (Temurin)
+# Download and install OpenJDK 17 (Temurin)
 RUN wget -O jdk.tar.gz --no-check-certificate "${JDK_SOURCE}" && \
 	mkdir -p /usr/lib/jvm && \
 	tar -zxf jdk.tar.gz -C /usr/lib/jvm && \
 	rm jdk.tar.gz
 
-# Configure Java alternatives for JDK 21
+# Configure Java alternatives for JDK 17
 RUN ln -s /usr/lib/jvm/* /usr/lib/jvm/current && \
 	update-alternatives --install /usr/bin/java java /usr/lib/jvm/current/bin/java 100 && \
 	update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/current/bin/jar 100 && \
@@ -71,7 +71,7 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 
 # Copy install.expect to Polarion directory and make both scripts executable
 COPY --chmod=755 --chown=0:0 install.expect ./
-  
+
 # Unzip Polarion and install it
 RUN --mount=type=bind,source=./data/,target=/data/ \
 	set -x && \
