@@ -17,7 +17,7 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 RUN apt-get -y update && \
 	apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
 	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
-	postgresql postgresql-client postgresql-contrib util-linux-extra && \
+	postgresql postgresql-client postgresql-contrib util-linux-extra iputils-ping && \
 	locale-gen en_US.UTF-8 && \
 	update-locale LANG=en_US.UTF-8 && \
 	apt-get clean && \
