@@ -2,7 +2,10 @@
 ARG SOURCE_IMAGE=ubuntu:24.04
 FROM $SOURCE_IMAGE
 
-ARG JDK_SOURCE=https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.4%2B7/OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
+# Temurin JDK download metadata — choose appropriate archive at build time
+ARG JDK_TAG=jdk-21.0.4%2B7
+ARG JDK_FILE_X64=OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
+ARG JDK_FILE_AARCH64=OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.4_7.tar.gz
 
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
@@ -42,9 +45,19 @@ COPY polarion_starter.sh ./
 RUN chmod +x polarion_starter.sh
 
 # Download and install OpenJDK 21 (Temurin)
-RUN wget -O jdk.tar.gz --no-check-certificate "${JDK_SOURCE}" && \
-	mkdir -p /usr/lib/jvm && \
-	tar -zxf jdk.tar.gz -C /usr/lib/jvm && \
+# Select the correct archive for the image architecture (x86_64 vs aarch64)
+RUN set -eux; \
+	arch="$(uname -m)"; \
+	if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then \
+		jdk_file="$JDK_FILE_X64"; \
+	elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
+		jdk_file="$JDK_FILE_AARCH64"; \
+	else \
+		echo "Unsupported architecture: $arch"; exit 1; \
+	fi; \
+	wget -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
+	mkdir -p /usr/lib/jvm; \
+	tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
 	rm jdk.tar.gz
 
 # Configure Java alternatives for JDK 21
@@ -71,7 +84,7 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 
 # Copy install.expect to Polarion directory and make both scripts executable
 COPY --chmod=755 --chown=0:0 install.expect ./
-  
+
 # Unzip Polarion and install it
 RUN --mount=type=bind,source=./data/,target=/data/ \
 	set -x && \
