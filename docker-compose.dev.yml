@@ -4,7 +4,7 @@ services:
   polarion:
     build:
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
       platforms:
         - linux/amd64  # Force x86_64 architecture for Rosetta compatibility
     platform: linux/amd64  # Important for Apple Silicon Macs

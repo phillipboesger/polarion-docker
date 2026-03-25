@@ -1,61 +1,177 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "Polarion: Live Logs (Docker)",
-			"type": "shell",
-			"command": "docker",
-			"args": [
-				"exec",
-				"-i",
-				"polarion",
-				"sh",
-				"-c",
-				"tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1)"
-			],
-			"presentation": {
-				"echo": false,
-				"reveal": "always",
-				"focus": false,
-				"panel": "new"
-			}
-		},
-		{
-			"label": "Polarion: Live Errors ONLY (Docker)",
-			"type": "process",
-			"command": "docker",
-			"args": [
-				"exec",
-				"-i",
-				"polarion",
-				"sh",
-				"-c",
-				"tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1) | grep --line-buffered -E 'ERROR|Exception|Caused by'"
-			],
-			"presentation": {
-				"echo": false,
-				"reveal": "always",
-				"focus": false,
-				"panel": "new",
-				"group": "polarion-logs"
-			},
-			"isBackground": true,
-			"problemMatcher": []
-		},
-		{
-			"label": "Polarion: Full Redeploy",
-			"type": "shell",
-			"command": "${workspaceFolder}/scripts/redeploy.sh",
-			"args": [
-				"${file}",
-				"polarion",
-				"custom"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		}
-	]
+  "options": {
+    "env": {
+      "POLARION_CONTAINER_NAME": "polarion",
+      "POLARION_EXTENSION_NAME": "custom",
+      "POLARION_IMAGE": "polarion:local",
+      "POLARION_HTTP_PORT": "8080",
+      "POLARION_DB_PORT": "5433",
+      "POLARION_JDWP_PORT": "5005",
+      "POLARION_BIND_HOST": "0.0.0.0",
+      "POLARION_JAVA_OPTS": "-Xmx8g -Xms8g",
+      "POLARION_JDWP_ENABLED": "true",
+      "POLARION_PLATFORM": "linux/amd64",
+      "POLARION_CONTAINER_CPUS": "8",
+      "POLARION_CONTAINER_MEMORY": "16g",
+      "POLARION_BUILDER_CPUS": "8",
+      "POLARION_BUILDER_MEMORY": "16g",
+      "POLARION_REDEPLOY_SEARCH_DEPTH": "1",
+      "POLARION_DATA_VOLUME": "polarion_repo",
+      "POLARION_EXTENSIONS_VOLUME": "polarion_extensions"
+    }
+  },
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Polarion: System Start",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/polarionctl.sh", "system-start"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Builder Start",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/polarionctl.sh", "builder-start"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Build Image",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/polarionctl.sh", "build-image"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Start",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/polarionctl.sh", "start"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Full Start",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Polarion: System Start", "Polarion: Builder Start", "Polarion: Build Image", "Polarion: Start"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Stop",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/polarionctl.sh", "stop"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Live Logs",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/polarionctl.sh", "logs"],
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Live Errors ONLY",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/polarionctl.sh", "errors"],
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "group": "polarion-logs"
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Full Redeploy",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/redeploy.sh", "${file}", "polarion", "custom"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Redeploy Preflight",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/redeploy.sh", "${file}", "polarion", "custom"],
+      "options": {
+        "env": {
+          "POLARION_REDEPLOY_PREFLIGHT_ONLY": "true"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Redeploy Workspace",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/redeploy.sh", "${workspaceFolder}", "polarion", "custom"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Full Redeploy Workspace",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Polarion: Full Start", "Polarion: Redeploy Workspace"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Full Redeploy (Active File)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Polarion: Full Start", "Polarion: Full Redeploy"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
 }

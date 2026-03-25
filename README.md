@@ -1,6 +1,6 @@
 # Polarion Docker
 
-Run Polarion ALM in Docker containers on macOS, Windows, and Linux. This repository provides a flexible Dockerfile and setup scripts to easily containerize a fresh Polarion installation.
+Run Polarion ALM in OCI-compatible containers on macOS, Windows, and Linux. This repository provides a flexible Dockerfile and setup scripts to easily containerize a fresh Polarion installation.
 
 ## 🌟 Features
 
@@ -14,6 +14,14 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 - **Memory Management**: Easy configuration of JVM memory via `JAVA_OPTS`.
 
 ## 🚀 Getting Started
+
+### Runtime Support
+
+| Runtime           | Status                       | Notes                                                                                                                               |
+| :---------------- | :--------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| Docker            | Primary                      | Supported for local development, Docker Compose, and CI publishing workflows.                                                       |
+| Podman            | Secondary                    | Supported for local builds.                                                                                                         |
+| Apple `container` | Local Apple silicon workflow | Supported for local macOS 26+ development through CLI commands and VS Code tasks. Docker Compose is not available for this runtime. |
 
 There are two ways to use this image: building it yourself (recommended for most users) or requesting access to pre-built images.
 
@@ -31,6 +39,10 @@ Since Polarion requires a license and the installation media is proprietary, you
     docker build -t polarion .
     # With Podman
     podman build --network private -t polarion .
+    # With Apple container
+    container system start
+    container builder start --cpus 8 --memory 16g
+    container build --platform linux/amd64 -t polarion:local .
     ```
 
 ### Option B: Pre-built Images
@@ -52,22 +64,44 @@ If you have access:
     This command pulls the latest image and starts Polarion immediately:
     `bash
 docker run -d \
-  --name polarion \
-  --platform linux/amd64 \
-  -p 80:80 \
-  -p 5433:5433 \
-  -p 5005:5005 \
-  -e JAVA_OPTS="-Xmx8g -Xms8g" \
-  -e JDWP_ENABLED=true \
-  --volume polarion_repo:/opt/polarion/data/svn/repo \
-  --volume polarion_extensions:/opt/polarion/polarion/extensions \
-  ghcr.io/phillipboesger/polarion-docker:latest
+    --name polarion \
+    --platform linux/amd64 \
+    -p 80:80 \
+    -p 5433:5433 \
+    -p 5005:5005 \
+    -e JAVA_OPTS="-Xmx8g -Xms8g" \
+    -e JDWP_ENABLED=true \
+    --volume polarion_repo:/opt/polarion/data/svn \
+    --volume polarion_extensions:/opt/polarion/polarion/extensions \
+    ghcr.io/phillipboesger/polarion-docker:latest
 `
     _(Replace `polarion:latest` with the appropriate image name depending on how you built or pulled it)_
+
+For Apple `container`, authenticate and run the same OCI image with explicit local port publishing:
+
+```bash
+container registry login ghcr.io
+container run -d \
+    --name polarion \
+    --platform linux/amd64 \
+    --rosetta \
+    --cpus 8 \
+    --memory 16g \
+    -p 127.0.0.1:8080:80 \
+    -p 127.0.0.1:5433:5433 \
+    -p 127.0.0.1:5005:5005 \
+    -e JAVA_OPTS="-Xmx8g -Xms8g" \
+    -e JDWP_ENABLED=true \
+    -v polarion_repo:/opt/polarion/data/svn \
+    -v polarion_extensions:/opt/polarion/polarion/extensions \
+    ghcr.io/phillipboesger/polarion-docker:latest
+```
 
 ### Via Docker Compose
 
 A `docker-compose.yml` is included for convenience.
+
+Note: Docker Compose files in this repository are Docker-only. Apple `container` support is provided through direct CLI commands and the VS Code tasks documented in [docs/apple-container.md](./docs/apple-container.md).
 
 1.  Clone this repository.
 2.  Verify the `image` name in `docker-compose.yml` matches your local build (e.g., change to `polarion`) or the remote registry if you have access.
@@ -124,9 +158,20 @@ Included `.vscode/launch.json` configuration:
 
 For developing custom plugins with live reloading, refer to [PLUGIN-DEVELOPMENT.md](./PLUGIN-DEVELOPMENT.md).
 
+### Apple `container` Workflow
+
+If you are developing on Apple silicon with macOS 26 or later, see [docs/apple-container.md](./docs/apple-container.md) for the Apple `container` quickstart and the included VS Code tasks for:
+
+- system start
+- builder start
+- image build
+- Polarion start and stop
+- live logs and error logs
+- one-click redeploy into a running Apple `container` instance
+
 ## 🖥️ Platform Support
 
-- **macOS (Apple Silicon)**: Supported via Rosetta 2 emulation. Use `--platform linux/amd64`.
+- **macOS (Apple Silicon)**: Supported via Docker `--platform linux/amd64` and via Apple `container` on macOS 26+ using `--platform linux/amd64 --rosetta`.
 - **macOS (Intel)**: Supported natively.
 - **Windows (WSL2)**: Recommended for best performance.
 - **Linux**: Native support.

@@ -93,6 +93,8 @@ RUN --mount=type=bind,source=./data/,target=/data/ \
 	../install.expect && \
 	cd .. && \
 	rm -r Polarion && \
+	mkdir -p /opt/polarion/bootstrap/svn && \
+	cp -a /opt/polarion/data/svn/. /opt/polarion/bootstrap/svn/ && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
