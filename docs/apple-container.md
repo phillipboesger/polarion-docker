@@ -28,13 +28,14 @@ container system start
 Start the builder with enough resources for Polarion:
 
 ```bash
-container builder start --cpus 8 --memory 16g
+container builder start --cpus 8 --memory 8g
 ```
 
 Build the image from this repository:
 
 ```bash
 container build --platform linux/amd64 -t polarion:local .
+container builder stop
 ```
 
 Start Polarion locally:
@@ -45,11 +46,11 @@ container run -d \
   --platform linux/amd64 \
   --rosetta \
   --cpus 8 \
-  --memory 16g \
+  --memory 4g \
   -p 0.0.0.0:8080:80 \
   -p 0.0.0.0:5433:5433 \
   -p 0.0.0.0:5005:5005 \
-  -e JAVA_OPTS="-Xmx8g -Xms8g" \
+  -e JAVA_OPTS="-Xmx3g -Xms3g" \
   -e JDWP_ENABLED=true \
   -v polarion_repo:/opt/polarion/data/svn \
   -v polarion_extensions:/opt/polarion/polarion/extensions \
@@ -68,26 +69,28 @@ This repository's `.vscode/tasks.json` publishes on `0.0.0.0` and defaults to `P
 
 ## VS Code Tasks
 
-The repository includes Apple `container` tasks in [.vscode/tasks.json](../.vscode/tasks.json):
+The repository includes runtime tasks in [.vscode/tasks.json](../.vscode/tasks.json):
 
-- `Polarion: Apple Container System Start`
-- `Polarion: Apple Container Builder Start`
-- `Polarion: Apple Container Build Image`
-- `Polarion: Apple Container Start`
-- `Polarion: Apple Container Full Start`
-- `Polarion: Apple Container Stop`
-- `Polarion: Live Logs (Apple Container)`
-- `Polarion: Live Errors ONLY (Apple Container)`
-- `Polarion: Apple Container Redeploy Workspace`
-- `Polarion: Apple Container Full Redeploy Workspace`
-- `Polarion: Full Redeploy (Apple Container)`
-- `Polarion: Apple Container Full Redeploy (Active File)`
+- `Polarion: System Start`
+- `Polarion: Builder Start`
+- `Polarion: Builder Stop`
+- `Polarion: Build Image`
+- `Polarion: Start`
+- `Polarion: Full Start`
+- `Polarion: Stop`
+- `Polarion: Live Logs`
+- `Polarion: Live Errors ONLY`
+- `Polarion: Redeploy Workspace`
+- `Polarion: Full Redeploy Workspace`
+- `Polarion: Full Redeploy`
+- `Polarion: Full Redeploy (Active File)`
 
 Recommended order:
 
-1. Run `Polarion: Apple Container Full Start`.
+1. Run `Polarion: Full Start`.
+   This uses `Polarion: Build Image`, which auto-starts and auto-stops the Apple builder.
 2. Start `Debug Polarion Container` from [.vscode/launch.json](../.vscode/launch.json).
-3. Use `Polarion: Apple Container Full Redeploy Workspace` or `Polarion: Apple Container Full Redeploy (Active File)` for plugin updates.
+3. Use `Polarion: Full Redeploy Workspace` or `Polarion: Full Redeploy (Active File)` for plugin updates.
 
 ## Runtime Notes
 
@@ -95,6 +98,7 @@ Recommended order:
 - The Apple workflow uses named volumes because anonymous volumes are not automatically deleted by Apple `container` on `--rm`.
 - The current documented Apple path assumes `linux/amd64` with `--rosetta`. Native `arm64` validation for Polarion is still an open item.
 - The JDWP debugger attach configuration remains the same because the Apple task maps host port `5005` to container port `5005`.
+- `bash scripts/polarionctl.sh build-image` starts the builder on demand with an `8g` cap and stops it again after the build.
 
 ## Logs and Redeploy
 

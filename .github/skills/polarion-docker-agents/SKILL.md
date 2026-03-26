@@ -20,7 +20,9 @@ Prerequisites
 - Docker (desktop or engine) installed and running.
 - Docker BuildKit available (recommended for `RUN --mount=type=bind` in the Dockerfile).
 - The Polarion ZIP placed in the repository `data/` directory (e.g. `data/PolarionALM_*.zip`).
-- Sufficient disk space and memory for the Polarion image (8+GB recommended).
+- If you use avasis extensions, place `data/avasis.licence` in the repo. The runtime start flow syncs it to `/opt/polarion/polarion/license/avasis.licence`.
+- If you use a Polarion core XML license, place `files/polarion.lic` in the repo. The runtime start flow syncs it to `/opt/polarion/polarion/license/polarion.lic`.
+- Sufficient disk space and memory for the Polarion image. Current repo defaults cap the runtime container at `4g` and the JVM at `-Xmx3g -Xms3g`.
 
 Quick start (build + run)
 
@@ -39,7 +41,9 @@ Run (example):
 # mount local data, expose host port 8080 -> container 80
 docker run --rm -it \
   -p 8080:80 \
+  --memory 4g \
   -v "$PWD/data":/data:ro \
+  -e JAVA_OPTS="-Xmx3g -Xms3g" \
   -e JDWP_ENABLED=false \
   --name polarion-dev \
   polarion:local
@@ -92,9 +96,12 @@ Security and reproducibility notes
 Troubleshooting checklist
 
 - Check that `data/` contains exactly one Polarion ZIP (or adjust the Dockerfile unzip step to select the right file).
+- Check that `data/avasis.licence` is present if avasis extensions should be licensed.
+- Do not replace `polarion.lic` with `avasis.licence`. They are different files with different target paths.
 - If image build fails during JDK download: verify network access, certificate store (`apt-get install -y ca-certificates`), and prefer mirrored/official Temurin assets.
 - If the `RUN --mount=type=bind` step fails: ensure `DOCKER_BUILDKIT=1` when building.
 - If the service does not start: inspect logs (see "Logs and live debugging").
+- If the service is memory-killed early: do not set `-Xmx` equal to the full container limit. This repo needed `-Xmx3g -Xms3g` inside a `4g` container to leave native memory headroom.
 
 Prompts and examples to try in chat
 

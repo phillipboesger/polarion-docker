@@ -8,13 +8,13 @@
       "POLARION_DB_PORT": "5433",
       "POLARION_JDWP_PORT": "5005",
       "POLARION_BIND_HOST": "0.0.0.0",
-      "POLARION_JAVA_OPTS": "-Xmx8g -Xms8g",
+      "POLARION_JAVA_OPTS": "-Xmx3g -Xms3g",
       "POLARION_JDWP_ENABLED": "true",
       "POLARION_PLATFORM": "linux/amd64",
       "POLARION_CONTAINER_CPUS": "8",
-      "POLARION_CONTAINER_MEMORY": "16g",
+      "POLARION_CONTAINER_MEMORY": "4g",
       "POLARION_BUILDER_CPUS": "8",
-      "POLARION_BUILDER_MEMORY": "16g",
+      "POLARION_BUILDER_MEMORY": "8g",
       "POLARION_REDEPLOY_SEARCH_DEPTH": "1",
       "POLARION_DATA_VOLUME": "polarion_repo",
       "POLARION_EXTENSIONS_VOLUME": "polarion_extensions"
@@ -38,6 +38,17 @@
       "type": "shell",
       "command": "bash",
       "args": ["${workspaceFolder}/scripts/polarionctl.sh", "builder-start"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Polarion: Builder Stop",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/scripts/polarionctl.sh", "builder-stop"],
       "presentation": {
         "reveal": "always",
         "panel": "shared"
@@ -69,7 +80,7 @@
     {
       "label": "Polarion: Full Start",
       "dependsOrder": "sequence",
-      "dependsOn": ["Polarion: System Start", "Polarion: Builder Start", "Polarion: Build Image", "Polarion: Start"],
+      "dependsOn": ["Polarion: System Start", "Polarion: Build Image", "Polarion: Start"],
       "presentation": {
         "reveal": "always",
         "panel": "shared"

@@ -9,13 +9,14 @@ services:
         - linux/amd64  # Force x86_64 architecture for Rosetta compatibility
     platform: linux/amd64  # Important for Apple Silicon Macs
     container_name: polarion
+    mem_limit: 4g
     ports:
       - "80:80"         # Standard HTTP port
       - "5433:5433"     # PostgreSQL port (if PostgreSQL runs in container)
       - "5005:5005"     # JDWP Debug port
     environment:
       - POLARION_HOME=/polarion_root
-      - JAVA_OPTS=-Xmx4g -Xms4g
+      - JAVA_OPTS=-Xmx3g -Xms3g
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
       - JDWP_ENABLED=true
     healthcheck:

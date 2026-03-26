@@ -33,7 +33,10 @@ Since Polarion requires a license and the installation media is proprietary, you
 2.  **Place** the downloaded ZIP file in the data directory of this repository.
     - _Note: The build script automatically picks up any file matching `polarion_.zip`.\*
     - _Note: On Linux systems with SELinux enabled, set the context on `data` with `chcon -Rt 'container_file_t' data/`._
-3.  **Build** the Docker image:
+3.  **Place** your license files in the repo:
+    - Put the Polarion core XML license in `files/` as `polarion.lic`. The start scripts sync XML `polarion.lic` files from `files/` into `/opt/polarion/polarion/license/polarion.lic`.
+    - Put the avasis extension license in `data/` as `avasis.licence`. The start scripts sync it into `/opt/polarion/polarion/license/avasis.licence`.
+4.  **Build** the Docker image:
     ```bash
     # With Docker
     docker build -t polarion .
@@ -41,8 +44,9 @@ Since Polarion requires a license and the installation media is proprietary, you
     podman build --network private -t polarion .
     # With Apple container
     container system start
-    container builder start --cpus 8 --memory 16g
+    container builder start --cpus 8 --memory 8g
     container build --platform linux/amd64 -t polarion:local .
+    container builder stop
     ```
 
 ### Option B: Pre-built Images
@@ -62,19 +66,20 @@ If you have access:
     ```
 3.  **Run the container**:
     This command pulls the latest image and starts Polarion immediately:
-    `bash
+    ```bash
 docker run -d \
     --name polarion \
     --platform linux/amd64 \
+    --memory 4g \
     -p 80:80 \
     -p 5433:5433 \
     -p 5005:5005 \
-    -e JAVA_OPTS="-Xmx8g -Xms8g" \
+    -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
     --volume polarion_repo:/opt/polarion/data/svn \
     --volume polarion_extensions:/opt/polarion/polarion/extensions \
     ghcr.io/phillipboesger/polarion-docker:latest
-`
+    ```
     _(Replace `polarion:latest` with the appropriate image name depending on how you built or pulled it)_
 
 For Apple `container`, authenticate and run the same OCI image with explicit local port publishing:
@@ -86,11 +91,11 @@ container run -d \
     --platform linux/amd64 \
     --rosetta \
     --cpus 8 \
-    --memory 16g \
+    --memory 4g \
     -p 127.0.0.1:8080:80 \
     -p 127.0.0.1:5433:5433 \
     -p 127.0.0.1:5005:5005 \
-    -e JAVA_OPTS="-Xmx8g -Xms8g" \
+    -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
     -v polarion_repo:/opt/polarion/data/svn \
     -v polarion_extensions:/opt/polarion/polarion/extensions \
@@ -109,6 +114,8 @@ Note: Docker Compose files in this repository are Docker-only. Apple `container`
     ```bash
     docker-compose up -d
     ```
+
+The checked-in Compose files cap the Polarion container at `4g` RAM and default the JVM to `-Xmx3g -Xms3g`.
 
 ## ⚙️ Configuration & Customization
 
@@ -129,7 +136,7 @@ To add your own configuration:
 
 | Variable        | Description                                  | Default                       |
 | :-------------- | :------------------------------------------- | :---------------------------- |
-| `JAVA_OPTS`     | Java memory and VM arguments                 | `-Xmx8g -Xms8g`               |
+| `JAVA_OPTS`     | Java memory and VM arguments                 | `-Xmx3g -Xms3g`               |
 | `JDWP_ENABLED`  | Enable Java Debug Wire Protocol              | `true`                        |
 | `ALLOWED_HOSTS` | Comma-separated list of allowed host headers | `localhost,127.0.0.1,0.0.0.0` |
 
@@ -179,5 +186,6 @@ If you are developing on Apple silicon with macOS 26 or later, see [docs/apple-c
 ## 🔍 Troubleshooting
 
 - **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free.
-- **Memory:** Polarion is heavy. Assign at least 8GB RAM to Docker Desktop.
+- **Memory:** This repo defaults Polarion to `4g` container RAM and a `3g` JVM heap so the process still has native headroom. Increase only if a specific workload requires it.
+- **Apple `container` builder:** `bash scripts/polarionctl.sh build-image` starts the builder on demand with an `8g` cap and stops it again after the image build finishes.
 - **Access Denied:** If pulling `ghcr.io/...` fails, ensure you have requested and been granted access by the owner, or build locally (Option A).

@@ -13,6 +13,7 @@ Usage: bash scripts/polarionctl.sh <action>
 Actions:
   system-start   Start Apple container system services if runtime=container
   builder-start  Start Apple container builder if runtime=container
+  builder-stop   Stop Apple container builder if runtime=container
   build-image    Build the Polarion image for the selected runtime
   start          Start Polarion for the selected runtime
   stop           Stop and remove Polarion for the selected runtime
@@ -41,9 +42,17 @@ case "${action}" in
 			echo "Docker runtime does not use the Apple container builder."
 		fi
 		;;
+	builder-stop)
+		if polarion_is_apple_container_runtime; then
+			polarion_stop_builder
+		else
+			echo "Docker runtime does not use the Apple container builder."
+		fi
+		;;
 	build-image)
 		if polarion_is_apple_container_runtime; then
 			polarion_ensure_builder
+			trap 'polarion_stop_builder' EXIT
 			cd "${REPO_ROOT}"
 			container build --platform "${POLARION_PLATFORM}" --tag "${POLARION_IMAGE}" --file "${POLARION_DOCKERFILE}" "${REPO_ROOT}"
 		else
@@ -84,6 +93,8 @@ case "${action}" in
 				--name "${POLARION_CONTAINER_NAME}" \
 				--platform "${POLARION_PLATFORM}" \
 				--restart unless-stopped \
+				--cpus "${POLARION_CONTAINER_CPUS}" \
+				--memory "${POLARION_CONTAINER_MEMORY}" \
 				-p "${POLARION_HTTP_PORT}:80" \
 				-p "${POLARION_DB_PORT}:5433" \
 				-p "${POLARION_JDWP_PORT}:5005" \
@@ -93,6 +104,7 @@ case "${action}" in
 				-v "${POLARION_EXTENSIONS_VOLUME}:/opt/polarion/polarion/extensions" \
 				"${POLARION_IMAGE}"
 		fi
+		polarion_sync_repo_license
 		;;
 	stop)
 		if polarion_is_apple_container_runtime; then

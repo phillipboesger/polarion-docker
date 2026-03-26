@@ -30,7 +30,9 @@ Prerequisites
 - macOS 26 or later.
 - Apple `container` CLI installed and working.
 - Polarion ZIP present in the repository `data/` directory.
-- Enough resources for Polarion. Recommended defaults in this repo are 8 CPUs and 16 GiB memory for both builder and runtime.
+- Enough resources for Polarion. Current repo defaults are 8 CPUs, 8 GiB for the builder, 4 GiB for the Polarion runtime, and `-Xmx3g -Xms3g` for the JVM.
+- If you use avasis extensions, place `data/avasis.licence` in the repo. The start flow syncs it to `/opt/polarion/polarion/license/avasis.licence`.
+- If you use a Polarion core XML license, place `files/polarion.lic` in the repo. The start flow syncs it to `/opt/polarion/polarion/license/polarion.lic`.
 
 Quick checks
 
@@ -58,12 +60,17 @@ Repository entrypoints
 Recommended VS Code task order
 
 1. `Polarion: Apple Container System Start`
-2. `Polarion: Apple Container Builder Start`
-3. `Polarion: Apple Container Build Image`
-4. `Polarion: Apple Container Start`
-5. `Debug Polarion Container`
-6. `Polarion: Full Redeploy (Apple Container)`
-7. `Polarion: Live Logs (Apple Container)` or `Polarion: Live Errors ONLY (Apple Container)`
+2. `Polarion: Apple Container Build Image`
+3. `Polarion: Apple Container Start`
+4. `Debug Polarion Container`
+5. `Polarion: Full Redeploy (Apple Container)`
+6. `Polarion: Live Logs (Apple Container)` or `Polarion: Live Errors ONLY (Apple Container)`
+
+Notes:
+
+- `Polarion: Apple Container Build Image` starts the builder on demand and stops it again after the build.
+- Use `Polarion: Apple Container Builder Start` only if you explicitly want the builder kept alive for manual work.
+- Use `Polarion: Apple Container Builder Stop` to force-stop the builder.
 
 Equivalent CLI workflow
 
@@ -83,6 +90,12 @@ Build image:
 
 ```bash
 POLARION_RUNTIME=container bash scripts/polarionctl.sh build-image
+```
+
+Stop builder explicitly if needed:
+
+```bash
+POLARION_RUNTIME=container bash scripts/polarionctl.sh builder-stop
 ```
 
 Start Polarion:
@@ -128,23 +141,30 @@ Important environment variables
 - `POLARION_HTTP_PORT=8080`
 - `POLARION_DB_PORT=5433`
 - `POLARION_JDWP_PORT=5005`
-- `POLARION_JAVA_OPTS=-Xmx8g -Xms8g`
+- `POLARION_JAVA_OPTS=-Xmx3g -Xms3g`
 - `POLARION_PLATFORM=linux/amd64`
 - `POLARION_CONTAINER_CPUS=8`
-- `POLARION_CONTAINER_MEMORY=16g`
+- `POLARION_CONTAINER_MEMORY=4g`
 - `POLARION_BUILDER_CPUS=8`
-- `POLARION_BUILDER_MEMORY=16g`
+- `POLARION_BUILDER_MEMORY=8g`
+- `POLARION_DATA_DIR=$REPO_ROOT/data`
+- `POLARION_FILES_DIR=$REPO_ROOT/files`
 
 Troubleshooting
 
 - `container build` fails on architecture mismatch:
   - Keep `POLARION_PLATFORM=linux/amd64` and use Rosetta.
 - Polarion starts too slowly or crashes early:
-  - Increase `POLARION_CONTAINER_MEMORY` and `POLARION_BUILDER_MEMORY`.
+  - First check that you did not raise `POLARION_JAVA_OPTS` above the available container headroom. `4g` container RAM with `-Xmx4g` is too tight and caused startup failure in this repo.
+  - Increase `POLARION_CONTAINER_MEMORY` only if a real workload requires it.
 - VS Code logs task shows nothing:
   - Confirm the container name is `polarion` or override `POLARION_CONTAINER_NAME`.
 - Redeploy fails during file copy:
   - Confirm the container is running and that `scripts/redeploy.sh` is invoked with `container` as the runtime.
+- avasis extensions still report missing or limited licence:
+  - Verify that `data/avasis.licence` exists in the repo.
+  - Verify that `/opt/polarion/polarion/license/avasis.licence` exists in the running container.
+  - If the file is present and the log still says only the free contingent is available, the placement is correct and the licence content itself is the remaining issue.
 - Networking behaves unexpectedly:
   - Re-run `container system start` and verify published host ports are free.
 
