@@ -8,6 +8,7 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 
 - **Modular Entrypoint System**: Startup logic is split into lightweight scripts in `/opt/polarion/entrypoint.d/` for easy extensibility.
 - **WebSocket Support**: Automatically configures Apache `ProxyPassMatch` to enable Polarion LiveDoc collaboration and other real-time features.
+- **SVN HTTP Aliases**: Exposes the bundled Subversion repository externally under both `/repo` and `/repo-local`.
 - **PostgreSQL Auto-Config**: Sets up `listen_addresses` and `pg_hba.conf` to allow external connections (essential for container networking).
 - **URL Correction**: Automatically fixes `localhost` references in configuration files to `127.0.0.1` for proper container behavior.
 - **Remote Debugging (JDWP)**: One-click remote debugging support on port 5005.
@@ -140,6 +141,15 @@ To add your own configuration:
 | `JDWP_ENABLED`  | Enable Java Debug Wire Protocol              | `true`                        |
 | `ALLOWED_HOSTS` | Comma-separated list of allowed host headers | `localhost,127.0.0.1,0.0.0.0` |
 
+### External SVN Endpoints
+
+After startup, Apache serves the bundled Subversion repository through both of these authenticated endpoints:
+
+- `http://<host>/repo`
+- `http://<host>/repo-local`
+
+The startup scripts also normalize the bundled SVN password file so the default bootstrap user remains `admin` / `admin`.
+
 ## 🛠️ Development & Debugging
 
 ### Remote Debugging (JDWP)
@@ -188,4 +198,5 @@ If you are developing on Apple silicon with macOS 26 or later, see [docs/apple-c
 - **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free.
 - **Memory:** This repo defaults Polarion to `4g` container RAM and a `3g` JVM heap so the process still has native headroom. Increase only if a specific workload requires it.
 - **Apple `container` builder:** `bash scripts/polarionctl.sh build-image` starts the builder on demand with an `8g` cap and stops it again after the image build finishes.
+- **Apple `container` first start:** A cold `linux/amd64` start on Apple silicon can spend multiple minutes in image unpacking before the container becomes visible or HTTP responds.
 - **Access Denied:** If pulling `ghcr.io/...` fails, ensure you have requested and been granted access by the owner, or build locally (Option A).

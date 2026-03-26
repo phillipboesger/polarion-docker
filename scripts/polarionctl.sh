@@ -105,6 +105,7 @@ case "${action}" in
 				"${POLARION_IMAGE}"
 		fi
 		polarion_sync_repo_license
+		polarion_wait_for_http_access
 		;;
 	stop)
 		if polarion_is_apple_container_runtime; then
