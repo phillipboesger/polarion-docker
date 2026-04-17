@@ -182,6 +182,8 @@ jobs:
             if docker exec polarion-test sh -c "grep -E 'ERROR|Exception|Caused by|Unrecognized VM option' /var/log/polarion/polarion.log | grep -v 'ActivationException' | grep -v 'No valid license found' | grep -v 'handshake failed'" | grep -q "."; then
                echo -e "\n❌ FATAL ERROR detected in logs! Aborting..."
                docker exec polarion-test sh -c "grep -E -C 3 'ERROR|Exception|Caused by' /var/log/polarion/polarion.log | grep -v 'ActivationException' | tail -n 20"
+              echo "--- Full container logs (for startup diagnostics) ---"
+              docker logs polarion-test || true
                kill $TAIL_PID 2>/dev/null || true
                exit 1
             fi
