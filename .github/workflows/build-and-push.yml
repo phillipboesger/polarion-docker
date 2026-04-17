@@ -152,6 +152,12 @@ jobs:
              exit 1
            fi
 
+           echo "🔎 Effective repository URL configuration:"
+           docker exec polarion-test sh -c "grep -E '^repo=|^base.url=' /opt/polarion/etc/polarion.properties || true"
+
+           echo "🔍 Verifying /repo endpoint over HTTP..."
+           docker exec polarion-test sh -c 'wget -S --spider -T 5 -t 1 http://127.0.0.1/repo 2>&1 | tail -n 20' || true
+
           echo "⏳ Waiting for log file /var/log/polarion/polarion.log..."
           timeout 120s bash -c 'until docker exec polarion-test ls /var/log/polarion/polarion.log >/dev/null 2>&1; do sleep 5; done'
 
