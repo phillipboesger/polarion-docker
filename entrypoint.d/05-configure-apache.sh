@@ -13,7 +13,12 @@ enable_apache_module_if_available() {
 
 validate_apache_config() {
     echo "Validating Apache configuration..."
-    apache2ctl -t
+    if ! apache2ctl -t 2>&1; then
+        echo "❌ Apache configuration is invalid! Dumping error log:"
+        cat /var/log/apache2/error.log 2>/dev/null || true
+        return 1
+    fi
+    echo "✅ Apache configuration is valid."
 }
 
 SVN_APACHE_CONF="/etc/apache2/conf-available/polarionSVN.conf"
@@ -125,6 +130,7 @@ fi
 echo "Enabling required Apache modules..."
 enable_apache_module_if_available proxy
 enable_apache_module_if_available proxy_http
+enable_apache_module_if_available proxy_ajp
 enable_apache_module_if_available proxy_wstunnel
 enable_apache_module_if_available dav
 enable_apache_module_if_available dav_svn
@@ -132,7 +138,18 @@ enable_apache_module_if_available authz_svn
 a2dismod -f ldap authnz_ldap dbd authn_dbd >/dev/null 2>&1 || true
 
 validate_apache_config
-service apache2 start
+if ! validate_apache_config; then
+    echo "❌ Aborting Apache start due to invalid configuration."
+else
+    service apache2 start
+    sleep 2
+    if apache2ctl status 2>/dev/null | grep -q "running\|active"; then
+        echo "✅ Apache started successfully."
+    else
+        echo "❌ Apache failed to start. Error log:"
+        cat /var/log/apache2/error.log 2>/dev/null || true
+    fi
+fi
 
 # Configure redirect from / to /polarion/
 if [ ! -f /etc/apache2/conf-available/polarion-redirect.conf ]; then

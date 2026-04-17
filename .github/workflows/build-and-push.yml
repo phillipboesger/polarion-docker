@@ -141,6 +141,17 @@ jobs:
              exit 1
           fi
 
+           echo "🔍 Verifying Apache Web Server (Port 80)..."
+           if timeout 30s bash -c 'until nc -z localhost 80; do sleep 2; done'; then
+             echo "✅ Apache Port 80 is open"
+           else
+             echo "❌ Apache Port 80 is NOT open — dumping container and Apache logs:"
+             docker logs polarion-test
+             docker exec polarion-test cat /var/log/apache2/error.log 2>/dev/null || true
+             docker exec polarion-test apache2ctl -t 2>&1 || true
+             exit 1
+           fi
+
           echo "⏳ Waiting for log file /var/log/polarion/polarion.log..."
           timeout 120s bash -c 'until docker exec polarion-test ls /var/log/polarion/polarion.log >/dev/null 2>&1; do sleep 5; done'
 
