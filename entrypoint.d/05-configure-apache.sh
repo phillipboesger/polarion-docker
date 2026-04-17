@@ -123,6 +123,9 @@ if ! grep -q "^ServerName" /etc/apache2/apache2.conf; then
 fi
 
 echo "Enabling required Apache modules..."
+enable_apache_module_if_available proxy
+enable_apache_module_if_available proxy_http
+enable_apache_module_if_available proxy_wstunnel
 enable_apache_module_if_available dav
 enable_apache_module_if_available dav_svn
 enable_apache_module_if_available authz_svn
