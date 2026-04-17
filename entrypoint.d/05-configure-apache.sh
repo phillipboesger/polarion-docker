@@ -134,9 +134,21 @@ normalize_svn_apache_config() {
     mv "$tmp" "$src"
 }
 
+strip_dbd_directives() {
+    local src="$1"
+
+    # Remove any remaining DBD-related directives that make Apache startup depend
+    # on DB schema objects being present during container bootstrap.
+    sed -i '/^[[:space:]]*DBD[A-Za-z].*$/d' "$src"
+    sed -i '/^[[:space:]]*AuthnProviderAlias[[:space:]]\+dbd.*$/d' "$src"
+    sed -i '/^[[:space:]]*AuthDBD.*$/d' "$src"
+    sed -i '/^[[:space:]]*AuthBasicProvider[[:space:]]\+dbd.*$/d' "$src"
+}
+
 if [ -f "$SVN_APACHE_CONF" ]; then
     echo "Normalizing $SVN_APACHE_CONF..."
     normalize_svn_apache_config "$SVN_APACHE_CONF"
+    strip_dbd_directives "$SVN_APACHE_CONF"
     SVN_ALIAS_RELOAD_REQUIRED=1
 fi
 
