@@ -132,10 +132,12 @@ enable_apache_module_if_available proxy
 enable_apache_module_if_available proxy_http
 enable_apache_module_if_available proxy_ajp
 enable_apache_module_if_available proxy_wstunnel
+enable_apache_module_if_available dbd
+enable_apache_module_if_available authn_dbd
 enable_apache_module_if_available dav
 enable_apache_module_if_available dav_svn
 enable_apache_module_if_available authz_svn
-a2dismod -f ldap authnz_ldap dbd authn_dbd >/dev/null 2>&1 || true
+a2dismod -f ldap authnz_ldap >/dev/null 2>&1 || true
 
 validate_apache_config
 if ! validate_apache_config; then
