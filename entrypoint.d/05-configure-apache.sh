@@ -13,7 +13,11 @@ enable_apache_module_if_available() {
 
 validate_apache_config() {
     echo "Validating Apache configuration..."
-    apache2ctl -t
+    if ! apache2ctl -t >/dev/null 2>&1; then
+        echo "❌ Apache configuration is invalid."
+        return 1
+    fi
+    echo "✅ Apache configuration is valid."
 }
 
 SVN_APACHE_CONF="/etc/apache2/conf-available/polarionSVN.conf"
@@ -27,9 +31,20 @@ normalize_svn_apache_config() {
     tmp="$(mktemp)"
     awk '
         BEGIN {
+            skip_repo = 0
             skip_repo_local = 0
             skip_ldap = 0
-            inserted_repo_local = 0
+            skip_dbd = 0
+        }
+        /^<Location \/repo>$/ {
+            skip_repo = 1
+            next
+        }
+        skip_repo {
+            if (/^<\/Location>$/) {
+                skip_repo = 0
+            }
+            next
         }
         /^<Location \/repo-local>$/ {
             skip_repo_local = 1
@@ -51,7 +66,44 @@ normalize_svn_apache_config() {
             }
             next
         }
-        /^<\/IfModule>$/ && !inserted_repo_local {
+        /^<IfModule mod_dbd\.c>$/ {
+            skip_dbd = 1
+            next
+        }
+        skip_dbd {
+            if (/^<\/IfModule>$/) {
+                skip_dbd = 0
+            }
+            next
+        }
+        /^[[:space:]]*(DBDriver|DBDParams|AuthnProviderAlias|AuthDBDUserPWQuery|AuthBasicProvider[[:space:]]+dbd)/ {
+            next
+        }
+        { print }
+        END {
+            print ""
+            print "<Location /repo>"
+            print ""
+            print "# Enable Web DAV HTTP access methods"
+            print "DAV svn"
+            print "# Repository location"
+            print "SVNPath \"/srv/polarion/svn/repo\""
+            print "# Write requests from WebDAV clients result in automatic commits"
+            print "SVNAutoversioning on"
+            print ""
+            print "# Our access control policy"
+            print "AuthzSVNAccessFile \"^/.polarion/access\""
+            print "SVNPathAuthz short_circuit"
+            print ""
+            print "# No anonymous access, always require authenticated users"
+            print "Require valid-user"
+            print ""
+            print "# How to authenticate a user. (NOTE: Polarion does not currently support HTTP Digest access authentication.)"
+            print "AuthType Basic"
+            print "AuthName \"Subversion repository\""
+            print "AuthUserFile \"/srv/polarion/svn/passwd\""
+            print ""
+            print "</Location>"
             print ""
             print "<Location /repo-local>"
             print ""
@@ -75,45 +127,27 @@ normalize_svn_apache_config() {
             print "AuthUserFile \"/srv/polarion/svn/passwd\""
             print ""
             print "</Location>"
-            print ""
-            inserted_repo_local = 1
-        }
-        { print }
-        END {
-            if (!inserted_repo_local) {
-                print ""
-                print "<Location /repo-local>"
-                print ""
-                print "# Enable Web DAV HTTP access methods"
-                print "DAV svn"
-                print "# Repository location"
-                print "SVNPath \"/srv/polarion/svn/repo\""
-                print "# Write requests from WebDAV clients result in automatic commits"
-                print "SVNAutoversioning on"
-                print ""
-                print "# Our access control policy"
-                print "AuthzSVNAccessFile \"^/.polarion/access\""
-                print "SVNPathAuthz short_circuit"
-                print ""
-                print "# No anonymous access, always require authenticated users"
-                print "Require valid-user"
-                print ""
-                print "# How to authenticate a user. (NOTE: Polarion does not currently support HTTP Digest access authentication.)"
-                print "AuthType Basic"
-                print "AuthName \"Subversion repository\""
-                print "AuthUserFile \"/srv/polarion/svn/passwd\""
-                print ""
-                print "</Location>"
-            }
         }
     ' "$src" >"$tmp"
 
     mv "$tmp" "$src"
 }
 
+strip_dbd_directives() {
+    local src="$1"
+
+    # Remove any remaining DBD-related directives that make Apache startup depend
+    # on DB schema objects being present during container bootstrap.
+    sed -i '/^[[:space:]]*DBD[A-Za-z].*$/d' "$src"
+    sed -i '/^[[:space:]]*AuthnProviderAlias[[:space:]]\+dbd.*$/d' "$src"
+    sed -i '/^[[:space:]]*AuthDBD.*$/d' "$src"
+    sed -i '/^[[:space:]]*AuthBasicProvider[[:space:]]\+dbd.*$/d' "$src"
+}
+
 if [ -f "$SVN_APACHE_CONF" ]; then
     echo "Normalizing $SVN_APACHE_CONF..."
     normalize_svn_apache_config "$SVN_APACHE_CONF"
+    strip_dbd_directives "$SVN_APACHE_CONF"
     SVN_ALIAS_RELOAD_REQUIRED=1
 fi
 
@@ -123,13 +157,21 @@ if ! grep -q "^ServerName" /etc/apache2/apache2.conf; then
 fi
 
 echo "Enabling required Apache modules..."
+enable_apache_module_if_available proxy
+enable_apache_module_if_available proxy_http
+enable_apache_module_if_available proxy_ajp
+enable_apache_module_if_available proxy_wstunnel
 enable_apache_module_if_available dav
 enable_apache_module_if_available dav_svn
 enable_apache_module_if_available authz_svn
 a2dismod -f ldap authnz_ldap dbd authn_dbd >/dev/null 2>&1 || true
 
-validate_apache_config
-service apache2 start
+if ! validate_apache_config; then
+    echo "❌ Aborting Apache start due to invalid configuration."
+else
+    service apache2 start
+    echo "✅ Apache started successfully."
+fi
 
 # Configure redirect from / to /polarion/
 if [ ! -f /etc/apache2/conf-available/polarion-redirect.conf ]; then
