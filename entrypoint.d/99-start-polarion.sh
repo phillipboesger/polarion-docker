@@ -35,12 +35,11 @@ SVN_READY=false
 REPO_HOST=""
 for i in $(seq 1 60); do
 	if [ $((i % 10)) -eq 0 ]; then
-		echo "SVN endpoint still not reachable, retrying Apache restart (attempt ${i})..."
 		service apache2 restart || true
 	fi
 
 	if REPO_HOST="$(choose_repo_host 2>/dev/null)"; then
-		echo "SVN endpoint is reachable via ${REPO_HOST} (HTTP $(get_http_code "$REPO_HOST"))"
+		echo "SVN endpoint is reachable via ${REPO_HOST}"
 		SVN_READY=true
 		break
 	fi
@@ -54,15 +53,6 @@ if [ "$SVN_READY" = "true" ] && [ -n "$REPO_HOST" ]; then
 	sed -i "s|^controlHostname=.*|controlHostname=${REPO_HOST}|" /opt/polarion/etc/polarion.properties
 else
 	echo "ERROR: SVN endpoint /repo did not become reachable before Polarion start."
-	container_ip="$(hostname -i | awk '{print $1}')"
-	service apache2 status || true
-	wget -S --spider -T 5 -t 1 http://localhost/repo 2>&1 || true
-	wget -S --spider -T 5 -t 1 http://127.0.0.1/repo 2>&1 || true
-	if [ -n "$container_ip" ]; then
-		wget -S --spider -T 5 -t 1 "http://${container_ip}/repo" 2>&1 || true
-	fi
-	cat /var/log/apache2/error.log 2>/dev/null || true
-	ss -ltnp 2>/dev/null | grep ':80' || true
 	exit 1
 fi
 

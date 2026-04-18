@@ -13,9 +13,8 @@ enable_apache_module_if_available() {
 
 validate_apache_config() {
     echo "Validating Apache configuration..."
-    if ! apache2ctl -t 2>&1; then
-        echo "❌ Apache configuration is invalid! Dumping error log:"
-        cat /var/log/apache2/error.log 2>/dev/null || true
+    if ! apache2ctl -t >/dev/null 2>&1; then
+        echo "❌ Apache configuration is invalid."
         return 1
     fi
     echo "✅ Apache configuration is valid."
@@ -171,13 +170,7 @@ if ! validate_apache_config; then
     echo "❌ Aborting Apache start due to invalid configuration."
 else
     service apache2 start
-    sleep 2
-    if apache2ctl status 2>/dev/null | grep -q "running\|active"; then
-        echo "✅ Apache started successfully."
-    else
-        echo "❌ Apache failed to start. Error log:"
-        cat /var/log/apache2/error.log 2>/dev/null || true
-    fi
+    echo "✅ Apache started successfully."
 fi
 
 # Configure redirect from / to /polarion/

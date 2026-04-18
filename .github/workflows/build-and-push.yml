@@ -145,19 +145,9 @@ jobs:
            if timeout 30s bash -c 'until nc -z localhost 80; do sleep 2; done'; then
              echo "✅ Apache Port 80 is open"
            else
-             echo "❌ Apache Port 80 is NOT open — dumping container and Apache logs:"
-             docker logs polarion-test
-             docker exec polarion-test cat /var/log/apache2/error.log 2>/dev/null || true
-             docker exec polarion-test apache2ctl -t 2>&1 || true
+             echo "❌ Apache Port 80 is NOT open"
              exit 1
            fi
-
-           echo "🔎 Effective repository URL configuration:"
-           docker exec polarion-test sh -c "grep -E '^repo=|^base.url=' /opt/polarion/etc/polarion.properties || true"
-
-          echo "🔍 Verifying /repo endpoint over HTTP (localhost + 127.0.0.1)..."
-          docker exec polarion-test sh -c 'wget -S --spider -T 5 -t 1 http://localhost/repo 2>&1 | tail -n 20' || true
-          docker exec polarion-test sh -c 'wget -S --spider -T 5 -t 1 http://127.0.0.1/repo 2>&1 | tail -n 20' || true
 
           echo "⏳ Waiting for log file /var/log/polarion/polarion.log..."
           timeout 120s bash -c 'until docker exec polarion-test ls /var/log/polarion/polarion.log >/dev/null 2>&1; do sleep 5; done'
@@ -179,15 +169,18 @@ jobs:
             fi
 
             # 2. Check for Critical Errors (ignoring License and JDWP handshake warnings)
-            if docker exec polarion-test sh -c "grep -E 'ERROR|Exception|Caused by|Unrecognized VM option' /var/log/polarion/polarion.log | grep -v 'ActivationException' | grep -v 'No valid license found' | grep -v 'handshake failed'" | grep -q "."; then
+            if docker exec polarion-test sh -c '
+              grep -E "ERROR|Exception|Caused by|Unrecognized VM option" /var/log/polarion/polarion.log |
+              grep -v "ActivationException" |
+              grep -v "No valid license found" |
+              grep -v "handshake failed"
+            ' | grep -q "."; then
                echo -e "\n❌ FATAL ERROR detected in logs! Aborting..."
                docker exec polarion-test sh -c "grep -E -C 3 'ERROR|Exception|Caused by' /var/log/polarion/polarion.log | grep -v 'ActivationException' | tail -n 20"
-              echo "--- Full container logs (for startup diagnostics) ---"
-              docker logs polarion-test || true
                kill $TAIL_PID 2>/dev/null || true
                exit 1
             fi
-            
+
             # 3. Check if container is still running
             if [ $(docker inspect -f '{{.State.Running}}' polarion-test) != "true" ]; then
                echo -e "\n❌ Container crashed unexpectedly!"
