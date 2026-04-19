@@ -6,6 +6,34 @@ Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCH
 
 <!-- entries below -->
 
+## 2026-04-19 - Aligned Docker smoke step with fileEditor UI test env pattern
+
+**Branch**: main
+**What was done**: Aligned the Docker repository smoke-test step with the proven `ui-tests.yml` environment pattern from the fileEditor setup by setting explicit Playwright login env variables on the workflow step and defaulting to `http://localhost`.
+**Changed files**:
+
+- .github/workflows/build-and-push.yml - added `env` (`POLARION_URL`, `POLARION_USER`, `POLARION_PASS`) to UI smoke step and switched smoke script fallback URL to localhost
+- PROJECT_LOG.md - added this session log entry
+  **New knowledge**:
+- Keeping identical login env semantics between reusable UI pipelines reduces CI drift and troubleshooting overhead
+- `localhost` consistency avoids subtle host differences across CI runners compared to mixed localhost/127.0.0.1 usage
+
+---
+
+## 2026-04-19 - Fixed UI smoke timeout with DOM-based login success and 60s cap
+
+**Branch**: main
+**What was done**: Reworked the Playwright smoke login flow to avoid brittle URL-route assumptions and reduced login-related waits to a strict 60 seconds as requested. Authentication success is now determined by login form disappearance plus URL sanity checks.
+**Changed files**:
+
+- .github/workflows/build-and-push.yml - replaced URL-pattern-based success wait with DOM-based post-login check (`j_username`/`j_password` no longer visible), added submit fallback, and set `TIMEOUT_MS = 60000`
+- PROJECT_LOG.md - added this session log entry
+  **New knowledge**:
+- Polarion CI login verification is more stable when tied to form-state changes than to `#/` route transitions
+- Keeping a single `TIMEOUT_MS` constant in the smoke script prevents drift and makes timeout policy explicit
+
+---
+
 ## 2026-04-19 - Hardened Playwright UI smoke login and success detection
 
 **Branch**: main
@@ -14,7 +42,7 @@ Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCH
 
 - .github/workflows/build-and-push.yml - improved Playwright smoke script selectors (`j_username`/`j_password` fallbacks), submit fallback, and URL success condition from a small route allowlist to `/polarion/#/.+`
 - PROJECT_LOG.md - added this session log entry
-**New knowledge**:
+  **New knowledge**:
 - Polarion post-login landing route can vary; strict allowlists like `home|mypolarion|wiki|workitems` cause false negatives in CI
 - CI smoke checks should validate authenticated state with a broad route pattern instead of brittle route-specific matching
 
@@ -28,7 +56,7 @@ Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCH
 
 - .github/workflows/build-and-push.yml - changed smoke script path from `/tmp/polarion-ui-smoke.mjs` to `polarion-ui-smoke.mjs` and cleaned it up after execution
 - PROJECT_LOG.md - added this session log entry
-**New knowledge**:
+  **New knowledge**:
 - Node ESM resolves package imports relative to the script location; scripts created in `/tmp` may not see workspace `node_modules`
 - Running the smoke script in `${{ github.workspace }}` ensures `import { chromium } from 'playwright'` resolves after `npm install --no-save playwright@...`
 
