@@ -200,6 +200,62 @@ jobs:
              exit 1
           fi
 
+      - name: Set up Node.js for UI smoke test
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: UI smoke test (Playwright)
+        run: |
+          npm install --no-save playwright@1.53.0
+          npx playwright install --with-deps chromium
+
+          cat > /tmp/polarion-ui-smoke.mjs <<'EOF'
+          import { chromium } from 'playwright';
+
+          const baseUrl = 'http://127.0.0.1/polarion/';
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage();
+
+          try {
+            await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 120000 });
+
+            // Trial activation is expected on fresh instances.
+            const trialButton = page.getByRole('button', { name: 'Start 30-Day Trial' });
+            if (await trialButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+              await trialButton.click();
+              await page.waitForLoadState('domcontentloaded');
+            }
+
+            const username = page.getByLabel('* Username');
+            const password = page.getByLabel('* Password');
+
+            if (await username.isVisible({ timeout: 10000 }).catch(() => false)) {
+              await username.fill('admin');
+              await password.fill('admin');
+              await page.getByRole('button', { name: /Log in|Logging in/ }).click();
+            }
+
+            await page.waitForURL(/\/polarion\/#\/(home|mypolarion|wiki|workitems)/, { timeout: 120000 });
+            await page.screenshot({ path: '/tmp/polarion-ui-smoke.png', fullPage: true });
+            console.log('UI smoke test passed');
+          } finally {
+            await browser.close();
+          }
+          EOF
+
+          node /tmp/polarion-ui-smoke.mjs
+
+      - name: UI smoke diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== polarion-test container state ==="
+          docker ps -a | sed -n '1,120p'
+          echo "=== apache auth mismatch (last lines) ==="
+          docker exec polarion-test sh -lc 'grep -n "AH01617: user .*Password Mismatch" /var/log/apache2/error.log | tail -n 60 || true'
+          echo "=== polarion main log svn errors (last lines) ==="
+          docker exec polarion-test sh -lc 'f=$(ls -t /opt/polarion/data/logs/main/log4j-*.log | head -n1); echo "$f"; grep -n "ISVNAuthentication provider did not provide credentials|HTTP authorization cancelled|JavaSvnDriver - Exception occurred from SVN|Password Mismatch" "$f" | tail -n 80 || true'
+
       - name: Build and push final image
         uses: docker/build-push-action@v5
         with:
