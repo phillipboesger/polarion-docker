@@ -1,81 +1,81 @@
 #!/usr/bin/expect -f
 
-# Automated Polarion Installation Script
-# This script automates the interactive Polarion installation process
+# Automated Polarion installation script.
+# The installer text changes slightly between Polarion versions, so this script
+# matches prompt patterns and responds in a single resilient loop.
 
-# Set timeout for each expect command (in seconds)
-set timeout 60
+set timeout 300
 
-# Start the Polarion installation script
 spawn bash ./install.sh
 
-# Fail if timeout is reached without match
-expect_before {
-    failed {exit 1}
-    timeout {exit 1}
+expect {
+    -re {Press "Enter" to continue with a clean installation} {
+        send "\n"
+        exp_continue
+    }
+
+    -re {Do you want use a new local SVN repository with default settings\?:} {
+        send "yes\n"
+        exp_continue
+    }
+
+    -re {Would you like to check and install the prerequisities\?} {
+        send "yes\n"
+        exp_continue
+    }
+
+    -re {When you are done press Enter to continue\.} {
+        send "\n"
+        exp_continue
+    }
+
+    -re {Do you want to copy predefined conf\. files into /etc/apache2\?} {
+        send "yes\n"
+        exp_continue
+    }
+
+    -re {Do you want to initialize and configure PostgreSQL database for Polarion\?} {
+        send "yes\n"
+        exp_continue
+    }
+
+    -re {Please, set a password for user 'polarion' through which Polarion will connect to the database:} {
+        send "polarion\n"
+        exp_continue
+    }
+
+    -re {Do you want initialize the repository now\?} {
+        send "yes\n"
+        exp_continue
+    }
+
+    -re {Would you like install Polarion sample data\?} {
+        send "yes\n"
+        exp_continue
+    }
+
+    -re {Do you want start Polarion now\?} {
+        send "no\n"
+        exp_continue
+    }
+
+    -re {Do you want to continue\? \[Y/n\]} {
+        send "Y\n"
+        exp_continue
+    }
+
+    -re {failed|FATAL|ERROR:.*installer} {
+        exit 1
+    }
+
+    timeout {
+        exit 1
+    }
+
+    eof {
+        # Success path: installer finished and exited.
+        catch wait result
+        set code [lindex $result 3]
+        exit $code
+    }
 }
-
-# Step 1: Confirm clean installation
-expect "Press \"Enter\" to continue with a clean installation..."
-send "\n"
-
-# Step 2: Choose to use new local SVN repository
-expect "Do you want use a new local SVN repository with default settings?:"
-expect -ex {Type answer <yes|no>, default [yes]}
-send "yes\n"
-
-# Step 3: Check and install prerequisites
-expect "Would you like to check and install the prerequisities?"
-expect -ex {Type answer <yes|no>, default [yes]}
-send "yes\n"
-
-# Step 4: First continuation prompt
-expect "When you are done press Enter to continue."
-expect "You can re-run it later."
-send "\n"
-
-# Step 5: First Y/n confirmation
-#expect "Do you want to continue? \[Y/n\]"
-#send "Y\n"
-
-# Step 6: Second Y/n confirmation
-#expect "Do you want to continue? \[Y/n\]"
-#send "Y\n"
-
-# Step 6a: Second continuation prompt
-expect "When you are done press Enter to continue."
-expect "You can re-run it later."
-send "\n"
-
-# Step 7: Copy predefined Apache configuration files
-expect "Do you want to copy predefined conf. files into /etc/apache2?"
-send "yes\n"
-
-# Step 8: Initialize PostgreSQL database for Polarion
-expect "Do you want to initialize and configure PostgreSQL database for Polarion?"
-send "yes\n"
-
-# Step 9: Set password for 'polarion' database user
-expect "Please, set a password for user 'polarion' through which Polarion will connect to the database:"
-send "polarion\n"
-
-# Step 10: Third continuation prompt
-expect "When you are done press Enter to continue."
-expect "Or press \"Ctrl+C\" to halt the script. You can re-run it later."
-send "\n"
-
-# Step 11: Initialize repository
-expect "Do you want initialize the repository now?"
-send "yes\n"
-
-# Step 12: Install Polarion sample data (optional)
-expect "Would you like install Polarion sample data?"
-send "yes\n"
-
-# Step 13: Choose not to start Polarion immediately (will be started by container script)
-expect "Do you want start Polarion now?"
-expect -ex {Type answer <yes|no>, default [yes]}
-send "no\n"
-
-# Wait for installation to complete
-expect eof

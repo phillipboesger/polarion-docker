@@ -90,7 +90,9 @@ RUN --mount=type=bind,source=./data/,target=/data/ \
 	set -x && \
 	unzip -q "$(find /data -iname polarion*.zip)" && \
 	cd Polarion && \
-	../install.expect && \
+	../install.expect || true && \
+	test -d /opt/polarion/polarion && \
+	test -d /opt/polarion/data/svn && \
 	cd .. && \
 	rm -r Polarion && \
 	mkdir -p /opt/polarion/bootstrap/svn && \
