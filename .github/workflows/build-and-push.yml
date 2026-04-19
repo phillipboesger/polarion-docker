@@ -210,7 +210,7 @@ jobs:
           npm install --no-save playwright@1.53.0
           npx playwright install --with-deps chromium
 
-          cat > /tmp/polarion-ui-smoke.mjs <<'EOF'
+          cat > polarion-ui-smoke.mjs <<'EOF'
           import { chromium } from 'playwright';
 
           const baseUrl = 'http://127.0.0.1/polarion/';
@@ -244,7 +244,8 @@ jobs:
           }
           EOF
 
-          node /tmp/polarion-ui-smoke.mjs
+          node polarion-ui-smoke.mjs
+          rm -f polarion-ui-smoke.mjs
 
       - name: UI smoke diagnostics on failure
         if: failure()

@@ -6,6 +6,20 @@ Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCH
 
 <!-- entries below -->
 
+## 2026-04-19 - Fixed Playwright module resolution in CI UI smoke test
+
+**Branch**: main
+**What was done**: Fixed the workflow failure `ERR_MODULE_NOT_FOUND: Cannot find package 'playwright' imported from /tmp/polarion-ui-smoke.mjs` by running the generated smoke script from the repository workspace instead of `/tmp`.
+**Changed files**:
+
+- .github/workflows/build-and-push.yml - changed smoke script path from `/tmp/polarion-ui-smoke.mjs` to `polarion-ui-smoke.mjs` and cleaned it up after execution
+- PROJECT_LOG.md - added this session log entry
+**New knowledge**:
+- Node ESM resolves package imports relative to the script location; scripts created in `/tmp` may not see workspace `node_modules`
+- Running the smoke script in `${{ github.workspace }}` ensures `import { chromium } from 'playwright'` resolves after `npm install --no-save playwright@...`
+
+---
+
 ## 2026-04-19 - Switched Polarion internal repository back to /repo
 
 **Branch**: main
