@@ -6,6 +6,22 @@ Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCH
 
 <!-- entries below -->
 
+## 2026-04-19 - Switched Polarion internal repository back to /repo
+
+**Branch**: main
+**What was done**: Reverted Polarion internal repository URL from `http://localhost/repo-local` to the default `http://localhost/repo` to avoid internal UI/auth conflicts. Applied the same change live in the running container and restarted Polarion.
+**Changed files**:
+
+- entrypoint.d/99-start-polarion.sh - changed startup property rewrite to `repo=http://localhost/repo`
+- PROJECT_LOG.md - added this session log entry
+  **New knowledge**:
+- `/repo-local` is suitable for explicit manual SVN access, but forcing Polarion internals to use it can cause repeated `AH01617 Password Mismatch` and `E200015` in UI requests
+- Polarion internal runtime should stay on default `/repo` unless a very specific integration requires otherwise
+  **Open / Next steps**:
+- Re-test one login/navigation cycle after startup completion and confirm no new `/repo-local` entries appear in Apache error log timestamps after restart
+
+---
+
 ## 2026-04-19 - Fixed repo-local commit permission denied on txn-current-lock
 
 **Branch**: main

@@ -63,7 +63,7 @@ fi
 
 echo "Applying default-local repository settings to polarion.properties"
 sed -i 's|^base.url=.*|base.url=http://localhost|' /opt/polarion/etc/polarion.properties
-sed -i 's|^repo=.*|repo=http://localhost/repo-local|' /opt/polarion/etc/polarion.properties
+sed -i 's|^repo=.*|repo=http://localhost/repo|' /opt/polarion/etc/polarion.properties
 sed -i 's|^controlHostname=.*|controlHostname=localhost|' /opt/polarion/etc/polarion.properties
 
 # Keep local basic-auth account available for repo-local usage.
