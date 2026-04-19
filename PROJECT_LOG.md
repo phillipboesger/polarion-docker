@@ -6,6 +6,20 @@ Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCH
 
 <!-- entries below -->
 
+## 2026-04-19 - Hardened Playwright UI smoke login and success detection
+
+**Branch**: main
+**What was done**: Fixed flaky UI smoke timeout (`page.waitForURL` on a too-narrow route regex) by using robust login-field selectors and accepting any authenticated SPA hash route under `/polarion/#/`.
+**Changed files**:
+
+- .github/workflows/build-and-push.yml - improved Playwright smoke script selectors (`j_username`/`j_password` fallbacks), submit fallback, and URL success condition from a small route allowlist to `/polarion/#/.+`
+- PROJECT_LOG.md - added this session log entry
+**New knowledge**:
+- Polarion post-login landing route can vary; strict allowlists like `home|mypolarion|wiki|workitems` cause false negatives in CI
+- CI smoke checks should validate authenticated state with a broad route pattern instead of brittle route-specific matching
+
+---
+
 ## 2026-04-19 - Fixed Playwright module resolution in CI UI smoke test
 
 **Branch**: main
