@@ -4,7 +4,7 @@
       "POLARION_CONTAINER_NAME": "polarion",
       "POLARION_EXTENSION_NAME": "custom",
       "POLARION_IMAGE": "polarion:local",
-      "POLARION_HTTP_PORT": "8080",
+      "POLARION_HTTP_PORT": "80",
       "POLARION_DB_PORT": "5433",
       "POLARION_JDWP_PORT": "5005",
       "POLARION_BIND_HOST": "0.0.0.0",
