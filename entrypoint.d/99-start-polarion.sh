@@ -30,6 +30,18 @@ choose_repo_host() {
 	return 1
 }
 
+normalize_repo_permissions() {
+	local repo_dir
+
+	for repo_dir in /srv/polarion/svn/repo /opt/polarion/data/svn/repo; do
+		[ -d "$repo_dir" ] || continue
+		echo "Normalizing SVN repository permissions at $repo_dir"
+		chgrp -R www-data "$repo_dir" || true
+		find "$repo_dir" -type d -exec chmod 2775 {} + || true
+		find "$repo_dir" -type f -exec chmod 0664 {} + || true
+	done
+}
+
 echo "Checking Subversion endpoint readiness..."
 SVN_READY=false
 for i in $(seq 1 60); do
@@ -63,6 +75,9 @@ else
 fi
 chown polarion:www-data "$SVN_PASSWD_FILE" || true
 chmod 0664 "$SVN_PASSWD_FILE" || true
+
+# Ensure Apache (www-data) can write SVN repo lock/index files during commits.
+normalize_repo_permissions
 
 # Start Polarion service
 service polarion start

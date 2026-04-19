@@ -6,6 +6,22 @@ Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCH
 
 <!-- entries below -->
 
+## 2026-04-19 - Fixed repo-local commit permission denied on txn-current-lock
+
+**Branch**: main
+**What was done**: Investigated failing `svn commit` on `/repo-local` and traced it to filesystem permissions in the FSFS repository (`/srv/polarion/svn/repo/db/txn-current-lock`). Applied a live permission hotfix in the running container and added a persistent startup normalization so Apache (`www-data`) can write repo lock/index files on every start.
+**Changed files**:
+
+- entrypoint.d/99-start-polarion.sh - added `normalize_repo_permissions` to enforce group `www-data`, directory mode `2775`, and file mode `0664` on SVN repo paths before starting Polarion
+- PROJECT_LOG.md - added this session log entry
+  **New knowledge**:
+- `svn: E000013 ... txn-current-lock: Permission denied` on `/repo-local` is a repo filesystem ACL/ownership issue, not an auth issue
+- If repo dirs are `2755` and lock files are `0644`, Apache auth succeeds but commit still fails because write lock creation/update is blocked
+  **Open / Next steps**:
+- Rebuild/restart with repository image changes to persist behavior across fresh containers; current running `polarion-dev` is already hotfixed
+
+---
+
 ## 2026-04-19 - Restored /repo-local admin/admin by switching to file auth
 
 **Branch**: main
