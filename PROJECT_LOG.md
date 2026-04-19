@@ -6,6 +6,23 @@ Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCH
 
 <!-- entries below -->
 
+## 2026-04-19 - Restored host HTTP default to port 80
+
+**Branch**: main
+**What was done**: Switched runtime and VS Code task defaults back from `8080` to `80` so Polarion is reachable again at `http://localhost/polarion/` without a port suffix. Restarted the container with default settings and verified host mapping plus endpoint reachability.
+**Changed files**:
+
+- scripts/polarion-runtime-lib.sh - changed default `POLARION_HTTP_PORT` from `8080` to `80`
+- .vscode/tasks.json - changed default `POLARION_HTTP_PORT` from `8080` to `80`
+- PROJECT_LOG.md - added this session log entry
+  **New knowledge**:
+- If `.vscode/tasks.json` pins `POLARION_HTTP_PORT=8080`, task-based starts override script defaults and keep publishing only `8080:80`
+- After reverting defaults to `80`, `http://localhost/polarion/` and `http://127.0.0.1/polarion/` both return `200`; `:8080` is unavailable unless explicitly configured
+  **Open / Next steps**:
+- If a parallel setup still needs `8080`, set `POLARION_HTTP_PORT=8080` only for that invocation instead of changing repository defaults
+
+---
+
 ## 2026-04-19 - Fixed repo-local auth mismatch by switching to DBD auth
 
 **Branch**: main
