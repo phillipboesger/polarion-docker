@@ -6,6 +6,22 @@ Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCH
 
 <!-- entries below -->
 
+## 2026-04-19 - Restored /repo-local admin/admin by switching to file auth
+
+**Branch**: main
+**What was done**: Investigated failing `/repo-local` Basic Auth and found the running `ghcr.io/...:latest` container still used DBD-only auth for `/repo-local`, with Apache reporting missing relation `polarion_internal.svnauthn` and repeated `AH01617 Password Mismatch` for `admin`. Updated local Apache generation to use `AuthUserFile` + `AuthBasicProvider file` for `/repo-local` and applied the same configuration as a hotfix inside the running `polarion-dev` container, then reloaded Apache.
+**Changed files**:
+
+- entrypoint.d/05-configure-apache.sh - switched `/repo-local` to file-based auth (`AuthUserFile /srv/polarion/svn/passwd`, `AuthBasicProvider file`) and enabled `authn_file`
+- PROJECT_LOG.md - added this session log entry
+  **New knowledge**:
+- In the current `ghcr.io/phillipboesger/polarion-docker:latest`, Apache DBD for `/repo-local` can fail with `AH00632` because `polarion_internal.svnauthn` is not present; this blocks admin/admin even when the endpoint is reachable
+- `/repo-local` as dedicated local endpoint should prefer file-based auth when deterministic `admin/admin` access is required
+  **Open / Next steps**:
+- Rebuild/restart from repository sources (or publish new image) so this fix is persisted and not only hotfixed in the current running container
+
+---
+
 ## 2026-04-19 - Restored host HTTP default to port 80
 
 **Branch**: main

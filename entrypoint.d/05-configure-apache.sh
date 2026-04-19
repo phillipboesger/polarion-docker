@@ -31,6 +31,7 @@ enable_apache_module_if_available proxy_http
 enable_apache_module_if_available proxy_ajp
 enable_apache_module_if_available proxy_wstunnel
 enable_apache_module_if_available auth_basic
+enable_apache_module_if_available authn_file
 enable_apache_module_if_available dav
 enable_apache_module_if_available dav_svn
 enable_apache_module_if_available authz_svn
@@ -54,8 +55,7 @@ fi
 
 # Add a dedicated local SVN endpoint used by Polarion internal access.
 # Keep /repo untouched (Polarion default configuration).
-if [ ! -f /etc/apache2/conf-available/polarionSVN-local.conf ]; then
-    cat >/etc/apache2/conf-available/polarionSVN-local.conf << 'EOF'
+cat >/etc/apache2/conf-available/polarionSVN-local.conf << 'EOF'
 <IfModule mod_dav_svn.c>
 <Location /repo-local>
 DAV svn
@@ -66,16 +66,13 @@ SVNPathAuthz short_circuit
 Require valid-user
 AuthType Basic
 AuthName "Subversion repository (local)"
-
-<IfModule mod_authn_dbd.c>
-    AuthBasicProvider dbd
-    AuthDBDUserPWQuery "SELECT password FROM polarion_internal.svnauthn WHERE username = %s"
-</IfModule>
+AuthUserFile "/srv/polarion/svn/passwd"
+AuthBasicProvider file
 </Location>
 </IfModule>
 EOF
-    a2enconf polarionSVN-local
-    validate_apache_config
-    service apache2 reload
-fi
+
+a2enconf polarionSVN-local >/dev/null 2>&1 || true
+validate_apache_config
+service apache2 reload
 
