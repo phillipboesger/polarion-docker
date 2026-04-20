@@ -110,7 +110,11 @@ A `docker-compose.yml` is included for convenience.
 Note: Docker Compose files in this repository are Docker-only. Apple `container` support is provided through direct CLI commands and the VS Code tasks documented in [docs/apple-container.md](./docs/apple-container.md).
 
 1.  Clone this repository.
-2.  Verify the `image` name in `docker-compose.yml` matches your local build (e.g., change to `polarion`) or the remote registry if you have access.
+2.  Build the local image once (default compose image is `polarion:local`):
+    ```bash
+    DOCKER_BUILDKIT=1 docker build --platform linux/amd64 -t polarion:local -f Dockerfile .
+    ```
+    Use `POLARION_IMAGE=ghcr.io/phillipboesger/polarion-docker:latest` only if you explicitly want to run the registry image.
 3.  Start the container:
     ```bash
     docker-compose up -d

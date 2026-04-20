@@ -6,6 +6,21 @@ Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCH
 
 <!-- entries below -->
 
+## 2026-04-20 - Made local startup path resilient against repo-local auth regression
+
+**Branch**: main
+**What was done**: Locked the local development default to `polarion:local` for Compose, rebuilt the image from current sources, and restarted the runtime so `/repo-local` uses file auth again with stable `admin/admin` access.
+**Changed files**:
+
+- docker-compose.yml - changed default image from `ghcr.io/phillipboesger/polarion-docker:latest` to `${POLARION_IMAGE:-polarion:local}` so local starts do not silently pick stale registry images
+- README.md - updated Compose instructions to build `polarion:local` first and documented explicit override via `POLARION_IMAGE=ghcr.io/phillipboesger/polarion-docker:latest`
+- PROJECT_LOG.md - added this session log entry
+  **New knowledge**:
+- The observed `/repo-local` `401` regression came from running an older GHCR image that still generated DBD auth for `/repo-local`; current repo sources generate file-auth and set internal `repo=http://localhost/repo`
+- Sustainable local recovery requires both code-level defaults and an actual local rebuild/restart, otherwise old container layers keep stale auth behavior
+
+---
+
 ## 2026-04-19 - Aligned Docker smoke step with fileEditor UI test env pattern
 
 **Branch**: main

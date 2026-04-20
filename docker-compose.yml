@@ -2,9 +2,9 @@ version: '3.8'
 
 services:
   polarion:
-    # Standard Docker image - can be pulled from registry
-    # Use the image hosted on GitHub Container Registry
-    image: ghcr.io/phillipboesger/polarion-docker:latest
+    # Local development defaults to the locally built image.
+    # Override with POLARION_IMAGE=ghcr.io/phillipboesger/polarion-docker:latest when needed.
+    image: ${POLARION_IMAGE:-polarion:local}
     platform: linux/amd64  # Important for Apple Silicon Macs
     container_name: polarion
     mem_limit: 4g
