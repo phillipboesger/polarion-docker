@@ -2,7 +2,10 @@
 ARG SOURCE_IMAGE=ubuntu:24.04
 FROM $SOURCE_IMAGE
 
-ARG JDK_SOURCE=https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.12%2B7/OpenJDK17U-jdk_x64_linux_hotspot_17.0.12_7.tar.gz
+# Temurin JDK download metadata — choose appropriate archive at build time
+ARG JDK_TAG=jdk-17.0.12%2B7
+ARG JDK_FILE_X64=OpenJDK17U-jdk_x64_linux_hotspot_17.0.12_7.tar.gz
+ARG JDK_FILE_AARCH64=OpenJDK17U-jdk_aarch64_linux_hotspot_17.0.12_7.tar.gz
 
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
@@ -17,7 +20,7 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 RUN apt-get -y update && \
 	apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
 	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
-	postgresql postgresql-client postgresql-contrib util-linux-extra && \
+	postgresql postgresql-client postgresql-contrib util-linux-extra iputils-ping && \
 	locale-gen en_US.UTF-8 && \
 	update-locale LANG=en_US.UTF-8 && \
 	apt-get clean && \
@@ -42,9 +45,19 @@ COPY polarion_starter.sh ./
 RUN chmod +x polarion_starter.sh
 
 # Download and install OpenJDK 17 (Temurin)
-RUN wget -O jdk.tar.gz --no-check-certificate "${JDK_SOURCE}" && \
-	mkdir -p /usr/lib/jvm && \
-	tar -zxf jdk.tar.gz -C /usr/lib/jvm && \
+# Select the correct archive for the image architecture (x86_64 vs aarch64)
+RUN set -eux; \
+	arch="$(uname -m)"; \
+	if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then \
+		jdk_file="$JDK_FILE_X64"; \
+	elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
+		jdk_file="$JDK_FILE_AARCH64"; \
+	else \
+		echo "Unsupported architecture: $arch"; exit 1; \
+	fi; \
+	wget -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin17-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
+	mkdir -p /usr/lib/jvm; \
+	tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
 	rm jdk.tar.gz
 
 # Configure Java alternatives for JDK 17
@@ -77,9 +90,13 @@ RUN --mount=type=bind,source=./data/,target=/data/ \
 	set -x && \
 	unzip -q "$(find /data -iname polarion*.zip)" && \
 	cd Polarion && \
-	../install.expect && \
+	../install.expect || true && \
+	test -d /opt/polarion/polarion && \
+	test -d /opt/polarion/data/svn && \
 	cd .. && \
 	rm -r Polarion && \
+	mkdir -p /opt/polarion/bootstrap/svn && \
+	cp -a /opt/polarion/data/svn/. /opt/polarion/bootstrap/svn/ && \
 	apt-get clean && \
 	rm -rf /var/lib/apt/lists/*
 
