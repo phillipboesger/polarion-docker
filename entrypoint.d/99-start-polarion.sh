@@ -1,7 +1,12 @@
 #!/bin/bash
 
 echo "Preparing Apache before Polarion start..."
-service apache2 restart || true
+# Remove stale PID file from a previous container run to ensure clean restart
+rm -f /var/run/apache2/apache2.pid 2>/dev/null || true
+if ! service apache2 restart 2>/dev/null; then
+    echo "Apache restart failed, attempting fresh start..."
+    service apache2 start || true
+fi
 
 get_http_code() {
 	local host="$1"
@@ -78,6 +83,13 @@ chmod 0664 "$SVN_PASSWD_FILE" || true
 
 # Ensure Apache (www-data) can write SVN repo lock/index files during commits.
 normalize_repo_permissions
+
+# Verify Apache is actually running before starting Polarion
+if ! pgrep -x apache2 >/dev/null 2>&1; then
+    echo "WARNING: Apache is not running — attempting recovery start before Polarion..."
+    rm -f /var/run/apache2/apache2.pid 2>/dev/null || true
+    service apache2 start || true
+fi
 
 # Start Polarion service
 service polarion start

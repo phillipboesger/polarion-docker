@@ -1,7 +1,10 @@
 #!/bin/bash
 # Enable Apache ProxyPass for WebSockets (fix suggested by community)
 echo "Configuring Apache WebSocket Proxy..."
-sed -i -e '/^ProxyPass \/polarion/i ProxyPassMatch ^/(polarion/ws)$ ws://127.0.0.1:8889/$1' /etc/apache2/conf-enabled/polarion.conf
+# Guard: only insert if not already present (idempotent on container restart)
+if ! grep -q 'ProxyPassMatch.*polarion/ws' /etc/apache2/conf-enabled/polarion.conf 2>/dev/null; then
+    sed -i -e '/^ProxyPass \/polarion/i ProxyPassMatch ^/(polarion/ws)$ ws://127.0.0.1:8889/$1' /etc/apache2/conf-enabled/polarion.conf
+fi
 
 enable_apache_module_if_available() {
     local module="$1"
@@ -39,6 +42,8 @@ enable_apache_module_if_available authz_svn
 if ! validate_apache_config; then
     echo "❌ Aborting Apache start due to invalid configuration."
 else
+    # Remove stale PID file from a previous container run before starting
+    rm -f /var/run/apache2/apache2.pid 2>/dev/null || true
     service apache2 start
     echo "✅ Apache started successfully."
 fi
