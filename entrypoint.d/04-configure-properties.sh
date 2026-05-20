@@ -13,6 +13,7 @@ OTHER_PARAMS=(
     "com.siemens.polarion.license.salt.enabled=false"
     "com.siemens.polarion.analytics.enabled=false"
     "com.polarion.platform.internalPG=polarion:polarion@localhost:5433"
+    "com.siemens.polarion.platform.locationIndex.enabled=true"
 )
 
 # Configure allowed hosts for Tomcat service
