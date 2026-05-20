@@ -31,7 +31,7 @@ There are two ways to use this image: building it yourself (recommended for most
 Since Polarion requires a license and the installation media is proprietary, you can build this Docker image locally using your own Polarion ZIP file.
 
 1.  **Download** the Polarion for Linux ZIP distribution (e.g., `Polarion-2512.zip`) from Siemens.
-2.  **Place** the downloaded ZIP file in the data directory of this repository.
+2.  **Place** the downloaded ZIP file in the `data` directory of this repository.
     - _Note: The build script automatically picks up any file matching `polarion_.zip`.\*
     - _Note: On Linux systems with SELinux enabled, set the context on `data` with `chcon -Rt 'container_file_t' data/`._
 3.  **Place** your license files in the repo:
@@ -40,7 +40,7 @@ Since Polarion requires a license and the installation media is proprietary, you
 4.  **Build** the Docker image:
     ```bash
     # With Docker
-    docker build -t polarion .
+    docker build --platform linux/amd64 -t polarion .
     # With Podman
     podman build --network private -t polarion .
     # With Apple container
@@ -75,7 +75,7 @@ If you have access:
     -p 80:80 \
     -p 5433:5433 \
     -p 5005:5005 \
-    -e JAVA_OPTS="-Xmx4g -Xms4g" \
+    -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
     --volume polarion_repo:/opt/polarion/data/svn \
     --volume polarion_extensions:/opt/polarion/polarion/extensions \
@@ -96,7 +96,7 @@ container run -d \
     -p 127.0.0.1:8080:80 \
     -p 127.0.0.1:5433:5433 \
     -p 127.0.0.1:5005:5005 \
-    -e JAVA_OPTS="-Xmx4g -Xms4g" \
+    -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
     -v polarion_repo:/opt/polarion/data/svn \
     -v polarion_extensions:/opt/polarion/polarion/extensions \
