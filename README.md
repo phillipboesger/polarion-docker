@@ -40,9 +40,9 @@ Since Polarion requires a license and the installation media is proprietary, you
 4.  **Build** the Docker image:
     ```bash
     # With Docker
-    docker build --platform linux/amd64 -t polarion .
+    docker build --platform linux/amd64 -t polarion:local .
     # With Podman
-    podman build --network private -t polarion .
+    podman build --network private -t polarion:local .
     # With Apple container
     container system start
     container builder start --cpus 8 --memory 8g
