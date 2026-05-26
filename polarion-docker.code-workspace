@@ -12,10 +12,6 @@
 		// ─────────────────────────────────────────────────────────────────────
 		// Container-Management Tasks
 		// ─────────────────────────────────────────────────────────────────────
-		// Steuert den Lebenszyklus des Polarion-Containers (und optional des
-		// Apple Container Builders auf macOS).  Polarion-Entwickler-Tasks
-		// (Redeploy, Logs) stehen in .vscode/tasks.json.
-		// ─────────────────────────────────────────────────────────────────────
 		"version": "2.0.0",
 		"options": {
 			"env": {
@@ -40,110 +36,54 @@
 			"cwd": "${workspaceFolder}"
 		},
 		"tasks": [
-			// ── Apple Container (nur macOS / Apple Silicon) ──────────────────
-			{
-				// Startet die Apple Container Systemdienste.
-				// Docker-Nutzer können diesen Task ignorieren – das Script prüft
-				// selbst, ob der Apple-Container-Runtime aktiv ist.
-				"label": "Container: System Start",
-				"type": "shell",
-				"command": "bash",
-				"args": [
-					"scripts/polarionctl.sh",
-					"system-start"
-				],
-				"presentation": {
-					"reveal": "always",
-					"panel": "shared"
-				},
-				"problemMatcher": []
-			},
-			{
-				"label": "Container: Builder Start",
-				"type": "shell",
-				"command": "bash",
-				"args": [
-					"scripts/polarionctl.sh",
-					"builder-start"
-				],
-				"presentation": {
-					"reveal": "always",
-					"panel": "shared"
-				},
-				"problemMatcher": []
-			},
-			{
-				"label": "Container: Builder Stop",
-				"type": "shell",
-				"command": "bash",
-				"args": [
-					"scripts/polarionctl.sh",
-					"builder-stop"
-				],
-				"presentation": {
-					"reveal": "always",
-					"panel": "shared"
-				},
-				"problemMatcher": []
-			},
-			// ── Image & Container ────────────────────────────────────────────
+			// ── Kern-Tasks ───────────────────────────────────────────────────
 			{
 				"label": "Container: Build Image",
 				"type": "shell",
 				"command": "bash",
-				"args": [
-					"scripts/polarionctl.sh",
-					"build-image"
-				],
-				"presentation": {
-					"reveal": "always",
-					"panel": "shared"
-				},
+				"args": ["scripts/polarionctl.sh", "build-image"],
+				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
 			},
 			{
 				"label": "Container: Start",
 				"type": "shell",
 				"command": "bash",
-				"args": [
-					"scripts/polarionctl.sh",
-					"start"
-				],
-				"presentation": {
-					"reveal": "always",
-					"panel": "shared"
-				},
+				"args": ["scripts/polarionctl.sh", "start"],
+				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
 			},
 			{
 				"label": "Container: Stop",
 				"type": "shell",
 				"command": "bash",
-				"args": [
-					"scripts/polarionctl.sh",
-					"stop"
-				],
-				"presentation": {
-					"reveal": "always",
-					"panel": "shared"
-				},
+				"args": ["scripts/polarionctl.sh", "stop"],
+				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
 			},
-			// ── Compound ─────────────────────────────────────────────────────
+			// ── Optional: nur auf macOS mit Apple Container Runtime nötig ───
 			{
-				// Startet alles von Grund auf: System → Image bauen → Container.
-				// Entspricht dem alten „Polarion: Full Start".
-				"label": "Container: Fresh Start",
-				"dependsOrder": "sequence",
-				"dependsOn": [
-					"Container: System Start",
-					"Container: Build Image",
-					"Container: Start"
-				],
-				"presentation": {
-					"reveal": "always",
-					"panel": "shared"
-				},
+				"label": "Container: System Start",
+				"type": "shell",
+				"command": "bash",
+				"args": ["scripts/polarionctl.sh", "system-start"],
+				"presentation": { "reveal": "always", "panel": "shared" },
+				"problemMatcher": []
+			},
+			{
+				"label": "Container: Builder Start",
+				"type": "shell",
+				"command": "bash",
+				"args": ["scripts/polarionctl.sh", "builder-start"],
+				"presentation": { "reveal": "always", "panel": "shared" },
+				"problemMatcher": []
+			},
+			{
+				"label": "Container: Builder Stop",
+				"type": "shell",
+				"command": "bash",
+				"args": ["scripts/polarionctl.sh", "builder-stop"],
+				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
 			}
 		]
