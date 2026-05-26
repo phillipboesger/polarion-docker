@@ -181,14 +181,14 @@ For developing custom plugins with live reloading, refer to [PLUGIN-DEVELOPMENT.
 
 ### Apple `container` Workflow
 
-If you are developing on Apple silicon with macOS 26 or later, see [docs/apple-container.md](./docs/apple-container.md) for the Apple `container` quickstart and the included VS Code tasks for:
+If you are developing on Apple silicon with macOS 26 or later, see [docs/apple-container.md](./docs/apple-container.md) for the Apple `container` quickstart and the VS Code task reference.
 
-- system start
-- builder start
-- image build
-- Polarion start and stop
-- live logs and error logs
-- one-click redeploy into a running Apple `container` instance
+Open [`polarion-docker.code-workspace`](./polarion-docker.code-workspace) in VS Code to get all tasks available in the task picker:
+
+| Group | Tasks |
+| :--- | :--- |
+| Container | `Build Image` · `Start` · `Stop` · `System Start` · `Builder Start/Stop` |
+| Polarion | `Logs` · `Error Logs` · `Redeploy Single` · `Redeploy All` · `Redeploy Preflight` |
 
 ## 🖥️ Platform Support
 

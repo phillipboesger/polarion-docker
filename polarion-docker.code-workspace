@@ -1,7 +1,7 @@
 {
-	// Öffne diese Datei in VS Code (Datei → Workspace aus Datei öffnen …), damit
-	// sowohl die Container-Tasks (hier) als auch die Polarion-Entwickler-Tasks
-	// (.vscode/tasks.json) im Task-Picker erscheinen.
+	// Open this file in VS Code (File > Open Workspace from File…) so that
+	// both the container tasks defined here and the Polarion developer tasks
+	// in .vscode/tasks.json appear together in the task picker.
 	"folders": [
 		{
 			"path": "."
@@ -9,9 +9,12 @@
 	],
 	"settings": {},
 	"tasks": {
-		// ─────────────────────────────────────────────────────────────────────
+		// ---------------------------------------------------------------------
 		// Container-Management Tasks
-		// ─────────────────────────────────────────────────────────────────────
+		// ---------------------------------------------------------------------
+		// Controls the Polarion container lifecycle.
+		// Polarion developer tasks (Redeploy, Logs) live in .vscode/tasks.json.
+		// ---------------------------------------------------------------------
 		"version": "2.0.0",
 		"options": {
 			"env": {
@@ -36,9 +39,10 @@
 			"cwd": "${workspaceFolder}"
 		},
 		"tasks": [
-			// ── Kern-Tasks ───────────────────────────────────────────────────
+			// -- Core tasks ---------------------------------------------------
 			{
 				"label": "Container: Build Image",
+				"detail": "Build the polarion:local Docker / Apple container image from the Dockerfile.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "build-image"],
@@ -47,6 +51,7 @@
 			},
 			{
 				"label": "Container: Start",
+				"detail": "Create and start the Polarion container, sync the license file, and wait until the HTTP endpoint is reachable.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "start"],
@@ -55,15 +60,17 @@
 			},
 			{
 				"label": "Container: Stop",
+				"detail": "Stop and remove the running Polarion container. Volumes (data, extensions) are preserved.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "stop"],
 				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
 			},
-			// ── Optional: nur auf macOS mit Apple Container Runtime nötig ───
+			// -- Optional: Apple container runtime only (macOS) ---------------
 			{
 				"label": "Container: System Start",
+				"detail": "Start Apple container system services. Required once after login or reboot on macOS. No-op when using Docker.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "system-start"],
@@ -72,6 +79,7 @@
 			},
 			{
 				"label": "Container: Builder Start",
+				"detail": "Start the Apple container builder with the configured CPU and memory limits. Required before the first image build on macOS. No-op when using Docker.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "builder-start"],
@@ -80,6 +88,7 @@
 			},
 			{
 				"label": "Container: Builder Stop",
+				"detail": "Stop the Apple container builder to free system resources. No-op when using Docker.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "builder-stop"],
