@@ -18,7 +18,8 @@
 			"POLARION_REDEPLOY_SEARCH_DEPTH": "1",
 			"POLARION_DATA_VOLUME": "polarion_repo",
 			"POLARION_EXTENSIONS_VOLUME": "polarion_extensions"
-		}
+		},
+		"cwd": "${workspaceFolder}"
 	},
 	"version": "2.0.0",
 	"tasks": [
@@ -27,7 +28,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/polarionctl.sh",
+				"scripts/polarionctl.sh",
 				"system-start"
 			],
 			"presentation": {
@@ -41,7 +42,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/polarionctl.sh",
+				"scripts/polarionctl.sh",
 				"builder-start"
 			],
 			"presentation": {
@@ -55,7 +56,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/polarionctl.sh",
+				"scripts/polarionctl.sh",
 				"builder-stop"
 			],
 			"presentation": {
@@ -69,7 +70,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/polarionctl.sh",
+				"scripts/polarionctl.sh",
 				"build-image"
 			],
 			"presentation": {
@@ -83,7 +84,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/polarionctl.sh",
+				"scripts/polarionctl.sh",
 				"start"
 			],
 			"presentation": {
@@ -111,7 +112,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/polarionctl.sh",
+				"scripts/polarionctl.sh",
 				"stop"
 			],
 			"presentation": {
@@ -125,7 +126,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/polarionctl.sh",
+				"scripts/polarionctl.sh",
 				"logs"
 			],
 			"presentation": {
@@ -141,7 +142,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/polarionctl.sh",
+				"scripts/polarionctl.sh",
 				"errors"
 			],
 			"presentation": {
@@ -159,7 +160,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/redeploy.sh",
+				"scripts/redeploy.sh",
 				"${file}",
 				"polarion",
 				"custom"
@@ -175,7 +176,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/redeploy.sh",
+				"scripts/redeploy.sh",
 				"${file}",
 				"polarion",
 				"custom"
@@ -196,7 +197,7 @@
 			"type": "shell",
 			"command": "bash",
 			"args": [
-				"${workspaceFolder}/scripts/redeploy.sh",
+				"scripts/redeploy.sh",
 				"${workspaceFolder}",
 				"polarion",
 				"custom"

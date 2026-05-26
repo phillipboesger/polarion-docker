@@ -96,18 +96,42 @@ This flow assumes Apple silicon, macOS 26+, and the Apple `container` CLI instal
 
 If you want to have the same tasks available globally (for all workspaces) as **user tasks**, you can additionally add them to your user `tasks.json`. Steps:
 
-1. Copy the redeployment script globally: `mkdir -p ~/scripts && cp ./scripts/redeploy.sh ~/scripts/redeploy.sh && chmod +x ~/scripts/redeploy.sh`
+1. Copy the redeployment script to a stable location on your machine:
+
+   **macOS / Linux:**
+```bash
+   mkdir -p ~/scripts && cp ./scripts/redeploy.sh ~/scripts/redeploy.sh && chmod +x ~/scripts/redeploy.sh
+```
+
+   **Windows (PowerShell — requires Git Bash on PATH):**
+```powershell
+   New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\scripts"
+   Copy-Item .\scripts\redeploy.sh "$env:USERPROFILE\scripts\redeploy.sh"
+```
+   > **Windows prerequisite:** The tasks call bash scripts. You need **Git for Windows** (Git Bash) or **WSL2** with bash available on `PATH`. Verify with `bash --version` in PowerShell before continuing.
 2. Open the Command Palette (Cmd+Shift+P / Ctrl+Shift+P).
 3. Choose **Tasks: Open User Tasks**.
 4. Copy the task definitions from [`.vscode/tasks.json`](.vscode/tasks.json) into your user tasks file.
-5. In the `Polarion: Full Redeploy` task, change the `command` from `${workspaceFolder}/scripts/redeploy.sh` to `~/scripts/redeploy.sh`.
+5. In the `Polarion: Full Redeploy` task, change the `command` to the absolute path where you placed the script:
+
+   **macOS / Linux:** `~/scripts/redeploy.sh`
+   **Windows:** `C:/Users/YourName/scripts/redeploy.sh`
+   *(use forward slashes — Windows backslashes break bash path resolution)*
+
+   Also set `"cwd"` in the task options so relative paths inside the script resolve correctly:
+```jsonc
+   "options": {
+     "cwd": "C:/Dev/polarion-docker"
+   }
+```
 6. Adjust the third argument (`custom`) to match your own extension folder name.
 
 ### 3.3 Global Debugging & Settings (settings.json)
 
 1. Open Command Palette.
 2. Type **Preferences: Open User Settings (JSON)**.
-3. To make the debug configuration globally available across all workspaces, copy the launch configuration from [`.vscode/launch.json`](.vscode/launch.json) and embed it under a `"launch"` key. Add `"projectName": "${fileWorkspaceFolderBasename}"` so source code resolves correctly when multiple workspaces are open.
+3. To make the debug configuration globally available across all workspaces, copy the launch configuration from [`.vscode/launch.json`](.vscode/launch.json) and embed it under a `"launch"` key. Add `"projectName": "${fileWorkspaceFolderBasename}"` so source code resolves correctly when multiple workspaces are open. 
+> **Windows edge case:** `${fileWorkspaceFolderBasename}` resolves correctly in `settings.json` when using a `.code-workspace` file. Without one — i.e., in a plain folder-open — VS Code may not substitute the variable and the debugger attaches but breakpoints never fire. Fix: move the launch configuration to the project's own `.vscode/launch.json` instead (identical content, without the `"launch"` wrapper key).
 4. Additionally add the following settings for performance and Hot Code Replace:
 
 ```json
