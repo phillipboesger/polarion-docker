@@ -1,4 +1,11 @@
 {
+	// ─────────────────────────────────────────────────────────────────────────
+	// Polarion Developer Tasks
+	// ─────────────────────────────────────────────────────────────────────────
+	// Container-management tasks (start / stop / build image) live in the
+	// workspace file  polarion-docker.code-workspace.  Open that file in VS Code
+	// to get both task groups merged in the task picker.
+	// ─────────────────────────────────────────────────────────────────────────
 	"options": {
 		"env": {
 			"POLARION_CONTAINER_NAME": "polarion",
@@ -23,104 +30,7 @@
 	},
 	"version": "2.0.0",
 	"tasks": [
-		{
-			"label": "Polarion: System Start",
-			"type": "shell",
-			"command": "bash",
-			"args": [
-				"scripts/polarionctl.sh",
-				"system-start"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "Polarion: Builder Start",
-			"type": "shell",
-			"command": "bash",
-			"args": [
-				"scripts/polarionctl.sh",
-				"builder-start"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "Polarion: Builder Stop",
-			"type": "shell",
-			"command": "bash",
-			"args": [
-				"scripts/polarionctl.sh",
-				"builder-stop"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "Polarion: Build Image",
-			"type": "shell",
-			"command": "bash",
-			"args": [
-				"scripts/polarionctl.sh",
-				"build-image"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "Polarion: Start",
-			"type": "shell",
-			"command": "bash",
-			"args": [
-				"scripts/polarionctl.sh",
-				"start"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "Polarion: Full Start",
-			"dependsOrder": "sequence",
-			"dependsOn": [
-				"Polarion: System Start",
-				"Polarion: Build Image",
-				"Polarion: Start"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "Polarion: Stop",
-			"type": "shell",
-			"command": "bash",
-			"args": [
-				"scripts/polarionctl.sh",
-				"stop"
-			],
-			"presentation": {
-				"reveal": "always",
-				"panel": "shared"
-			},
-			"problemMatcher": []
-		},
+		// ── Logs ──────────────────────────────────────────────────────────────
 		{
 			"label": "Polarion: Live Logs",
 			"type": "shell",
@@ -149,14 +59,16 @@
 				"echo": false,
 				"reveal": "always",
 				"focus": false,
-				"panel": "new",
-				"group": "polarion-logs"
+				"panel": "new"
 			},
 			"isBackground": true,
 			"problemMatcher": []
 		},
+		// ── Redeploy – einzelne Plugins ───────────────────────────────────────
 		{
-			"label": "Polarion: Full Redeploy",
+			// Baut das Plugin des aktuell geöffneten Files und deployt es in den
+			// laufenden Container (Maven build + Service-Restart in Container).
+			"label": "Polarion: Redeploy (Active File)",
 			"type": "shell",
 			"command": "bash",
 			"args": [
@@ -172,6 +84,8 @@
 			"problemMatcher": []
 		},
 		{
+			// Prüft nur Abhängigkeiten (Require-Bundle) – deployt nichts.
+			// Nützlich bevor ein Redeploy auf einem sauberen Container läuft.
 			"label": "Polarion: Redeploy Preflight",
 			"type": "shell",
 			"command": "bash",
@@ -192,7 +106,10 @@
 			},
 			"problemMatcher": []
 		},
+		// ── Redeploy – gesamter Workspace ─────────────────────────────────────
 		{
+			// Baut und deployt alle Plugins im Workspace (alle biz.avasis.polarion.*
+			// Projekte unterhalb von workspaceFolder).
 			"label": "Polarion: Redeploy Workspace",
 			"type": "shell",
 			"command": "bash",
@@ -208,11 +125,17 @@
 			},
 			"problemMatcher": []
 		},
+		// ── Fresh-Deploy Compound-Tasks ────────────────────────────────────────
+		// Diese Tasks starten erst einen frischen Container (System + Image +
+		// Container) und deployen dann die Plugins.  Sinnvoll bei erstem Setup
+		// oder nach Dockerfile-Änderungen.
 		{
-			"label": "Polarion: Full Redeploy Workspace",
+			"label": "Polarion: Fresh Deploy Workspace",
 			"dependsOrder": "sequence",
 			"dependsOn": [
-				"Polarion: Full Start",
+				"Container: System Start",
+				"Container: Build Image",
+				"Container: Start",
 				"Polarion: Redeploy Workspace"
 			],
 			"presentation": {
@@ -222,11 +145,13 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Polarion: Full Redeploy (Active File)",
+			"label": "Polarion: Fresh Deploy (Active File)",
 			"dependsOrder": "sequence",
 			"dependsOn": [
-				"Polarion: Full Start",
-				"Polarion: Full Redeploy"
+				"Container: System Start",
+				"Container: Build Image",
+				"Container: Start",
+				"Polarion: Redeploy (Active File)"
 			],
 			"presentation": {
 				"reveal": "always",
