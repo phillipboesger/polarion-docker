@@ -366,6 +366,9 @@ polarion_find_running_polarion_container() {
 }
 
 polarion_autodetect_container_name() {
+	# Only run when POLARION_CONTAINER_NAME was not explicitly set by the caller.
+	# Picks the first running container whose image name contains "polarion".
+	# Set POLARION_CONTAINER_NAME before sourcing this lib to pin a specific container.
 	[ -z "${REQUESTED_POLARION_CONTAINER_NAME}" ] || return 0
 
 	local found_name=""

@@ -27,7 +27,7 @@ Before the script stops Polarion, it runs a preflight check against the built pl
 
 If you only want to run the preflight without deploying, set `POLARION_REDEPLOY_PREFLIGHT_ONLY=true`.
 
-**Container auto-detection:** The scripts automatically find the currently running Polarion container by searching for any running container whose image name contains `polarion`. This means tasks work without any manual configuration as long as the container was started from a `polarion`-named image (e.g. `polarion:local`, `polarion:2512`, or `ghcr.io/.../polarion-docker:latest`). To override, set `POLARION_CONTAINER_NAME` to a specific name.
+**Container auto-detection:** The scripts automatically find the currently running Polarion container by searching for any running container whose image name contains `polarion`. This means tasks work without any manual configuration as long as the container was started from a `polarion`-named image (e.g. `polarion:local`, `polarion:2512`, or `ghcr.io/.../polarion-docker:latest`). If multiple matching containers are running, the first one found is used. To always target a specific container, set `POLARION_CONTAINER_NAME` to override auto-detection.
 
 ```sh
 # Usage:
