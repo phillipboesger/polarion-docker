@@ -49,6 +49,49 @@ Since Polarion requires a license and the installation media is proprietary, you
     container build --platform linux/amd64 -t polarion:local .
     container builder stop
     ```
+5.  **Run** the container using the locally built image:
+    ```bash
+    # With Docker
+    docker run -d \
+      --name polarion \
+      --platform linux/amd64 \
+      --memory 4g \
+      -p 80:80 \
+      -p 5433:5433 \
+      -p 5005:5005 \
+      -e JAVA_OPTS="-Xmx3g -Xms3g" \
+      -e JDWP_ENABLED=true \
+      --volume polarion_repo:/opt/polarion/data/svn \
+      --volume polarion_extensions:/opt/polarion/polarion/extensions \
+      polarion:local
+    # With Podman
+    podman run -d \
+      --name polarion \
+      --memory 4g \
+      -p 80:80 \
+      -p 5433:5433 \
+      -p 5005:5005 \
+      -e JAVA_OPTS="-Xmx3g -Xms3g" \
+      -e JDWP_ENABLED=true \
+      --volume polarion_repo:/opt/polarion/data/svn \
+      --volume polarion_extensions:/opt/polarion/polarion/extensions \
+      polarion:local
+    # With Apple container
+    container run -d \
+      --name polarion \
+      --platform linux/amd64 \
+      --rosetta \
+      --cpus 8 \
+      --memory 4g \
+      -p 127.0.0.1:8080:80 \
+      -p 127.0.0.1:5433:5433 \
+      -p 127.0.0.1:5005:5005 \
+      -e JAVA_OPTS="-Xmx3g -Xms3g" \
+      -e JDWP_ENABLED=true \
+      -v polarion_repo:/opt/polarion/data/svn \
+      -v polarion_extensions:/opt/polarion/polarion/extensions \
+      polarion:local
+    ```
 
 ### Option B: Pre-built Images
 
