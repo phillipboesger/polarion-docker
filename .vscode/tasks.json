@@ -10,7 +10,6 @@
 	"version": "2.0.0",
 	"options": {
 		"env": {
-			"POLARION_CONTAINER_NAME": "polarion",
 			"POLARION_EXTENSION_NAME": "custom",
 			"POLARION_IMAGE": "polarion:local",
 			"POLARION_HTTP_PORT": "80",
@@ -51,7 +50,7 @@
 			"detail": "Build the plugin of the currently active file (Maven) and hot-deploy it into the running container, then restart the Polarion service.",
 			"type": "shell",
 			"command": "bash",
-			"args": ["scripts/redeploy.sh", "${file}", "polarion", "custom"],
+			"args": ["scripts/redeploy.sh", "${file}"],
 			"presentation": { "reveal": "always", "panel": "shared" },
 			"problemMatcher": []
 		},
@@ -60,7 +59,7 @@
 			"detail": "Build and deploy all plugin projects found in the workspace (all biz.avasis.polarion.* projects below workspaceFolder), then restart the Polarion service.",
 			"type": "shell",
 			"command": "bash",
-			"args": ["scripts/redeploy.sh", "${workspaceFolder}", "polarion", "custom"],
+			"args": ["scripts/redeploy.sh", "${workspaceFolder}"],
 			"presentation": { "reveal": "always", "panel": "shared" },
 			"problemMatcher": []
 		},
@@ -85,7 +84,7 @@
 			"detail": "Validate all Require-Bundle dependencies of the active file's plugin without stopping Polarion or copying any files. Run this before a redeploy to catch missing bundle errors early.",
 			"type": "shell",
 			"command": "bash",
-			"args": ["scripts/redeploy.sh", "${file}", "polarion", "custom"],
+			"args": ["scripts/redeploy.sh", "${file}"],
 			"options": {
 				"env": { "POLARION_REDEPLOY_PREFLIGHT_ONLY": "true" }
 			},
