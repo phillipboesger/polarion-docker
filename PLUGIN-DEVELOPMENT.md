@@ -17,8 +17,8 @@ This script handles the build process, cleans old plugin versions from the conta
 Parameters:
 
 - `$1` – Path to any file or folder inside your plugin project (VS Code passes `${file}` here).
-- `$2` – Container name (default: `polarion`).
-- `$3` – Extension name / target subfolder inside `/opt/polarion/polarion/extensions/` (e.g. `custom`).
+- `$2` – Container name. Optional — auto-detected from the running container whose image contains "polarion" (e.g. `polarion:local` or `ghcr.io/.../polarion-docker:latest`). Override with the `POLARION_CONTAINER_NAME` environment variable or by passing it explicitly.
+- `$3` – Extension name / target subfolder inside `/opt/polarion/polarion/extensions/` (e.g. `custom`). Optional — defaults to `POLARION_EXTENSION_NAME` (default: `custom`).
 - `$4` – Runtime (`docker` or `container`, default: `docker`).
 
 The script traverses up from the given path until it finds a `pom.xml`, so you never need to manually point it to the project root.
@@ -27,15 +27,17 @@ Before the script stops Polarion, it runs a preflight check against the built pl
 
 If you only want to run the preflight without deploying, set `POLARION_REDEPLOY_PREFLIGHT_ONLY=true`.
 
+**Container auto-detection:** The scripts automatically find the currently running Polarion container by searching for any running container whose image name contains `polarion`. This means tasks work without any manual configuration as long as the container was started from a `polarion`-named image (e.g. `polarion:local`, `polarion:2512`, or `ghcr.io/.../polarion-docker:latest`). To override, set `POLARION_CONTAINER_NAME` to a specific name.
+
 ```sh
 # Usage:
-./scripts/redeploy.sh ../path/to/your/extension polarion <extension-name> docker
+./scripts/redeploy.sh ../path/to/your/extension
 
-# Example with the default settings from tasks.json:
-./scripts/redeploy.sh . polarion custom docker
+# With explicit container and extension name:
+./scripts/redeploy.sh . polarion custom
 
 # Preflight only, no restart and no copy:
-POLARION_REDEPLOY_PREFLIGHT_ONLY=true ./scripts/redeploy.sh . polarion custom docker
+POLARION_REDEPLOY_PREFLIGHT_ONLY=true ./scripts/redeploy.sh .
 ```
 
 ## 3. VS Code configuration in the repository
@@ -71,7 +73,7 @@ This repository ships preconfigured VS Code files. Open
 | `Polarion: Error Logs` | *(optional)* Stream only ERROR / Exception lines |
 | `Polarion: Redeploy Preflight` | *(optional)* Validate bundle dependencies without stopping Polarion or deploying |
 
-The runtime is auto-detected by the scripts (prefers `docker` if available) or can be forced with `POLARION_RUNTIME=docker` or `POLARION_RUNTIME=container`.
+The runtime is auto-detected by the scripts (prefers `docker` if available) or can be forced with `POLARION_RUNTIME=docker` or `POLARION_RUNTIME=container`. The container name is auto-detected from the running container whose image name contains `polarion` — no configuration needed. Set `POLARION_CONTAINER_NAME` to override.
 
 **Debug configuration:**
 
@@ -135,7 +137,7 @@ If you want to have the same tasks available globally (for all workspaces) as **
      "cwd": "C:/Dev/polarion-docker"
    }
 ```
-6. Adjust the third argument (`custom`) to match your own extension folder name.
+6. If your extension folder is not named `custom`, override it by setting `POLARION_EXTENSION_NAME` in the task's `env` options instead of adjusting an argument.
 
 ### 3.3 Global Debugging & Settings (settings.json)
 
