@@ -1,0 +1,25 @@
+# Ensure shell scripts, Dockerfiles, and config files always use LF line endings,
+# regardless of the host OS. Without this, Windows git checks out .sh files with
+# CRLF, which breaks every bash shebang on line 1 with "no such file or directory".
+
+*.sh           text eol=lf
+*.bash         text eol=lf
+Dockerfile     text eol=lf
+Dockerfile.*   text eol=lf
+entrypoint.d/* text eol=lf
+install.expect text eol=lf
+.env           text eol=lf
+*.env          text eol=lf
+
+# Standard text files — normalize to LF
+*.md           text eol=lf
+*.json         text eol=lf
+*.yml          text eol=lf
+*.yaml         text eol=lf
+
+# Binary files — never touch line endings
+*.png          binary
+*.jpg          binary
+*.gif          binary
+*.zip          binary
+*.tar.gz       binary

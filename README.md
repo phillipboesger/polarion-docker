@@ -31,7 +31,7 @@ There are two ways to use this image: building it yourself (recommended for most
 Since Polarion requires a license and the installation media is proprietary, you can build this Docker image locally using your own Polarion ZIP file.
 
 1.  **Download** the Polarion for Linux ZIP distribution (e.g., `Polarion-2512.zip`) from Siemens.
-2.  **Place** the downloaded ZIP file in the data directory of this repository.
+2.  **Place** the downloaded ZIP file in the `data` directory of this repository.
     - _Note: The build script automatically picks up any file matching `polarion_.zip`.\*
     - _Note: On Linux systems with SELinux enabled, set the context on `data` with `chcon -Rt 'container_file_t' data/`._
 3.  **Place** your license files in the repo:
@@ -40,14 +40,57 @@ Since Polarion requires a license and the installation media is proprietary, you
 4.  **Build** the Docker image:
     ```bash
     # With Docker
-    docker build -t polarion .
+    docker build --platform linux/amd64 -t polarion:local .
     # With Podman
-    podman build --network private -t polarion .
+    podman build --network private -t polarion:local .
     # With Apple container
     container system start
     container builder start --cpus 8 --memory 8g
     container build --platform linux/amd64 -t polarion:local .
     container builder stop
+    ```
+5.  **Run** the container using the locally built image:
+    ```bash
+    # With Docker
+    docker run -d \
+      --name polarion \
+      --platform linux/amd64 \
+      --memory 4g \
+      -p 80:80 \
+      -p 5433:5433 \
+      -p 5005:5005 \
+      -e JAVA_OPTS="-Xmx3g -Xms3g" \
+      -e JDWP_ENABLED=true \
+      --volume polarion_repo:/opt/polarion/data/svn \
+      --volume polarion_extensions:/opt/polarion/polarion/extensions \
+      polarion:local
+    # With Podman
+    podman run -d \
+      --name polarion \
+      --memory 4g \
+      -p 80:80 \
+      -p 5433:5433 \
+      -p 5005:5005 \
+      -e JAVA_OPTS="-Xmx3g -Xms3g" \
+      -e JDWP_ENABLED=true \
+      --volume polarion_repo:/opt/polarion/data/svn \
+      --volume polarion_extensions:/opt/polarion/polarion/extensions \
+      polarion:local
+    # With Apple container
+    container run -d \
+      --name polarion \
+      --platform linux/amd64 \
+      --rosetta \
+      --cpus 8 \
+      --memory 4g \
+      -p 127.0.0.1:8080:80 \
+      -p 127.0.0.1:5433:5433 \
+      -p 127.0.0.1:5005:5005 \
+      -e JAVA_OPTS="-Xmx3g -Xms3g" \
+      -e JDWP_ENABLED=true \
+      -v polarion_repo:/opt/polarion/data/svn \
+      -v polarion_extensions:/opt/polarion/polarion/extensions \
+      polarion:local
     ```
 
 ### Option B: Pre-built Images
@@ -75,7 +118,7 @@ If you have access:
     -p 80:80 \
     -p 5433:5433 \
     -p 5005:5005 \
-    -e JAVA_OPTS="-Xmx4g -Xms4g" \
+    -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
     --volume polarion_repo:/opt/polarion/data/svn \
     --volume polarion_extensions:/opt/polarion/polarion/extensions \
@@ -96,7 +139,7 @@ container run -d \
     -p 127.0.0.1:8080:80 \
     -p 127.0.0.1:5433:5433 \
     -p 127.0.0.1:5005:5005 \
-    -e JAVA_OPTS="-Xmx4g -Xms4g" \
+    -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
     -v polarion_repo:/opt/polarion/data/svn \
     -v polarion_extensions:/opt/polarion/polarion/extensions \
@@ -181,14 +224,14 @@ For developing custom plugins with live reloading, refer to [PLUGIN-DEVELOPMENT.
 
 ### Apple `container` Workflow
 
-If you are developing on Apple silicon with macOS 26 or later, see [docs/apple-container.md](./docs/apple-container.md) for the Apple `container` quickstart and the included VS Code tasks for:
+If you are developing on Apple silicon with macOS 26 or later, see [docs/apple-container.md](./docs/apple-container.md) for the Apple `container` quickstart and the VS Code task reference.
 
-- system start
-- builder start
-- image build
-- Polarion start and stop
-- live logs and error logs
-- one-click redeploy into a running Apple `container` instance
+Open [`polarion-docker.code-workspace`](./polarion-docker.code-workspace) in VS Code to get all tasks available in the task picker:
+
+| Group | Tasks |
+| :--- | :--- |
+| Container | `Build Image` · `Start` · `Stop` · `System Start` · `Builder Start/Stop` |
+| Polarion | `Logs` · `Error Logs` · `Redeploy Single` · `Redeploy All` · `Redeploy Preflight` |
 
 ## 🖥️ Platform Support
 
