@@ -18,6 +18,11 @@ services:
       - JAVA_OPTS=-Xmx3g -Xms3g
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
       - JDWP_ENABLED=true
+      # Route mail notifications to the Mailpit sidecar (internal SMTP on 1025)
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+    depends_on:
+      - mailpit
     healthcheck:
       test:
         - CMD
@@ -31,4 +36,14 @@ services:
       timeout: 2s
       retries: 10
       start_period: 10s
+    restart: unless-stopped
+
+  mailpit:
+    # Catches all outgoing Polarion notification mails for local debugging.
+    # SMTP listens on 1025 (reached internally as mailpit:1025); web UI on 8025.
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    ports:
+      - "25:1025"       # SMTP (host 25 -> Mailpit 1025)
+      - "8025:8025"     # Mailpit web UI -> http://localhost:8025
     restart: unless-stopped
