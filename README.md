@@ -188,7 +188,7 @@ To add your own configuration:
 | `JDWP_ENABLED`  | Enable Java Debug Wire Protocol              | `true`                        |
 | `ALLOWED_HOSTS` | Comma-separated list of allowed host headers | `localhost,127.0.0.1,0.0.0.0` |
 | `SMTP_HOST`     | SMTP host for mail notifications. When set, the entrypoint enables notifications and points Polarion's `announcer.smtp.host` at it. Unset on standalone runs. | _(unset; `mailpit` via Compose)_ |
-| `SMTP_PORT`     | SMTP port used together with `SMTP_HOST`     | `1025`                        |
+| `SMTP_PORT`     | SMTP port used together with `SMTP_HOST`     | `25`                          |
 
 ### External SVN Endpoints
 
@@ -226,8 +226,8 @@ The Compose files bundle a [Mailpit](https://github.com/axllent/mailpit) sidecar
 
 How it is wired by default:
 
-- Polarion's entrypoint sets `announcer.smtp.host=mailpit` / `announcer.smtp.port=1025` and enables notifications (driven by `SMTP_HOST` / `SMTP_PORT`).
-- The sidecar exposes SMTP on host port **25** and a web UI on **8025**.
+- Polarion's entrypoint sets `announcer.smtp.host=mailpit` / `announcer.smtp.port=25` and enables notifications (driven by `SMTP_HOST` / `SMTP_PORT`).
+- The sidecar listens for SMTP on port **25** and serves a web UI on **8025**, both published to the host.
 
 Usage:
 
@@ -263,7 +263,7 @@ Open [`polarion-docker.code-workspace`](./polarion-docker.code-workspace) in VS 
 
 ## 🔍 Troubleshooting
 
-- **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free. The Mailpit sidecar additionally binds host ports **25** (SMTP) and **8025** (web UI); on hosts already running a local mail server on port 25, remap it (e.g. `"2525:1025"`) in the Compose file.
+- **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free. The Mailpit sidecar additionally binds host ports **25** (SMTP) and **8025** (web UI); make sure no local mail server is already using port 25.
 - **Memory:** This repo defaults Polarion to `4g` container RAM and a `3g` JVM heap so the process still has native headroom. Increase only if a specific workload requires it.
 - **Apple `container` builder:** `bash scripts/polarionctl.sh build-image` starts the builder on demand with an `8g` cap and stops it again after the image build finishes.
 - **Apple `container` first start:** A cold `linux/amd64` start on Apple silicon can spend multiple minutes in image unpacking before the container becomes visible or HTTP responds.

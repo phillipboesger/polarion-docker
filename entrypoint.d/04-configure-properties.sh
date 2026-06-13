@@ -39,11 +39,11 @@ PARAMS=(
 # Lets developers capture Polarion notification mails with a catcher such as Mailpit.
 # Skipped entirely when SMTP_HOST is unset, so standalone runs keep their defaults.
 if [[ -n "$SMTP_HOST" ]]; then
-    echo "Configuring SMTP notifications via $SMTP_HOST:${SMTP_PORT:-1025}"
+    echo "Configuring SMTP notifications via $SMTP_HOST:${SMTP_PORT:-25}"
     PARAMS+=(
         "com.polarion.platform.persistence.notifications.disabled=false"
         "announcer.smtp.host=$SMTP_HOST"
-        "announcer.smtp.port=${SMTP_PORT:-1025}"
+        "announcer.smtp.port=${SMTP_PORT:-25}"
         "announcer.smtp.auth=false"
     )
 fi
