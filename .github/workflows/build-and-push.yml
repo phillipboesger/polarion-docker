@@ -113,16 +113,22 @@ jobs:
               grep -q "^com.polarion.platform.persistence.notifications.disabled=false$" "$F"
               echo "✅ SMTP properties configured correctly"
             '
-          echo "🔍 SMTP_HOST unset -> standalone runs must NOT configure SMTP"
+          echo "🔍 SMTP_HOST unset -> entrypoint must leave the stock SMTP config untouched"
           docker run --rm --entrypoint bash \
             polarion:test -c '
               set -e
-              . /opt/polarion/entrypoint.d/04-configure-properties.sh
               F=/opt/polarion/etc/polarion.properties
-              if grep -q "^announcer.smtp.host=" "$F"; then
-                echo "❌ announcer.smtp.host must not be set without SMTP_HOST"; exit 1
+              pat="^(announcer\.smtp\.|com\.polarion\.platform\.persistence\.notifications\.disabled=)"
+              before=$(grep -E "$pat" "$F" | sort || true)
+              . /opt/polarion/entrypoint.d/04-configure-properties.sh >/dev/null
+              after=$(grep -E "$pat" "$F" | sort || true)
+              if [ "$before" != "$after" ]; then
+                echo "❌ SMTP config changed without SMTP_HOST"
+                echo "--- before ---"; echo "$before"
+                echo "--- after ---"; echo "$after"
+                exit 1
               fi
-              echo "✅ SMTP config correctly skipped for standalone runs"
+              echo "✅ SMTP config correctly left untouched for standalone runs"
             '
 
       - name: Test Docker Image
