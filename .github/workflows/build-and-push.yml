@@ -98,6 +98,33 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Verify SMTP mail configuration in image
+        run: |
+          echo "🔍 SMTP_HOST set -> entrypoint must write announcer.smtp.* and enable notifications"
+          docker run --rm --entrypoint bash \
+            -e SMTP_HOST=mailpit -e SMTP_PORT=25 \
+            polarion:test -c '
+              set -e
+              . /opt/polarion/entrypoint.d/04-configure-properties.sh
+              F=/opt/polarion/etc/polarion.properties
+              grep -q "^announcer.smtp.host=mailpit$" "$F"
+              grep -q "^announcer.smtp.port=25$" "$F"
+              grep -q "^announcer.smtp.auth=false$" "$F"
+              grep -q "^com.polarion.platform.persistence.notifications.disabled=false$" "$F"
+              echo "✅ SMTP properties configured correctly"
+            '
+          echo "🔍 SMTP_HOST unset -> standalone runs must NOT configure SMTP"
+          docker run --rm --entrypoint bash \
+            polarion:test -c '
+              set -e
+              . /opt/polarion/entrypoint.d/04-configure-properties.sh
+              F=/opt/polarion/etc/polarion.properties
+              if grep -q "^announcer.smtp.host=" "$F"; then
+                echo "❌ announcer.smtp.host must not be set without SMTP_HOST"; exit 1
+              fi
+              echo "✅ SMTP config correctly skipped for standalone runs"
+            '
+
       - name: Test Docker Image
         run: |
           echo "🚀 Starting container for testing..."

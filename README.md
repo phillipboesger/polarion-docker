@@ -187,6 +187,8 @@ To add your own configuration:
 | `JAVA_OPTS`     | Java memory and VM arguments                 | `-Xmx3g -Xms3g`               |
 | `JDWP_ENABLED`  | Enable Java Debug Wire Protocol              | `true`                        |
 | `ALLOWED_HOSTS` | Comma-separated list of allowed host headers | `localhost,127.0.0.1,0.0.0.0` |
+| `SMTP_HOST`     | SMTP host for mail notifications. When set, the entrypoint enables notifications and points Polarion's `announcer.smtp.host` at it. Unset on standalone runs. | _(unset; `mailpit` via Compose)_ |
+| `SMTP_PORT`     | SMTP port used together with `SMTP_HOST`     | `25`                          |
 
 ### External SVN Endpoints
 
@@ -218,6 +220,25 @@ Included `.vscode/launch.json` configuration:
 }
 ```
 
+### Mail Notifications (Mailpit)
+
+The Compose files bundle a [Mailpit](https://github.com/axllent/mailpit) sidecar that captures **every** outgoing Polarion notification mail so you can inspect and debug it — no real mailbox required. Polarion is a pure SMTP client, so a catcher like Mailpit (or Papercut, MailHog, …) takes the role of the SMTP server.
+
+How it is wired by default:
+
+- Polarion's entrypoint sets `announcer.smtp.host=mailpit` / `announcer.smtp.port=25` and enables notifications (driven by `SMTP_HOST` / `SMTP_PORT`).
+- The sidecar listens for SMTP on port **25** and serves a web UI on **8025**, both published to the host.
+
+Usage:
+
+1.  `docker-compose up -d` (Mailpit starts alongside Polarion).
+2.  Trigger a notification in Polarion (e.g. assign a Work Item to a user that has an e-mail address; notification rules must be configured in the project).
+3.  Open the catcher UI at **http://localhost:8025** to read the captured mail.
+
+To attach your **own** external catcher instead of the bundled one, point it at host port **25**, or override `SMTP_HOST` / `SMTP_PORT` to target a different server (e.g. `host.docker.internal`).
+
+> Notifications are delivered on Polarion's notification cron, so a captured mail can take a short moment to appear.
+
 ### Plugin Development
 
 For developing custom plugins with live reloading, refer to [PLUGIN-DEVELOPMENT.md](./PLUGIN-DEVELOPMENT.md).
@@ -242,7 +263,7 @@ Open [`polarion-docker.code-workspace`](./polarion-docker.code-workspace) in VS 
 
 ## 🔍 Troubleshooting
 
-- **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free.
+- **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free. The Mailpit sidecar additionally binds host ports **25** (SMTP) and **8025** (web UI); make sure no local mail server is already using port 25.
 - **Memory:** This repo defaults Polarion to `4g` container RAM and a `3g` JVM heap so the process still has native headroom. Increase only if a specific workload requires it.
 - **Apple `container` builder:** `bash scripts/polarionctl.sh build-image` starts the builder on demand with an `8g` cap and stops it again after the image build finishes.
 - **Apple `container` first start:** A cold `linux/amd64` start on Apple silicon can spend multiple minutes in image unpacking before the container becomes visible or HTTP responds.
