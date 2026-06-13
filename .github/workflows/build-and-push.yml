@@ -339,6 +339,20 @@ jobs:
             echo "### Polarion Version: ${{ steps.version.outputs.version }} 🏷️" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "### ✅ Validated before publish" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All checks below passed on the freshly built image before it was pushed." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | What it verifies | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :---: |" >> $GITHUB_STEP_SUMMARY
+          echo "| JVM startup | JAVA_OPTS / polarion.ini do not crash the VM | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| PostgreSQL (5433) | Bundled database is reachable | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| JDWP debug (5005) | Remote debug port is open | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Apache (80) | Web server is serving | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Polarion startup | Startup sequence completes without fatal errors | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| SMTP mail config | Entrypoint wires announcer.smtp.* when SMTP_HOST set, skips otherwise | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| UI smoke (Playwright) | Admin can load and log into the Polarion UI | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Available Tags:" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" | sed 's/,/\n/g' >> $GITHUB_STEP_SUMMARY
