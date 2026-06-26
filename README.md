@@ -30,9 +30,10 @@ There are two ways to use this image: building it yourself (recommended for most
 
 Since Polarion requires a license and the installation media is proprietary, you can build this Docker image locally using your own Polarion ZIP file.
 
-1.  **Download** the Polarion for Linux ZIP distribution (e.g., `Polarion-2512.zip`) from Siemens.
+1.  **Download** the Polarion for Linux ZIP distribution (e.g., `PolarionALM_2512.zip`) from Siemens.
 2.  **Place** the downloaded ZIP file in the `data` directory of this repository.
-    - _Note: The build script automatically picks up any file matching `polarion_.zip`.\*
+    - _Note: With a single archive present, the build automatically picks up any file matching `polarion*.zip`._
+    - _Note: When several `polarion*.zip` files coexist (one per version), select the one to build with `--build-arg POLARION_ZIP=<filename>` (see below) or the **Container: Build Image** task._
     - _Note: On Linux systems with SELinux enabled, set the context on `data` with `chcon -Rt 'container_file_t' data/`._
 3.  **Place** your license files in the repo:
     - Put the Polarion core XML license in `files/` as `polarion.lic`. The start scripts sync XML `polarion.lic` files from `files/` into `/opt/polarion/polarion/license/polarion.lic`.
@@ -49,6 +50,25 @@ Since Polarion requires a license and the installation media is proprietary, you
     container build --platform linux/amd64 -t polarion:local .
     container builder stop
     ```
+
+    **Selecting a version when multiple ZIPs are present.** Pass `--build-arg POLARION_ZIP=<filename>` to install a specific archive and tag the image per version:
+
+    ```bash
+    docker build --platform linux/amd64 \
+      --build-arg POLARION_ZIP=PolarionALM_2512.zip \
+      -t polarion:2512 -t polarion:local .
+    ```
+
+    The helper script does this for you — it derives the version tag from the ZIP name (e.g. `PolarionALM_2512.zip` → `polarion:2512`) and keeps `polarion:local` pointing at the most recent build:
+
+    ```bash
+    # Builds the only ZIP in data/, or prompts via POLARION_ZIP when several exist
+    POLARION_ZIP=PolarionALM_2512.zip bash scripts/polarionctl.sh build-image
+    bash scripts/polarionctl.sh list-zips   # show selectable archives
+    ```
+
+    In VS Code, the **Container: Build Image** task offers the same picker (it lists `data/*.zip` and skips the prompt when only one exists). It relies on the recommended `augustocdias.tasks-shell-input` extension.
+
 5.  **Run** the container using the locally built image:
     ```bash
     # With Docker
@@ -254,6 +274,17 @@ Open [`polarion-docker.code-workspace`](./polarion-docker.code-workspace) in VS 
 | :--- | :--- |
 | Container | `Build Image` · `Start` · `Stop` · `System Start` · `Builder Start/Stop` |
 | Polarion | `Logs` · `Error Logs` · `Redeploy Single` · `Redeploy All` · `Redeploy Preflight` |
+
+#### Selecting which Polarion version to start
+
+When you maintain several Polarion versions as separate local images (e.g. `polarion:2410`, `polarion:2512`), **Container: Start** prompts for the image to launch and starts the selected one. With a single Polarion image present it starts directly without prompting. The picker uses the recommended `augustocdias.tasks-shell-input` extension.
+
+The same selection is available on the CLI via `POLARION_IMAGE`:
+
+```bash
+bash scripts/polarionctl.sh list-images          # show locally available Polarion images
+POLARION_IMAGE=polarion:2512 bash scripts/polarionctl.sh start
+```
 
 ## 🖥️ Platform Support
 
