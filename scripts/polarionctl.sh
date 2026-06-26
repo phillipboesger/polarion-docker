@@ -15,7 +15,8 @@ Actions:
   builder-start  Start Apple container builder if runtime=container
   builder-stop   Stop Apple container builder if runtime=container
   build-image    Build the Polarion image for the selected runtime
-  start          Start Polarion for the selected runtime
+  list-images    List locally available Polarion images for the active runtime
+  start          Start Polarion for the selected runtime (POLARION_IMAGE picks one)
   stop           Stop and remove Polarion for the selected runtime
   logs           Stream Polarion application logs
   errors         Stream Polarion application errors only
@@ -61,7 +62,11 @@ case "${action}" in
 			DOCKER_BUILDKIT=1 docker build --platform "${POLARION_PLATFORM}" --tag "${POLARION_IMAGE}" --file "${POLARION_DOCKERFILE}" "${REPO_ROOT}"
 		fi
 		;;
+	list-images)
+		polarion_list_images
+		;;
 	start)
+		echo "Starting Polarion from image ${POLARION_IMAGE} (runtime: ${POLARION_RUNTIME})"
 		polarion_ensure_volume "${POLARION_DATA_VOLUME}"
 		polarion_ensure_volume "${POLARION_EXTENSIONS_VOLUME}"
 		polarion_remove_container

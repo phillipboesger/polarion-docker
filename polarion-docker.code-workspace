@@ -51,10 +51,11 @@
 			},
 			{
 				"label": "Container: Start",
-				"detail": "Create and start the Polarion container, sync the license file, and wait until the HTTP endpoint is reachable.",
+				"detail": "Create and start the Polarion container, sync the license file, and wait until the HTTP endpoint is reachable. Prompts for the local Polarion image when more than one exists.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "start"],
+				"options": { "env": { "POLARION_IMAGE": "${input:polarionImage}" } },
 				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
 			},
@@ -94,6 +95,23 @@
 				"args": ["scripts/polarionctl.sh", "builder-stop"],
 				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
+			}
+		],
+		// Dynamic task inputs. The image picker is backed by `polarionctl.sh list-images`
+		// via the `augustocdias.tasks-shell-input` extension (see .vscode/extensions.json),
+		// so the list always reflects the images actually available to the runtime.
+		// `useSingleResult` skips the prompt when only one Polarion image exists.
+		"inputs": [
+			{
+				"id": "polarionImage",
+				"type": "command",
+				"command": "shellCommand.execute",
+				"args": {
+					"command": "bash scripts/polarionctl.sh list-images",
+					"cwd": "${workspaceFolder}",
+					"useSingleResult": true,
+					"description": "Select the Polarion image to start"
+				}
 			}
 		]
 	}

@@ -1,0 +1,8 @@
+{
+	// Recommended extensions for this repository.
+	// `augustocdias.tasks-shell-input` provides the `shellCommand.execute` command id
+	// used by the dynamic Container task pickers in polarion-docker.code-workspace.
+	"recommendations": [
+		"augustocdias.tasks-shell-input"
+	]
+}
