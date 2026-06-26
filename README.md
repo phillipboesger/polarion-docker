@@ -224,6 +224,8 @@ Included `.vscode/launch.json` configuration:
 
 The Compose files bundle a [Mailpit](https://github.com/axllent/mailpit) sidecar that captures **every** outgoing Polarion notification mail so you can inspect and debug it — no real mailbox required. Polarion is a pure SMTP client, so a catcher like Mailpit (or Papercut, MailHog, …) takes the role of the SMTP server.
 
+> For a minimal, copy-pasteable Compose + manual-network reference, see [docs/mail-reference.md](./docs/mail-reference.md).
+
 How it is wired by default:
 
 - Polarion's entrypoint sets `announcer.smtp.host=mailpit` / `announcer.smtp.port=25` and enables notifications (driven by `SMTP_HOST` / `SMTP_PORT`).
