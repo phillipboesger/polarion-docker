@@ -130,6 +130,19 @@ jobs:
               fi
               echo "✅ SMTP config correctly left untouched for standalone runs"
             '
+          echo "🔍 MAILPIT_EMBEDDED=true -> entrypoint must wire SMTP to the in-container catcher (127.0.0.1:25)"
+          docker run --rm --entrypoint bash \
+            -e MAILPIT_EMBEDDED=true \
+            polarion:test -c '
+              set -e
+              . /opt/polarion/entrypoint.d/04-configure-properties.sh
+              F=/opt/polarion/etc/polarion.properties
+              grep -q "^announcer.smtp.host=127.0.0.1$" "$F"
+              grep -q "^announcer.smtp.port=25$" "$F"
+              grep -q "^announcer.smtp.auth=false$" "$F"
+              command -v mailpit >/dev/null
+              echo "✅ Embedded Mailpit wiring written and mailpit binary present on PATH"
+            '
 
       - name: Test Docker Image
         run: |

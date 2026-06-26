@@ -189,6 +189,7 @@ To add your own configuration:
 | `ALLOWED_HOSTS` | Comma-separated list of allowed host headers | `localhost,127.0.0.1,0.0.0.0` |
 | `SMTP_HOST`     | SMTP host for mail notifications. When set, the entrypoint enables notifications and points Polarion's `announcer.smtp.host` at it. Unset on standalone runs. | _(unset; `mailpit` via Compose)_ |
 | `SMTP_PORT`     | SMTP port used together with `SMTP_HOST`     | `25`                          |
+| `MAILPIT_EMBEDDED` | Start the Mailpit catcher **inside** the Polarion container (SMTP `:25`, UI `:8025`) and auto-point Polarion at `127.0.0.1:25`. Lets a single container debug mail without a sidecar. An explicit `SMTP_HOST` still wins. | `false` |
 
 ### External SVN Endpoints
 
@@ -236,6 +237,30 @@ Usage:
 3.  Open the catcher UI at **http://localhost:8025** to read the captured mail.
 
 To attach your **own** external catcher instead of the bundled one, point it at host port **25**, or override `SMTP_HOST` / `SMTP_PORT` to target a different server (e.g. `host.docker.internal`).
+
+#### Single container: embedded catcher
+
+The image also ships a pinned Mailpit binary that can run **inside** the Polarion container, so the common "start a single container" workflow gets a mail catcher without a second container. Enable it with `MAILPIT_EMBEDDED=true`:
+
+```bash
+docker run -d --name polarion \
+  -p 80:80 -p 8025:8025 \
+  -e MAILPIT_EMBEDDED=true \
+  polarion:local
+# SMTP is reached in-container at 127.0.0.1:25; the web UI is at http://localhost:8025
+```
+
+When `MAILPIT_EMBEDDED=true` and no `SMTP_HOST` is given, the entrypoint starts Mailpit (SMTP `:25`, UI `:8025`) and auto-sets `announcer.smtp.host=127.0.0.1`. Publish `-p 8025:8025` to open the UI from the host (add `-p 25:25` only if you also want to send to it from outside the container).
+
+**Embedded vs. sidecar — which to use?**
+
+| | Embedded (`MAILPIT_EMBEDDED=true`) | Sidecar (Compose default) |
+| :-- | :-- | :-- |
+| Containers | One | Two (Polarion + `mailpit`) |
+| Best for | `docker run` / `polarionctl.sh start`, single-container dev | `docker compose up`, multi-service setups |
+| Mailpit version | Pinned in the image | `mailpit:latest`, independent of the image |
+
+Both are supported. **Compose keeps the dedicated sidecar** (separation of concerns, always-fresh `mailpit:latest`); the **embedded** mode exists for the single-container workflow where a second container is unwanted. For manually wiring a *separate* Mailpit container to a single Polarion container over a user-defined network, see the manual / non-Compose wiring docs (issue #54).
 
 > Notifications are delivered on Polarion's notification cron, so a captured mail can take a short moment to appear.
 
