@@ -7,6 +7,13 @@ ARG JDK_TAG=jdk-21.0.4%2B7
 ARG JDK_FILE_X64=OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
 ARG JDK_FILE_AARCH64=OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.4_7.tar.gz
 
+# Mailpit version baked into the image for the optional embedded mail catcher
+# (enabled at runtime via MAILPIT_EMBEDDED=true). Pinned for reproducible builds.
+# SHA-256 sums are pinned per architecture and verified after download.
+ARG MAILPIT_VERSION=v1.30.2
+ARG MAILPIT_SHA256_AMD64=63b113aa9748adf7091b649ebe02693f99a459000cbe415faa6679f4b39f82cf
+ARG MAILPIT_SHA256_ARM64=b159574f32e527f34624e5683f79859258360179268a8fac0f3030f74ca6bb96
+
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNLEVEL=1
@@ -82,6 +89,24 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 	echo "JDK_HOME=$JDK_HOME"  && \
 	java -version
 
+# Install a pinned Mailpit binary for the optional embedded mail catcher.
+# It is dormant unless MAILPIT_EMBEDDED=true is set at runtime (entrypoint.d/60-mailpit.sh).
+RUN set -eux; \
+	arch="$(uname -m)"; \
+	if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then \
+		mp_arch="amd64"; mp_sha="$MAILPIT_SHA256_AMD64"; \
+	elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
+		mp_arch="arm64"; mp_sha="$MAILPIT_SHA256_ARM64"; \
+	else \
+		echo "Unsupported architecture for Mailpit: $arch"; exit 1; \
+	fi; \
+	wget -O /tmp/mailpit.tar.gz \
+		"https://github.com/axllent/mailpit/releases/download/${MAILPIT_VERSION}/mailpit-linux-${mp_arch}.tar.gz"; \
+	echo "${mp_sha}  /tmp/mailpit.tar.gz" | sha256sum -c -; \
+	tar -xzf /tmp/mailpit.tar.gz -C /usr/local/bin mailpit; \
+	rm -f /tmp/mailpit.tar.gz; \
+	test -x /usr/local/bin/mailpit
+
 # Copy install.expect to Polarion directory and make both scripts executable
 COPY --chmod=755 --chown=0:0 install.expect ./
 RUN sed -i 's/\r//' install.expect
@@ -109,6 +134,10 @@ ENV JDWP_ENABLED="true"
 
 # Set exposed ports
 EXPOSE 80/tcp
+# Optional embedded Mailpit catcher (only active when MAILPIT_EMBEDDED=true):
+# SMTP on 25, web UI on 8025. Publish these with -p to use them from the host.
+EXPOSE 25/tcp
+EXPOSE 8025/tcp
 
 # Set startup command
 ENTRYPOINT ["./polarion_starter.sh"]
