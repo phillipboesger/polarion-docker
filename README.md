@@ -207,8 +207,9 @@ To add your own configuration:
 | `JAVA_OPTS`     | Java memory and VM arguments                 | `-Xmx3g -Xms3g`               |
 | `JDWP_ENABLED`  | Enable Java Debug Wire Protocol              | `true`                        |
 | `ALLOWED_HOSTS` | Comma-separated list of allowed host headers | `localhost,127.0.0.1,0.0.0.0` |
-| `SMTP_HOST`     | SMTP host for mail notifications. When set, the entrypoint enables notifications and points Polarion's `announcer.smtp.host` at it. Unset on standalone runs. | _(unset; `mailpit` via Compose)_ |
+| `SMTP_HOST`     | Route mail to a **real** SMTP server instead of the built-in catcher. When set, the entrypoint points Polarion's `announcer.smtp.host` at it and the catcher steps aside. | _(unset → built-in catcher)_ |
 | `SMTP_PORT`     | SMTP port used together with `SMTP_HOST`     | `25`                          |
+| `MAILPIT_EMBEDDED` | Built-in Mailpit catcher (SMTP `:25`, web UI `:8025`). **On by default** — captures Polarion's outgoing mail so no real mailbox is needed. Set `false` to disable. | `true` |
 
 ### External SVN Endpoints
 
@@ -240,24 +241,24 @@ Included `.vscode/launch.json` configuration:
 }
 ```
 
-### Mail Notifications (Mailpit)
+### Mail Notifications (built-in Mailpit)
 
-The Compose files bundle a [Mailpit](https://github.com/axllent/mailpit) sidecar that captures **every** outgoing Polarion notification mail so you can inspect and debug it — no real mailbox required. Polarion is a pure SMTP client, so a catcher like Mailpit (or Papercut, MailHog, …) takes the role of the SMTP server.
+A [Mailpit](https://github.com/axllent/mailpit) mail catcher is **built into the image and runs by default**, so every Polarion notification mail is captured for inspection — no second container, no setup, no real mailbox. Polarion is a pure SMTP client; the built-in catcher plays the SMTP server.
 
-How it is wired by default:
+Just start the container and open the catcher UI:
 
-- Polarion's entrypoint sets `announcer.smtp.host=mailpit` / `announcer.smtp.port=25` and enables notifications (driven by `SMTP_HOST` / `SMTP_PORT`).
-- The sidecar listens for SMTP on port **25** and serves a web UI on **8025**, both published to the host.
+```bash
+docker run -d --name polarion -p 80:80 -p 8025:8025 polarion:local
+# open http://localhost:8025 to read captured mail
+```
 
-Usage:
-
-1.  `docker-compose up -d` (Mailpit starts alongside Polarion).
-2.  Trigger a notification in Polarion (e.g. assign a Work Item to a user that has an e-mail address; notification rules must be configured in the project).
-3.  Open the catcher UI at **http://localhost:8025** to read the captured mail.
-
-To attach your **own** external catcher instead of the bundled one, point it at host port **25**, or override `SMTP_HOST` / `SMTP_PORT` to target a different server (e.g. `host.docker.internal`).
+- The catcher listens for SMTP on `127.0.0.1:25` inside the container; the entrypoint auto-sets `announcer.smtp.host=127.0.0.1` and enables notifications.
+- Publish `-p 8025:8025` to reach the web UI from the host. `docker compose up -d` and `scripts/polarionctl.sh start` publish it for you.
+- Trigger a notification in Polarion (e.g. assign a Work Item to a user that has an e-mail address; notification rules must be configured in the project), then read it at **http://localhost:8025**.
 
 > Notifications are delivered on Polarion's notification cron, so a captured mail can take a short moment to appear.
+
+**Want real mail instead?** Point Polarion at a real SMTP server with `SMTP_HOST` / `SMTP_PORT` (e.g. `host.docker.internal`) — the built-in catcher then steps aside automatically. To turn the catcher off entirely, set `MAILPIT_EMBEDDED=false`.
 
 ### Plugin Development
 
@@ -294,7 +295,7 @@ POLARION_IMAGE=polarion:2512 bash scripts/polarionctl.sh start
 
 ## 🔍 Troubleshooting
 
-- **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free. The Mailpit sidecar additionally binds host ports **25** (SMTP) and **8025** (web UI); make sure no local mail server is already using port 25.
+- **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free. The built-in Mailpit web UI is published on host port **8025**; SMTP is handled inside the container, so port 25 is not published unless you explicitly add `-p 25:25`.
 - **Memory:** This repo defaults Polarion to `4g` container RAM and a `3g` JVM heap so the process still has native headroom. Increase only if a specific workload requires it.
 - **Apple `container` builder:** `bash scripts/polarionctl.sh build-image` starts the builder on demand with an `8g` cap and stops it again after the image build finishes.
 - **Apple `container` first start:** A cold `linux/amd64` start on Apple silicon can spend multiple minutes in image unpacking before the container becomes visible or HTTP responds.

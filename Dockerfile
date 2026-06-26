@@ -14,6 +14,11 @@ ARG JDK_TAG=jdk-21.0.4%2B7
 ARG JDK_FILE_X64=OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
 ARG JDK_FILE_AARCH64=OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.4_7.tar.gz
 
+# Mailpit version for the built-in mail catcher (runs by default at runtime; disable
+# with MAILPIT_EMBEDDED=false). Defaults to "latest" so each image build picks up the
+# newest release; pass --build-arg MAILPIT_VERSION=vX.Y.Z to pin a specific one.
+ARG MAILPIT_VERSION=latest
+
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNLEVEL=1
@@ -89,6 +94,29 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 	echo "JDK_HOME=$JDK_HOME"  && \
 	java -version
 
+# Install the Mailpit binary for the built-in mail catcher.
+# It runs by default at runtime (entrypoint.d/60-mailpit.sh); disable with MAILPIT_EMBEDDED=false.
+# With MAILPIT_VERSION=latest the build resolves the newest release via GitHub's
+# "releases/latest/download" redirect; a pinned vX.Y.Z uses the exact release asset.
+RUN set -eux; \
+	arch="$(uname -m)"; \
+	if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then \
+		mp_arch="amd64"; \
+	elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
+		mp_arch="arm64"; \
+	else \
+		echo "Unsupported architecture for Mailpit: $arch"; exit 1; \
+	fi; \
+	if [ "$MAILPIT_VERSION" = "latest" ]; then \
+		mp_url="https://github.com/axllent/mailpit/releases/latest/download/mailpit-linux-${mp_arch}.tar.gz"; \
+	else \
+		mp_url="https://github.com/axllent/mailpit/releases/download/${MAILPIT_VERSION}/mailpit-linux-${mp_arch}.tar.gz"; \
+	fi; \
+	wget --progress=dot:giga -O /tmp/mailpit.tar.gz "$mp_url"; \
+	tar -xzf /tmp/mailpit.tar.gz -C /usr/local/bin mailpit; \
+	rm -f /tmp/mailpit.tar.gz; \
+	test -x /usr/local/bin/mailpit
+
 # Copy install.expect to Polarion directory and make both scripts executable
 COPY --chmod=755 --chown=0:0 install.expect ./
 RUN sed -i 's/\r//' install.expect
@@ -134,6 +162,10 @@ ENV JDWP_ENABLED="true"
 
 # Set exposed ports
 EXPOSE 80/tcp
+# Built-in Mailpit catcher (runs by default; disable with MAILPIT_EMBEDDED=false):
+# SMTP on 25, web UI on 8025. Publish -p 8025:8025 to read captured mail from the host.
+EXPOSE 25/tcp
+EXPOSE 8025/tcp
 
 # Set startup command
 ENTRYPOINT ["./polarion_starter.sh"]

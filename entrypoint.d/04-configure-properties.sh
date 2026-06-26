@@ -35,10 +35,19 @@ PARAMS=(
     "${OTHER_PARAMS[@]}"
 )
 
-# Configure outgoing SMTP for mail notifications when an SMTP host is provided.
-# Lets developers capture Polarion notification mails with a catcher such as Mailpit.
-# Skipped entirely when SMTP_HOST is unset, so standalone runs keep their defaults.
-if [[ -n "$SMTP_HOST" ]]; then
+# The built-in Mailpit catcher (entrypoint.d/60-mailpit.sh) runs by default, so unless
+# it is disabled (MAILPIT_EMBEDDED=false) or Polarion is pointed at a real mail server
+# (SMTP_HOST), wire notifications to the in-container catcher at 127.0.0.1:25. An explicit
+# external SMTP_HOST always takes precedence.
+if [[ "${MAILPIT_EMBEDDED:-}" != "false" && -z "${SMTP_HOST:-}" ]]; then
+    SMTP_HOST="127.0.0.1"
+    SMTP_PORT="${SMTP_PORT:-25}"
+fi
+
+# Configure outgoing SMTP for mail notifications. Routes Polarion's notification mail to
+# the resolved SMTP host — the built-in catcher by default, or a real server via SMTP_HOST.
+# Skipped only when the catcher is disabled (MAILPIT_EMBEDDED=false) and no SMTP_HOST is set.
+if [[ -n "${SMTP_HOST:-}" ]]; then
     echo "Configuring SMTP notifications via $SMTP_HOST:${SMTP_PORT:-25}"
     PARAMS+=(
         "com.polarion.platform.persistence.notifications.disabled=false"
