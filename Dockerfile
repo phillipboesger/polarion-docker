@@ -2,6 +2,11 @@
 ARG SOURCE_IMAGE=ubuntu:24.04
 FROM $SOURCE_IMAGE
 
+# Polarion installer archive to use, relative to the bind-mounted data/ directory
+# (e.g. POLARION_ZIP=PolarionALM_2512.zip). When empty, the build falls back to the
+# single-file glob below, preserving the previous behaviour.
+ARG POLARION_ZIP=
+
 # Temurin JDK download metadata — choose appropriate archive at build time
 ARG JDK_TAG=jdk-21.0.4%2B7
 ARG JDK_FILE_X64=OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
@@ -89,7 +94,17 @@ RUN sed -i 's/\r//' install.expect
 # Unzip Polarion and install it
 RUN --mount=type=bind,source=./data/,target=/data/ \
 	set -x && \
-	unzip -q "$(find /data -iname polarion*.zip)" && \
+	if [ -n "${POLARION_ZIP}" ]; then \
+		zip_path="/data/${POLARION_ZIP}"; \
+	else \
+		zip_path="$(find /data -iname 'polarion*.zip' | sort | head -n1)"; \
+	fi && \
+	if [ -z "${zip_path}" ] || [ ! -f "${zip_path}" ]; then \
+		echo "ERROR: No Polarion ZIP found to install (POLARION_ZIP='${POLARION_ZIP}'). Place a PolarionALM_<version>.zip in data/." >&2; \
+		exit 1; \
+	fi && \
+	echo "Installing Polarion from ${zip_path}" && \
+	unzip -q "${zip_path}" && \
 	cd Polarion && \
 	../install.expect || true && \
 	test -d /opt/polarion/polarion && \

@@ -42,10 +42,11 @@
 			// -- Core tasks ---------------------------------------------------
 			{
 				"label": "Container: Build Image",
-				"detail": "Build the polarion:local Docker / Apple container image from the Dockerfile.",
+				"detail": "Build the Polarion image from the Dockerfile. Prompts for the ZIP in data/ when more than one exists; the image is tagged per version (e.g. polarion:2512) and aliased to polarion:local.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "build-image"],
+				"options": { "env": { "POLARION_ZIP": "${input:polarionZip}" } },
 				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
 			},
@@ -94,6 +95,23 @@
 				"args": ["scripts/polarionctl.sh", "builder-stop"],
 				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
+			}
+		],
+		// Dynamic task inputs. The ZIP picker is backed by `polarionctl.sh list-zips`
+		// via the `augustocdias.tasks-shell-input` extension (see .vscode/extensions.json),
+		// so the list always reflects the archives actually present in data/.
+		// `useSingleResult` skips the prompt when only one ZIP exists.
+		"inputs": [
+			{
+				"id": "polarionZip",
+				"type": "command",
+				"command": "shellCommand.execute",
+				"args": {
+					"command": "bash scripts/polarionctl.sh list-zips",
+					"cwd": "${workspaceFolder}",
+					"useSingleResult": true,
+					"description": "Select the Polarion ZIP in data/ to build"
+				}
 			}
 		]
 	}
