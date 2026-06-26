@@ -10,8 +10,8 @@ ARG JDK_TAG=jdk-21.0.4%2B7
 ARG JDK_FILE_X64=OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
 ARG JDK_FILE_AARCH64=OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.4_7.tar.gz
 
-# Mailpit version for the optional embedded mail catcher (enabled at runtime via
-# MAILPIT_EMBEDDED=true). Defaults to "latest" so each image build picks up the
+# Mailpit version for the built-in mail catcher (runs by default at runtime; disable
+# with MAILPIT_EMBEDDED=false). Defaults to "latest" so each image build picks up the
 # newest release; pass --build-arg MAILPIT_VERSION=vX.Y.Z to pin a specific one.
 ARG MAILPIT_VERSION=latest
 
@@ -90,8 +90,8 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 	echo "JDK_HOME=$JDK_HOME"  && \
 	java -version
 
-# Install the Mailpit binary for the optional embedded mail catcher.
-# It is dormant unless MAILPIT_EMBEDDED=true is set at runtime (entrypoint.d/60-mailpit.sh).
+# Install the Mailpit binary for the built-in mail catcher.
+# It runs by default at runtime (entrypoint.d/60-mailpit.sh); disable with MAILPIT_EMBEDDED=false.
 # With MAILPIT_VERSION=latest the build resolves the newest release via GitHub's
 # "releases/latest/download" redirect; a pinned vX.Y.Z uses the exact release asset.
 RUN set -eux; \
@@ -143,8 +143,8 @@ ENV JDWP_ENABLED="true"
 
 # Set exposed ports
 EXPOSE 80/tcp
-# Optional embedded Mailpit catcher (only active when MAILPIT_EMBEDDED=true):
-# SMTP on 25, web UI on 8025. Publish these with -p to use them from the host.
+# Built-in Mailpit catcher (runs by default; disable with MAILPIT_EMBEDDED=false):
+# SMTP on 25, web UI on 8025. Publish -p 8025:8025 to read captured mail from the host.
 EXPOSE 25/tcp
 EXPOSE 8025/tcp
 

@@ -66,9 +66,9 @@ case "${action}" in
 		polarion_ensure_volume "${POLARION_EXTENSIONS_VOLUME}"
 		polarion_remove_container
 
-		# Optional pass-through env so the documented manual mail wiring (a separate
-		# Mailpit container reached over a user-defined network) is reproducible here.
-		# Only forwarded when explicitly set, so default starts are unchanged.
+		# Optional mail overrides. The built-in Mailpit catcher runs by default; forward
+		# SMTP_HOST/SMTP_PORT to route mail to a real server instead, or MAILPIT_EMBEDDED=false
+		# to disable the catcher. Only forwarded when explicitly set, so default starts are unchanged.
 		extra_env_args=()
 		if [ -n "${SMTP_HOST:-}" ]; then extra_env_args+=(-e "SMTP_HOST=${SMTP_HOST}"); fi
 		if [ -n "${SMTP_PORT:-}" ]; then extra_env_args+=(-e "SMTP_PORT=${SMTP_PORT}"); fi
@@ -76,9 +76,6 @@ case "${action}" in
 
 		if polarion_is_apple_container_runtime; then
 			polarion_ensure_container_system
-			if [ -n "${POLARION_NETWORK}" ]; then
-				echo "Note: POLARION_NETWORK is not supported on the Apple container runtime; ignoring '${POLARION_NETWORK}'." >&2
-			fi
 			run_args=(
 				run -d
 				--name "${POLARION_CONTAINER_NAME}"
@@ -88,6 +85,7 @@ case "${action}" in
 				-p "${POLARION_BIND_HOST}:${POLARION_HTTP_PORT}:80"
 				-p "${POLARION_BIND_HOST}:${POLARION_DB_PORT}:5433"
 				-p "${POLARION_BIND_HOST}:${POLARION_JDWP_PORT}:5005"
+				-p "${POLARION_BIND_HOST}:${POLARION_MAILPIT_PORT}:8025"
 				-e "JAVA_OPTS=${POLARION_JAVA_OPTS}"
 				-e "JDWP_ENABLED=${POLARION_JDWP_ENABLED}"
 				-v "${POLARION_DATA_VOLUME}:/opt/polarion/data/svn"
@@ -112,14 +110,12 @@ case "${action}" in
 				-p "${POLARION_HTTP_PORT}:80"
 				-p "${POLARION_DB_PORT}:5433"
 				-p "${POLARION_JDWP_PORT}:5005"
+				-p "${POLARION_MAILPIT_PORT}:8025"
 				-e "JAVA_OPTS=${POLARION_JAVA_OPTS}"
 				-e "JDWP_ENABLED=${POLARION_JDWP_ENABLED}"
 				-v "${POLARION_DATA_VOLUME}:/opt/polarion/data/svn"
 				-v "${POLARION_EXTENSIONS_VOLUME}:/opt/polarion/polarion/extensions"
 			)
-			if [ -n "${POLARION_NETWORK}" ]; then
-				docker_run_args+=(--network "${POLARION_NETWORK}")
-			fi
 			# shellcheck disable=SC2206  # intentional split; bash-3.2/set -u empty-array-safe idiom
 			docker_run_args+=( ${extra_env_args[@]+"${extra_env_args[@]}"} )
 			docker_run_args+=("${POLARION_IMAGE}")
