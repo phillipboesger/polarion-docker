@@ -1,5 +1,7 @@
 # Base image for Polarion Docker container
 ARG SOURCE_IMAGE=ubuntu:24.04
+# SOURCE_IMAGE defaults to the tagged ubuntu:24.04; the ARG is intentionally overridable.
+# hadolint ignore=DL3006
 FROM $SOURCE_IMAGE
 
 # Polarion installer archive to use, relative to the bind-mounted data/ directory
@@ -60,7 +62,7 @@ RUN set -eux; \
 	else \
 		echo "Unsupported architecture: $arch"; exit 1; \
 	fi; \
-	wget -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
+	wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
 	mkdir -p /usr/lib/jvm; \
 	tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
 	rm jdk.tar.gz
@@ -91,7 +93,9 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 COPY --chmod=755 --chown=0:0 install.expect ./
 RUN sed -i 's/\r//' install.expect
 
-# Unzip Polarion and install it
+# Unzip Polarion and install it.
+# The Polarion dir is created by unzip mid-RUN under a transient bind-mount, so WORKDIR cannot target it.
+# hadolint ignore=DL3003
 RUN --mount=type=bind,source=./data/,target=/data/ \
 	set -x && \
 	if [ -n "${POLARION_ZIP}" ]; then \
