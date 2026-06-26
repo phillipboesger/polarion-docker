@@ -367,6 +367,21 @@ polarion_derive_image_tag_from_zip() {
 	fi
 }
 
+polarion_list_images() {
+	# Print locally available Polarion image references (repo:tag) for the active
+	# runtime, sorted and de-duplicated. Used by the start action and the VS Code
+	# image picker input. Matches any image whose reference contains "polarion"
+	# (the locally built polarion:<version> tags as well as ghcr.io/...polarion-*).
+	if polarion_is_apple_container_runtime; then
+		polarion_command_available container || return 0
+		container images list 2>/dev/null \
+			| awk 'NR>1 && $1 != "" { print $1":"$2 }'
+	else
+		polarion_command_available docker || return 0
+		docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null
+	fi | grep -iE 'polarion' | grep -v '<none>' | sort -u || true
+}
+
 polarion_find_running_polarion_container() {
 	local runtime="$1"
 	local found_name=""

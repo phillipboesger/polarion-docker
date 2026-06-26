@@ -274,6 +274,17 @@ Open [`polarion-docker.code-workspace`](./polarion-docker.code-workspace) in VS 
 | Container | `Build Image` · `Start` · `Stop` · `System Start` · `Builder Start/Stop` |
 | Polarion | `Logs` · `Error Logs` · `Redeploy Single` · `Redeploy All` · `Redeploy Preflight` |
 
+#### Selecting which Polarion version to start
+
+When you maintain several Polarion versions as separate local images (e.g. `polarion:2410`, `polarion:2512`), **Container: Start** prompts for the image to launch and starts the selected one. With a single Polarion image present it starts directly without prompting. The picker uses the recommended `augustocdias.tasks-shell-input` extension.
+
+The same selection is available on the CLI via `POLARION_IMAGE`:
+
+```bash
+bash scripts/polarionctl.sh list-images          # show locally available Polarion images
+POLARION_IMAGE=polarion:2512 bash scripts/polarionctl.sh start
+```
+
 ## 🖥️ Platform Support
 
 - **macOS (Apple Silicon)**: Supported via Docker `--platform linux/amd64` and via Apple `container` on macOS 26+ using `--platform linux/amd64 --rosetta`.

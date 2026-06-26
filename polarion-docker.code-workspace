@@ -52,10 +52,11 @@
 			},
 			{
 				"label": "Container: Start",
-				"detail": "Create and start the Polarion container, sync the license file, and wait until the HTTP endpoint is reachable.",
+				"detail": "Create and start the Polarion container, sync the license file, and wait until the HTTP endpoint is reachable. Prompts for the local Polarion image when more than one exists.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "start"],
+				"options": { "env": { "POLARION_IMAGE": "${input:polarionImage}" } },
 				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
 			},
@@ -97,10 +98,10 @@
 				"problemMatcher": []
 			}
 		],
-		// Dynamic task inputs. The ZIP picker is backed by `polarionctl.sh list-zips`
-		// via the `augustocdias.tasks-shell-input` extension (see .vscode/extensions.json),
-		// so the list always reflects the archives actually present in data/.
-		// `useSingleResult` skips the prompt when only one ZIP exists.
+		// Dynamic task inputs, backed by the `augustocdias.tasks-shell-input`
+		// extension (`shellCommand.execute`, see .vscode/extensions.json), so each
+		// list reflects reality. `useSingleResult` skips the prompt when only one
+		// choice exists.
 		"inputs": [
 			{
 				"id": "polarionZip",
@@ -111,6 +112,17 @@
 					"cwd": "${workspaceFolder}",
 					"useSingleResult": true,
 					"description": "Select the Polarion ZIP in data/ to build"
+				}
+			},
+			{
+				"id": "polarionImage",
+				"type": "command",
+				"command": "shellCommand.execute",
+				"args": {
+					"command": "bash scripts/polarionctl.sh list-images",
+					"cwd": "${workspaceFolder}",
+					"useSingleResult": true,
+					"description": "Select the Polarion image to start"
 				}
 			}
 		]
