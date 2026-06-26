@@ -97,10 +97,16 @@ RUN --mount=type=bind,source=./data/,target=/data/ \
 	if [ -n "${POLARION_ZIP}" ]; then \
 		zip_path="/data/${POLARION_ZIP}"; \
 	else \
-		zip_path="$(find /data -iname 'polarion*.zip' | sort | head -n1)"; \
+		set -- /data/[Pp]olarion*.zip; \
+		if [ "$#" -gt 1 ]; then \
+			echo "ERROR: Multiple polarion*.zip archives in data/; pass --build-arg POLARION_ZIP=<file> to choose one of:" >&2; \
+			for candidate in "$@"; do echo "  - $(basename "${candidate}")" >&2; done; \
+			exit 1; \
+		fi; \
+		zip_path="$1"; \
 	fi && \
-	if [ -z "${zip_path}" ] || [ ! -f "${zip_path}" ]; then \
-		echo "ERROR: No Polarion ZIP found to install (POLARION_ZIP='${POLARION_ZIP}'). Place a PolarionALM_<version>.zip in data/." >&2; \
+	if [ ! -f "${zip_path}" ]; then \
+		echo "ERROR: No Polarion installer ZIP found at ${zip_path}. Add a polarion*.zip (e.g. PolarionALM_2512.zip) to data/ or pass --build-arg POLARION_ZIP=<file>." >&2; \
 		exit 1; \
 	fi && \
 	echo "Installing Polarion from ${zip_path}" && \

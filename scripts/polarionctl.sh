@@ -64,7 +64,7 @@ case "${action}" in
 		done < <(polarion_list_zips)
 
 		if [ "${#available_zips[@]}" -eq 0 ]; then
-			polarion_usage_error "No Polarion ZIP found in ${POLARION_DATA_DIR}. Place a PolarionALM_<version>.zip there before building."
+			polarion_usage_error "No Polarion installer ZIP (polarion*.zip) found in ${POLARION_DATA_DIR}; add one (e.g. PolarionALM_2512.zip) before building."
 		fi
 
 		if [ -z "${build_zip}" ]; then
