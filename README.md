@@ -264,6 +264,42 @@ Both are supported. **Compose keeps the dedicated sidecar** (separation of conce
 
 > Notifications are delivered on Polarion's notification cron, so a captured mail can take a short moment to appear.
 
+#### Manual wiring without Compose
+
+Outside Compose (a plain `docker run` or `polarionctl.sh start`), the two containers don't share a network, so a separately started Mailpit can't be reached as a hostname. Put both on a **user-defined network** (the supported replacement for the deprecated `--link`; the legacy default `bridge` network does *not* resolve container names):
+
+```bash
+# 1. Create a user-defined network once
+docker network create polarion-net
+
+# 2. Start Mailpit on it (SMTP :25, web UI :8025)
+docker run -d --name mailpit --network polarion-net \
+  -e MP_SMTP_BIND_ADDR=0.0.0.0:25 \
+  -p 8025:8025 \
+  axllent/mailpit:latest
+
+# 3. Start Polarion on the same network and point it at the catcher by container name
+docker run -d --name polarion --network polarion-net \
+  --platform linux/amd64 \
+  -p 80:80 -p 5433:5433 -p 5005:5005 \
+  -e SMTP_HOST=mailpit -e SMTP_PORT=25 \
+  -v polarion_repo:/opt/polarion/data/svn \
+  -v polarion_extensions:/opt/polarion/polarion/extensions \
+  polarion:local
+```
+
+`mailpit` resolves over `polarion-net`, so Polarion's `announcer.smtp.host=mailpit` reaches the catcher; open the UI at **http://localhost:8025**.
+
+The same flow is reproducible through the helper, which forwards `SMTP_HOST` / `SMTP_PORT` and joins the network via `POLARION_NETWORK`:
+
+```bash
+docker network create polarion-net
+docker run -d --name mailpit --network polarion-net -e MP_SMTP_BIND_ADDR=0.0.0.0:25 -p 8025:8025 axllent/mailpit:latest
+POLARION_NETWORK=polarion-net SMTP_HOST=mailpit SMTP_PORT=25 bash scripts/polarionctl.sh start
+```
+
+> **Apple `container`:** custom user-defined networks are not currently wired up by this repo's Apple path, so `POLARION_NETWORK` is ignored there. For mail debugging on the Apple runtime, prefer the **embedded catcher** (`MAILPIT_EMBEDDED=true`, single container — added in #53), or run Mailpit under Docker.
+
 ### Plugin Development
 
 For developing custom plugins with live reloading, refer to [PLUGIN-DEVELOPMENT.md](./PLUGIN-DEVELOPMENT.md).
