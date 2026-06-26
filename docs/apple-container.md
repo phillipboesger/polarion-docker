@@ -38,6 +38,21 @@ container build --platform linux/amd64 -t polarion:local .
 container builder stop
 ```
 
+When several `polarion*.zip` files coexist in `data/`, select one and tag the image per version with a build arg (passing both tags so `polarion:local` keeps pointing at the latest build):
+
+```bash
+container build --platform linux/amd64 \
+  --build-arg POLARION_ZIP=PolarionALM_2512.zip \
+  -t polarion:2512 -t polarion:local .
+```
+
+The helper does this for you — it derives the version tag from the ZIP name and applies both `polarion:2512` and `polarion:local` in one build:
+
+```bash
+POLARION_RUNTIME=container bash scripts/polarionctl.sh list-zips
+POLARION_RUNTIME=container POLARION_ZIP=PolarionALM_2512.zip bash scripts/polarionctl.sh build-image
+```
+
 Start Polarion locally:
 
 ```bash
@@ -55,6 +70,13 @@ container run -d \
   -v polarion_repo:/opt/polarion/data/svn \
   -v polarion_extensions:/opt/polarion/polarion/extensions \
   polarion:local
+```
+
+When several Polarion images exist locally, list them and pick which one to start:
+
+```bash
+POLARION_RUNTIME=container bash scripts/polarionctl.sh list-images
+POLARION_RUNTIME=container POLARION_IMAGE=polarion:2512 bash scripts/polarionctl.sh start
 ```
 
 Open Polarion locally at `http://127.0.0.1:8080/polarion/`.
@@ -76,8 +98,8 @@ Open [`polarion-docker.code-workspace`](../polarion-docker.code-workspace) in VS
 
 | Task | Description |
 | :--- | :--- |
-| `Container: Build Image` | Build the `polarion:local` image from the Dockerfile |
-| `Container: Start` | Start the Polarion container and wait for the HTTP endpoint |
+| `Container: Build Image` | Build the image from the Dockerfile; prompts for the ZIP in `data/` when several exist and tags per version (alias `polarion:local`) |
+| `Container: Start` | Start the Polarion container and wait for the HTTP endpoint; prompts for the image when several Polarion images exist |
 | `Container: Stop` | Stop and remove the container (volumes are preserved) |
 | `Container: System Start` | *(macOS only)* Start Apple container system services |
 | `Container: Builder Start` | *(macOS only)* Start the Apple container builder |

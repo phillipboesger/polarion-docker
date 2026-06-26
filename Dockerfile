@@ -1,6 +1,13 @@
 # Base image for Polarion Docker container
 ARG SOURCE_IMAGE=ubuntu:24.04
+# SOURCE_IMAGE defaults to the tagged ubuntu:24.04; the ARG is intentionally overridable.
+# hadolint ignore=DL3006
 FROM $SOURCE_IMAGE
+
+# Polarion installer archive to use, relative to the bind-mounted data/ directory
+# (e.g. POLARION_ZIP=PolarionALM_2512.zip). When empty, the build falls back to the
+# single-file glob below, preserving the previous behaviour.
+ARG POLARION_ZIP=
 
 # Temurin JDK download metadata — choose appropriate archive at build time
 ARG JDK_TAG=jdk-21.0.4%2B7
@@ -55,7 +62,7 @@ RUN set -eux; \
 	else \
 		echo "Unsupported architecture: $arch"; exit 1; \
 	fi; \
-	wget -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
+	wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
 	mkdir -p /usr/lib/jvm; \
 	tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
 	rm jdk.tar.gz
@@ -86,10 +93,28 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 COPY --chmod=755 --chown=0:0 install.expect ./
 RUN sed -i 's/\r//' install.expect
 
-# Unzip Polarion and install it
+# Unzip Polarion and install it.
+# The Polarion dir is created by unzip mid-RUN under a transient bind-mount, so WORKDIR cannot target it.
+# hadolint ignore=DL3003
 RUN --mount=type=bind,source=./data/,target=/data/ \
 	set -x && \
-	unzip -q "$(find /data -iname polarion*.zip)" && \
+	if [ -n "${POLARION_ZIP}" ]; then \
+		zip_path="/data/${POLARION_ZIP}"; \
+	else \
+		set -- /data/[Pp]olarion*.zip; \
+		if [ "$#" -gt 1 ]; then \
+			echo "ERROR: Multiple polarion*.zip archives in data/; pass --build-arg POLARION_ZIP=<file> to choose one of:" >&2; \
+			for candidate in "$@"; do echo "  - $(basename "${candidate}")" >&2; done; \
+			exit 1; \
+		fi; \
+		zip_path="$1"; \
+	fi && \
+	if [ ! -f "${zip_path}" ]; then \
+		echo "ERROR: No Polarion installer ZIP found at ${zip_path}. Add a polarion*.zip (e.g. PolarionALM_2512.zip) to data/ or pass --build-arg POLARION_ZIP=<file>." >&2; \
+		exit 1; \
+	fi && \
+	echo "Installing Polarion from ${zip_path}" && \
+	unzip -q "${zip_path}" && \
 	cd Polarion && \
 	../install.expect || true && \
 	test -d /opt/polarion/polarion && \
