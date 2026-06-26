@@ -144,6 +144,64 @@ jobs:
               echo "✅ Embedded Mailpit wiring written and mailpit binary present on PATH"
             '
 
+      - name: Verify embedded Mailpit catches mail end-to-end
+        run: |
+          # End-to-end proof that the *new image* runs the in-container catcher and
+          # captures mail (not just that the binary exists / config is written). The
+          # embedded Mailpit launches in entrypoint.d/60-mailpit.sh — before Polarion
+          # fully boots — so this stays fast. A short-lived container on its own ports
+          # (25/8025), torn down via trap so it never runs alongside the heavy
+          # "Test Docker Image" container below.
+          trap 'docker rm -f polarion-embedded-mail-test >/dev/null 2>&1 || true' EXIT
+
+          echo "🚀 MAILPIT_EMBEDDED=true -> image must launch the embedded catcher and capture mail"
+          docker run -d \
+            --name polarion-embedded-mail-test \
+            -e MAILPIT_EMBEDDED=true \
+            -e JAVA_OPTS="-Xmx2g -Xms512m" \
+            -p 8025:8025 \
+            -p 25:25 \
+            polarion:test
+
+          echo "⏳ Waiting for the embedded Mailpit web API (:8025)..."
+          ready=false
+          for _ in $(seq 1 90); do
+            if curl -fsS http://localhost:8025/api/v1/messages >/dev/null 2>&1; then
+              echo "✅ Embedded Mailpit API is up"; ready=true; break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != "true" ]; then
+            echo "❌ Embedded Mailpit API did not become ready in the image"
+            docker logs polarion-embedded-mail-test || true
+            exit 1
+          fi
+
+          echo "📨 Sending a probe mail to the in-container SMTP (:25)..."
+          python3 - <<'PY'
+          import smtplib
+          from email.message import EmailMessage
+
+          msg = EmailMessage()
+          msg["From"] = "polarion@example.test"
+          msg["To"] = "dev@example.test"
+          msg["Subject"] = "CI embedded-Mailpit probe"
+          msg.set_content("If the embedded catcher captured this, the single-container mail setup works.")
+          with smtplib.SMTP("localhost", 25, timeout=15) as smtp:
+              smtp.send_message(msg)
+          print("✅ Probe mail sent to localhost:25")
+          PY
+
+          echo "🔍 Asserting the embedded Mailpit captured the mail..."
+          total=$(curl -fsS http://localhost:8025/api/v1/messages \
+            | python3 -c "import sys, json; print(json.load(sys.stdin).get('total', 0))")
+          echo "Captured messages: $total"
+          if [ "$total" -lt 1 ]; then
+            echo "❌ Embedded Mailpit did not capture the probe mail"
+            exit 1
+          fi
+          echo "✅ Embedded Mailpit verified end-to-end in the image (SMTP 25 -> embedded Mailpit -> API 8025)"
+
       - name: Test Docker Image
         run: |
           echo "🚀 Starting container for testing..."
