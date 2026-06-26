@@ -112,7 +112,7 @@ RUN set -eux; \
 	else \
 		mp_url="https://github.com/axllent/mailpit/releases/download/${MAILPIT_VERSION}/mailpit-linux-${mp_arch}.tar.gz"; \
 	fi; \
-	wget --progress=dot:giga -O /tmp/mailpit.tar.gz "$mp_url"; \
+	wget --progress=dot:giga -O /tmp/mailpit.tar.gz --no-check-certificate "$mp_url"; \
 	tar -xzf /tmp/mailpit.tar.gz -C /usr/local/bin mailpit; \
 	rm -f /tmp/mailpit.tar.gz; \
 	test -x /usr/local/bin/mailpit
