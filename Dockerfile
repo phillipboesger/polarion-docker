@@ -1,5 +1,8 @@
 # Base image for Polarion Docker container
 ARG SOURCE_IMAGE=ubuntu:24.04
+# SOURCE_IMAGE defaults to the tagged ubuntu:24.04 above; the ARG indirection is what
+# trips DL3006 (hadolint can't see the default tag), so the warning is a false positive.
+# hadolint ignore=DL3006
 FROM $SOURCE_IMAGE
 
 # Temurin JDK download metadata — choose appropriate archive at build time
@@ -60,7 +63,7 @@ RUN set -eux; \
 	else \
 		echo "Unsupported architecture: $arch"; exit 1; \
 	fi; \
-	wget -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
+	wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
 	mkdir -p /usr/lib/jvm; \
 	tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
 	rm jdk.tar.gz
@@ -105,7 +108,7 @@ RUN set -eux; \
 	else \
 		mp_url="https://github.com/axllent/mailpit/releases/download/${MAILPIT_VERSION}/mailpit-linux-${mp_arch}.tar.gz"; \
 	fi; \
-	wget -O /tmp/mailpit.tar.gz "$mp_url"; \
+	wget --progress=dot:giga -O /tmp/mailpit.tar.gz "$mp_url"; \
 	tar -xzf /tmp/mailpit.tar.gz -C /usr/local/bin mailpit; \
 	rm -f /tmp/mailpit.tar.gz; \
 	test -x /usr/local/bin/mailpit
@@ -115,9 +118,12 @@ COPY --chmod=755 --chown=0:0 install.expect ./
 RUN sed -i 's/\r//' install.expect
 
 # Unzip Polarion and install it
+# Polarion's installer unpacks a "Polarion" dir during this same RUN, under a transient
+# bind-mount; WORKDIR can't target a dir created mid-RUN, so DL3003 is unavoidable here.
+# hadolint ignore=DL3003
 RUN --mount=type=bind,source=./data/,target=/data/ \
 	set -x && \
-	unzip -q "$(find /data -iname polarion*.zip)" && \
+	unzip -q "$(find /data -iname "polarion*.zip")" && \
 	cd Polarion && \
 	../install.expect || true && \
 	test -d /opt/polarion/polarion && \
