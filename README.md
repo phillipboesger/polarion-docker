@@ -262,7 +262,7 @@ When `MAILPIT_EMBEDDED=true` and no `SMTP_HOST` is given, the entrypoint starts 
 | Best for | `docker run` / `polarionctl.sh start`, single-container dev | `docker compose up`, multi-service setups |
 | Mailpit version | Pinned in the image | `mailpit:latest`, independent of the image |
 
-Both are supported. **Compose keeps the dedicated sidecar** (separation of concerns, always-fresh `mailpit:latest`); the **embedded** mode exists for the single-container workflow where a second container is unwanted. For manually wiring a *separate* Mailpit container to a single Polarion container over a user-defined network, see the manual / non-Compose wiring docs (issue #54).
+Both are supported. **Compose keeps the dedicated sidecar** (separation of concerns, always-fresh `mailpit:latest`); the **embedded** mode exists for the single-container workflow where a second container is unwanted. For manually wiring a *separate* Mailpit container to a single Polarion container over a user-defined network, see [Manual wiring without Compose](#manual-wiring-without-compose) below.
 
 > Notifications are delivered on Polarion's notification cron, so a captured mail can take a short moment to appear.
 
@@ -300,7 +300,7 @@ docker run -d --name mailpit --network polarion-net -e MP_SMTP_BIND_ADDR=0.0.0.0
 POLARION_NETWORK=polarion-net SMTP_HOST=mailpit SMTP_PORT=25 bash scripts/polarionctl.sh start
 ```
 
-> **Apple `container`:** custom user-defined networks are not currently wired up by this repo's Apple path, so `POLARION_NETWORK` is ignored there. For mail debugging on the Apple runtime, prefer the **embedded catcher** (`MAILPIT_EMBEDDED=true`, single container — added in #53), or run Mailpit under Docker.
+> **Apple `container`:** custom user-defined networks are not currently wired up by this repo's Apple path, so `POLARION_NETWORK` is ignored there. For mail debugging on the Apple runtime, prefer the **embedded catcher** (`MAILPIT_EMBEDDED=true`, single container), or run Mailpit under Docker.
 
 ### Plugin Development
 

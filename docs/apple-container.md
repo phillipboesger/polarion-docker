@@ -109,7 +109,7 @@ Recommended order for Apple `container`:
 - The current documented Apple path assumes `linux/amd64` with `--rosetta`. Native `arm64` validation for Polarion is still an open item.
 - The JDWP debugger attach configuration remains the same because the Apple task maps host port `5005` to container port `5005`.
 - `bash scripts/polarionctl.sh build-image` starts the builder on demand with an `8g` cap and stops it again after the build.
-- **Mail catcher / networking:** custom user-defined networks are not wired up by this repo's Apple path, so `POLARION_NETWORK` is ignored on the `container` runtime. For mail debugging on Apple, prefer the embedded catcher (`MAILPIT_EMBEDDED=true`, single container — added in #53); the separate-Mailpit-over-a-network setup is documented for Docker in the README "Mail Notifications" section.
+- **Mail catcher / networking:** custom user-defined networks are not wired up by this repo's Apple path, so `POLARION_NETWORK` is ignored on the `container` runtime. For mail debugging on Apple, prefer the embedded catcher (`MAILPIT_EMBEDDED=true`, single container); the separate-Mailpit-over-a-network setup is documented for Docker in the README "Mail Notifications" section.
 
 ## Logs and Redeploy
 
