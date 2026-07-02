@@ -30,16 +30,25 @@
         {
             "id": "targetProject",
             "type": "command",
-            "command": "extension.commandvariable.file.pickFile",
+            "command": "extension.commandvariable.transform",
             "args": {
-                "include": "**/pom.xml",
-                "exclude": "**/target/**",
-                "fromWorkspace": true,
-                "display": "relativePath",
-                "transform": {
-                    "text": "${file}",
-                    "find": "^.*[\\\\/]([^\\\\/]+)[\\\\/]pom\\.xml$",
-                    "replace": "$1"
+                "text": "${fileContent:pomText}",
+                "apply": [
+                    { "find": "<parent>[\\s\\S]*?</parent>", "replace": "" },
+                    { "find": "^[\\s\\S]*?<artifactId>([^<]+)</artifactId>[\\s\\S]*$", "replace": "$1" }
+                ],
+                "fileContent": {
+                    "pomText": {
+                        "fileName": "${pickFile:pomPick}",
+                        "pickFile": {
+                            "pomPick": {
+                                "include": "**/pom.xml",
+                                "exclude": "**/target/**",
+                                "fromWorkspace": true,
+                                "display": "relativePath"
+                            }
+                        }
+                    }
                 }
             }
         }

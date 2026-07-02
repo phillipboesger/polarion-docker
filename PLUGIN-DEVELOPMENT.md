@@ -192,13 +192,7 @@ Project <name> cannot be found
 - Local repo config: select **Debug Polarion Container (pick project)** from [`.vscode/launch.json`](.vscode/launch.json) in the Run and Debug view.
 - Global config (section 3.3): replace the static `"projectName": "${fileWorkspaceFolderBasename}"` with the same `"projectName": "${input:targetProject}"` + `inputs` block from this repo's `.vscode/launch.json`.
 
-Either way, starting the session opens a Quick Pick listing every `pom.xml` found in the open workspace (folders named `target` excluded), labeled by its containing folder name. The selection determines which project Watches/Evaluate resolve against for that session.
-
-> **Known limitation:** the picker's regex assumes the registered JDT/Eclipse project name matches the pom's containing folder name exactly — that's the common case for Maven-imported projects, but not guaranteed (e.g. a project renamed on import, or a `<name>` override). Verify the actual name in the **JAVA PROJECTS** view in the Explorer sidebar. If a project's JDT name differs from its folder name, evaluation still fails with `Project ... cannot be found`; either adjust the `valueTransform` regex in `.vscode/launch.json` to match, or see the artifactId-based variant below.
-
-**Advanced (optional): resolve the actual Maven `artifactId` instead of the folder name**
-
-The default picker above uses the pom's *folder name* as a stand-in for the project name — simple and reliable, but a mismatch is possible (see limitation above). `rioj7.command-variable` can instead read the selected pom.xml's content and extract its own `<artifactId>` via a two-step regex (first strip any `<parent>...</parent>` block, so the parent's `artifactId` isn't picked up by mistake, then extract the first remaining `<artifactId>`):
+Either way, starting the session opens a Quick Pick listing every `pom.xml` found in the open workspace (folders named `target` excluded). The picker then reads the *selected* pom's own content and resolves `projectName` from its `<artifactId>` — not the folder name — so a checked-out-under-a-different-name repo still resolves correctly. The extraction explicitly strips any `<parent>...</parent>` block first, so a Maven parent's `artifactId` (which typically appears *before* the module's own in the file) isn't picked up by mistake:
 
 ```json
 {
@@ -206,27 +200,54 @@ The default picker above uses the pom's *folder name* as a stand-in for the proj
   "type": "command",
   "command": "extension.commandvariable.transform",
   "args": {
-    "text": "${fileContent:pomContent}",
-    "fileContent": {
-      "pomContent": { "fileName": "${pickFile:pomFile}" }
-    },
-    "pickFile": {
-      "pomFile": {
-        "include": "**/pom.xml",
-        "exclude": "**/target/**",
-        "fromWorkspace": true,
-        "display": "relativePath"
-      }
-    },
+    "text": "${fileContent:pomText}",
     "apply": [
-      { "find": "<parent>[\\s\\S]*?<\\/parent>", "replace": "" },
-      { "find": "[\\s\\S]*?<artifactId>([^<]+)<\\/artifactId>", "replace": "$1" }
-    ]
+      { "find": "<parent>[\\s\\S]*?</parent>", "replace": "" },
+      { "find": "^[\\s\\S]*?<artifactId>([^<]+)</artifactId>[\\s\\S]*$", "replace": "$1" }
+    ],
+    "fileContent": {
+      "pomText": {
+        "fileName": "${pickFile:pomPick}",
+        "pickFile": {
+          "pomPick": {
+            "include": "**/pom.xml",
+            "exclude": "**/target/**",
+            "fromWorkspace": true,
+            "display": "relativePath"
+          }
+        }
+      }
+    }
   }
 }
 ```
 
-This is not wired up as the repo default because it hasn't been verified end-to-end against a live multi-module workspace — treat it as a starting point, not a drop-in fix, and confirm the resolved value against the JAVA PROJECTS view before relying on it.
+> **Verification status:** each nesting level here (`pickFile` feeding `fileContent`'s `fileName`, `fileContent` feeding `transform`'s `text`) is individually documented by the extension, but this specific three-level composition hasn't been exercised end-to-end in a live multi-module VS Code workspace. If the Quick Pick doesn't appear, or `projectName` resolves to something unexpected, open **Developer: Toggle Developer Tools** → Console for command-variable errors, and cross-check the resolved value against the **JAVA PROJECTS** view in the Explorer sidebar.
+
+> **Known limitation:** this assumes the JDT/Eclipse project name equals the module's own Maven `artifactId` — the default when a project is Maven-imported (M2E / the VS Code Java extension), but not guaranteed if a custom project-naming template or a `<name>` override is in play. Verify the actual registered name in the **JAVA PROJECTS** view. If it still doesn't match, adjust the second `find` in `apply` (e.g. to pull `<name>` instead of `<artifactId>`), or fall back to the simpler folder-name variant below.
+
+**Fallback: match the folder name instead of the artifactId**
+
+If the artifactId-based extraction above doesn't resolve correctly in your setup, this simpler variant uses the pom's *containing folder name* as the project name instead — no XML parsing, lower risk, but only correct if the JDT project name happens to match the folder name:
+
+```json
+{
+  "id": "targetProject",
+  "type": "command",
+  "command": "extension.commandvariable.file.pickFile",
+  "args": {
+    "include": "**/pom.xml",
+    "exclude": "**/target/**",
+    "fromWorkspace": true,
+    "display": "relativePath",
+    "transform": {
+      "text": "${file}",
+      "find": "^.*[\\\\/]([^\\\\/]+)[\\\\/]pom\\.xml$",
+      "replace": "$1"
+    }
+  }
+}
+```
 
 ## 4. Docker Compose for Local Builds
 
