@@ -8,13 +8,13 @@ source "${SCRIPT_DIR}/polarion-runtime-lib.sh"
 
 # --- PARAMETERS ---
 # $1: File or Directory path (Source context from VS Code)
-# $2: Container Name (default: polarion)
-# $3: Extension Name/Target Folder (default: custom)
+# $2: Container Name (default: auto-detected from running container with "polarion" in image name)
+# $3: Extension Name/Target Folder (default: POLARION_EXTENSION_NAME, fallback: custom)
 # $4: Runtime (default: docker)
 # $5: Search depth below input path when no pom.xml is found upward (default: 1)
 INPUT_PATH="$1"
-CONTAINER_NAME="${2:-polarion}"
-EXTENSION_NAME="${3:-custom}"
+CONTAINER_NAME="${2:-${POLARION_CONTAINER_NAME}}"
+EXTENSION_NAME="${3:-${POLARION_EXTENSION_NAME}}"
 POLARION_RUNTIME="${4:-${POLARION_RUNTIME:-docker}}"
 SEARCH_DEPTH="${5:-${POLARION_REDEPLOY_SEARCH_DEPTH:-1}}"
 POLARION_REDEPLOY_PREFLIGHT="${POLARION_REDEPLOY_PREFLIGHT:-true}"

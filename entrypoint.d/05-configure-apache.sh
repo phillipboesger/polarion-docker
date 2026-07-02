@@ -1,10 +1,4 @@
 #!/bin/bash
-# Enable Apache ProxyPass for WebSockets (fix suggested by community)
-echo "Configuring Apache WebSocket Proxy..."
-# Guard: only insert if not already present (idempotent on container restart)
-if ! grep -q 'ProxyPassMatch.*polarion/ws' /etc/apache2/conf-enabled/polarion.conf 2>/dev/null; then
-    sed -i -e '/^ProxyPass \/polarion/i ProxyPassMatch ^/(polarion/ws)$ ws://127.0.0.1:8889/$1' /etc/apache2/conf-enabled/polarion.conf
-fi
 
 enable_apache_module_if_available() {
     local module="$1"

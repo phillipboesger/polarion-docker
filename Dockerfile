@@ -38,11 +38,11 @@ WORKDIR /polarion_root
 
 # Copy modular entrypoint scripts
 COPY entrypoint.d/ /opt/polarion/entrypoint.d/
-RUN chmod +x /opt/polarion/entrypoint.d/*.sh
+RUN sed -i 's/\r//' /opt/polarion/entrypoint.d/*.sh && chmod +x /opt/polarion/entrypoint.d/*.sh
 
 # Copy startup script to root
 COPY polarion_starter.sh ./
-RUN chmod +x polarion_starter.sh
+RUN sed -i 's/\r//' polarion_starter.sh && chmod +x polarion_starter.sh
 
 # Download and install OpenJDK 17 (Temurin)
 # Select the correct archive for the image architecture (x86_64 vs aarch64)
@@ -84,6 +84,7 @@ RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
 
 # Copy install.expect to Polarion directory and make both scripts executable
 COPY --chmod=755 --chown=0:0 install.expect ./
+RUN sed -i 's/\r//' install.expect
 
 # Unzip Polarion and install it
 RUN --mount=type=bind,source=./data/,target=/data/ \

@@ -7,6 +7,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 REQUESTED_POLARION_RUNTIME="${POLARION_RUNTIME-}"
 POLARION_RUNTIME="${POLARION_RUNTIME:-}"
+REQUESTED_POLARION_CONTAINER_NAME="${POLARION_CONTAINER_NAME-}"
 POLARION_CONTAINER_NAME="${POLARION_CONTAINER_NAME:-polarion}"
 POLARION_EXTENSION_NAME="${POLARION_EXTENSION_NAME:-custom}"
 POLARION_IMAGE="${POLARION_IMAGE:-polarion:local}"
@@ -343,4 +344,39 @@ polarion_stop_builder() {
 	container builder stop >/dev/null 2>&1 || true
 }
 
+polarion_find_running_polarion_container() {
+	local runtime="$1"
+	local found_name=""
+
+	case "${runtime}" in
+		docker)
+			polarion_command_available docker || return 1
+			found_name="$(docker ps --format "{{.Image}}\t{{.Names}}" 2>/dev/null \
+				| awk -F'\t' 'tolower($1) ~ /polarion/ { print $2; exit }' || true)"
+			;;
+		container)
+			polarion_command_available container || return 1
+			found_name="$(container list 2>/dev/null \
+				| awk 'NR>1 && tolower($2) ~ /polarion/ { print $1; exit }' || true)"
+			;;
+	esac
+
+	[ -n "${found_name}" ] || return 1
+	printf '%s\n' "${found_name}"
+}
+
+polarion_autodetect_container_name() {
+	# Only run when POLARION_CONTAINER_NAME was not explicitly set by the caller.
+	# Picks the first running container whose image name contains "polarion".
+	# Set POLARION_CONTAINER_NAME before sourcing this lib to pin a specific container.
+	[ -z "${REQUESTED_POLARION_CONTAINER_NAME}" ] || return 0
+
+	local found_name=""
+	found_name="$(polarion_find_running_polarion_container "${POLARION_RUNTIME}" || true)"
+	if [ -n "${found_name}" ]; then
+		POLARION_CONTAINER_NAME="${found_name}"
+	fi
+}
+
 polarion_select_runtime
+polarion_autodetect_container_name
