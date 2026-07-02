@@ -261,7 +261,7 @@ The task works the same for both Docker and Apple `container` — the runtime is
 Use this for logic changes inside method bodies.
 
 1. Open the Run and Debug view (Cmd+Shift+D).
-2. Select **Debug Polarion Container** (from the repo's `.vscode/launch.json`), or **Global: Attach to Polarion (5005)** if you set up the global config from section 3.2. If several plugin projects are open at once, use **Debug Polarion Container (pick project)** instead — see [3.4](#34-debugging-with-multiple-plugin-projects-open).
+2. Select **Debug Polarion Container** (from the repo's `.vscode/launch.json`), or **Global: Attach to Polarion (5005)** if you set up the global config from section 3.3. If several plugin projects are open at once, use **Debug Polarion Container (pick project)** instead — see [3.4](#34-debugging-with-multiple-plugin-projects-open).
 3. Press F5 or the green play button. With the "pick project" config, choose the project from the Quick Pick that appears.
 
 Note: Code changes within methods are hot-swapped automatically on save (Cmd+S).

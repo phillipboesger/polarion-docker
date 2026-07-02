@@ -35,8 +35,8 @@
                 "include": "**/pom.xml",
                 "exclude": "**/target/**",
                 "fromWorkspace": true,
-                "display": "transform",
-                "valueTransform": {
+                "display": "relativePath",
+                "transform": {
                     "text": "${file}",
                     "find": "^.*[\\\\/]([^\\\\/]+)[\\\\/]pom\\.xml$",
                     "replace": "$1"
