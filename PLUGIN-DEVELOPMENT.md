@@ -9,6 +9,7 @@ This guide describes how to configure Visual Studio Code for efficient Polarion 
 - **VS Code:** Installed with the **Extension Pack for Java** (Red Hat/Microsoft).
 - **Maven:** Installed locally or via wrapper.
 - **Scripts Folder:** A central folder for automation scripts (e.g., `~/scripts/`).
+- **Optional — multiple plugin projects open at once:** the [`rioj7.command-variable`](https://marketplace.visualstudio.com/items?itemName=rioj7.command-variable) extension, needed for the "pick project" debug configuration described in [3.4](#34-debugging-with-multiple-plugin-projects-open). Not required if you only ever have a single Java project open per workspace.
 
 ## 2. Automation Script (`scripts/redeploy.sh`)
 
@@ -77,7 +78,8 @@ The runtime is auto-detected by the scripts (prefers `docker` if available) or c
 
 **Debug configuration:**
 
-- `Debug Polarion Container` – attaches the Java debugger to `127.0.0.1:5005`.
+- `Debug Polarion Container` – attaches the Java debugger to `127.0.0.1:5005`. Works when exactly one Java/Maven project is open in the workspace.
+- `Debug Polarion Container (pick project)` – same attach target, but prompts for which open plugin project to resolve breakpoints/watches against. Use this when several plugin repos are open at once; see [3.4](#34-debugging-with-multiple-plugin-projects-open).
 
 How to use the repo tasks:
 
@@ -145,6 +147,7 @@ If you want to have the same tasks available globally (for all workspaces) as **
 2. Type **Preferences: Open User Settings (JSON)**.
 3. To make the debug configuration globally available across all workspaces, copy the launch configuration from [`.vscode/launch.json`](.vscode/launch.json) and embed it under a `"launch"` key. Add `"projectName": "${fileWorkspaceFolderBasename}"` so source code resolves correctly when multiple workspaces are open. 
 > **Windows edge case:** `${fileWorkspaceFolderBasename}` resolves correctly in `settings.json` when using a `.code-workspace` file. Without one — i.e., in a plain folder-open — VS Code may not substitute the variable and the debugger attaches but breakpoints never fire. Fix: move the launch configuration to the project's own `.vscode/launch.json` instead (identical content, without the `"launch"` wrapper key).
+> **More than one plugin project open at once:** `${fileWorkspaceFolderBasename}` only resolves to *a* project — it doesn't let you choose one interactively, and it breaks down once several plugin repos share one multi-root workspace. For that case, replace the static `"projectName"` value with the picker-based `${input:targetProject}` config from [3.4](#34-debugging-with-multiple-plugin-projects-open) instead (works with or without a `.code-workspace` file).
 4. Additionally add the following settings for performance and Hot Code Replace:
 
 ```json
@@ -159,6 +162,71 @@ If you want to have the same tasks available globally (for all workspaces) as **
   "java.autobuild.enabled": true
 }
 ```
+
+### 3.4 Debugging with Multiple Plugin Projects Open
+
+**Problem:** with more than one Java/Maven plugin project open in the same VS Code workspace (e.g. a multi-root workspace, or several plugin repos opened side by side), attaching to the shared JDWP port 5005 and then setting a Watch or Evaluate expression fails with:
+
+```
+IllegalStateException: Cannot evaluate, please specify projectName
+```
+
+or, once a `"projectName"` is set to the wrong value:
+
+```
+Project <name> cannot be found
+```
+
+`projectName` becomes mandatory for Watches/Evaluate as soon as more than one Java project is open, but it is a single, fixed-value field — VS Code's Java debugger has no wildcard or "any project" option (tracked upstream as [microsoft/vscode-java-debug#1197](https://github.com/microsoft/vscode-java-debug/issues/1197), open for years with no native fix).
+
+> **Note:** JDWP over `dt_socket` only accepts one active debugger connection per port. This does **not** let you debug several projects at the same time — there is still exactly one attach session. The picker below only controls which project's source/classpath that one session resolves breakpoints, Watches, and Evaluate expressions against; switching projects means stopping the session and reattaching with a new pick.
+
+**Setup — `rioj7.command-variable` extension:**
+
+1. Install [`rioj7.command-variable`](https://marketplace.visualstudio.com/items?itemName=rioj7.command-variable) from the Extensions view (this repo's [`.vscode/extensions.json`](.vscode/extensions.json) already recommends it).
+2. If you're on Remote-SSH or a Dev Container, install it a second time **in the remote context** — it's a workspace-kind extension, so the local install alone isn't enough. Use **Install in SSH: `<host>`** (or the equivalent Dev Containers action) from the Extensions view.
+3. Reload once after installing: **Developer: Reload Window** — otherwise its commands aren't registered yet and the picker step in launch.json silently fails to resolve.
+
+**Usage:**
+
+- Local repo config: select **Debug Polarion Container (pick project)** from [`.vscode/launch.json`](.vscode/launch.json) in the Run and Debug view.
+- Global config (section 3.3): replace the static `"projectName": "${fileWorkspaceFolderBasename}"` with the same `"projectName": "${input:targetProject}"` + `inputs` block from this repo's `.vscode/launch.json`.
+
+Either way, starting the session opens a Quick Pick listing every `pom.xml` found in the open workspace (folders named `target` excluded), labeled by its containing folder name. The selection determines which project Watches/Evaluate resolve against for that session.
+
+> **Known limitation:** the picker's regex assumes the registered JDT/Eclipse project name matches the pom's containing folder name exactly — that's the common case for Maven-imported projects, but not guaranteed (e.g. a project renamed on import, or a `<name>` override). Verify the actual name in the **JAVA PROJECTS** view in the Explorer sidebar. If a project's JDT name differs from its folder name, evaluation still fails with `Project ... cannot be found`; either adjust the `valueTransform` regex in `.vscode/launch.json` to match, or see the artifactId-based variant below.
+
+**Advanced (optional): resolve the actual Maven `artifactId` instead of the folder name**
+
+The default picker above uses the pom's *folder name* as a stand-in for the project name — simple and reliable, but a mismatch is possible (see limitation above). `rioj7.command-variable` can instead read the selected pom.xml's content and extract its own `<artifactId>` via a two-step regex (first strip any `<parent>...</parent>` block, so the parent's `artifactId` isn't picked up by mistake, then extract the first remaining `<artifactId>`):
+
+```json
+{
+  "id": "targetProject",
+  "type": "command",
+  "command": "extension.commandvariable.transform",
+  "args": {
+    "text": "${fileContent:pomContent}",
+    "fileContent": {
+      "pomContent": { "fileName": "${pickFile:pomFile}" }
+    },
+    "pickFile": {
+      "pomFile": {
+        "include": "**/pom.xml",
+        "exclude": "**/target/**",
+        "fromWorkspace": true,
+        "display": "relativePath"
+      }
+    },
+    "apply": [
+      { "find": "<parent>[\\s\\S]*?<\\/parent>", "replace": "" },
+      { "find": "[\\s\\S]*?<artifactId>([^<]+)<\\/artifactId>", "replace": "$1" }
+    ]
+  }
+}
+```
+
+This is not wired up as the repo default because it hasn't been verified end-to-end against a live multi-module workspace — treat it as a starting point, not a drop-in fix, and confirm the resolved value against the JAVA PROJECTS view before relying on it.
 
 ## 4. Docker Compose for Local Builds
 
@@ -193,8 +261,8 @@ The task works the same for both Docker and Apple `container` — the runtime is
 Use this for logic changes inside method bodies.
 
 1. Open the Run and Debug view (Cmd+Shift+D).
-2. Select **Debug Polarion Container** (from the repo's `.vscode/launch.json`), or **Global: Attach to Polarion (5005)** if you set up the global config from section 3.2.
-3. Press F5 or the green play button.
+2. Select **Debug Polarion Container** (from the repo's `.vscode/launch.json`), or **Global: Attach to Polarion (5005)** if you set up the global config from section 3.2. If several plugin projects are open at once, use **Debug Polarion Container (pick project)** instead — see [3.4](#34-debugging-with-multiple-plugin-projects-open).
+3. Press F5 or the green play button. With the "pick project" config, choose the project from the Quick Pick that appears.
 
 Note: Code changes within methods are hot-swapped automatically on save (Cmd+S).
 

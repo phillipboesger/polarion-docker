@@ -11,7 +11,37 @@
                 "group": "Polarion",
                 "order": 1
             }
+        },
+        {
+            "name": "Debug Polarion Container (pick project)",
+            "type": "java",
+            "request": "attach",
+            "hostName": "127.0.0.1",
+            "port": 5005,
+            "projectName": "${input:targetProject}",
+            "presentation": {
+                "group": "Polarion",
+                "order": 2
+            }
         }
     ],
-    "compounds": []
+    "compounds": [],
+    "inputs": [
+        {
+            "id": "targetProject",
+            "type": "command",
+            "command": "extension.commandvariable.file.pickFile",
+            "args": {
+                "include": "**/pom.xml",
+                "exclude": "**/target/**",
+                "fromWorkspace": true,
+                "display": "transform",
+                "valueTransform": {
+                    "text": "${file}",
+                    "find": "^.*[\\\\/]([^\\\\/]+)[\\\\/]pom\\.xml$",
+                    "replace": "$1"
+                }
+            }
+        }
+    ]
 }
