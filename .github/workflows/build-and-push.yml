@@ -285,6 +285,18 @@ jobs:
           docker exec polarion-test sh -lc 'grep -n "AH01617: user .*Password Mismatch" /var/log/apache2/error.log | tail -n 60 || true'
           echo "=== polarion main log svn errors (last lines) ==="
           docker exec polarion-test sh -lc 'f=$(ls -t /opt/polarion/data/logs/main/log4j-*.log | head -n1); echo "$f"; grep -n "ISVNAuthentication provider did not provide credentials|HTTP authorization cancelled|JavaSvnDriver - Exception occurred from SVN|Password Mismatch" "$f" | tail -n 80 || true'
+          echo "=== process list (is the Polarion JVM even running?) ==="
+          docker exec polarion-test sh -lc 'ps aux' || true
+          echo "=== java -version inside container ==="
+          docker exec polarion-test sh -lc 'java -version' || true
+          echo "=== config.sh PSVN_JServer_opt block ==="
+          docker exec polarion-test sh -lc 'grep -n -A 25 "PSVN_JServer_opt" /opt/polarion/etc/config.sh || true'
+          echo "=== full polarion.log tail ==="
+          docker exec polarion-test sh -lc 'tail -n 150 /var/log/polarion/polarion.log || true'
+          echo "=== disk and memory ==="
+          docker exec polarion-test sh -lc 'df -h; free -h' || true
+          echo "=== host dmesg for OOM kills ==="
+          dmesg 2>/dev/null | tail -n 60 || true
 
       - name: Build and push final image
         uses: docker/build-push-action@v5
