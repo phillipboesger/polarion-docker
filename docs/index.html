@@ -732,6 +732,25 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
+    .setup-disclaimer {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.3);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-sub);
+    }
+    .setup-disclaimer strong { color: #f59e0b; }
+    .setup-disclaimer code {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: rgba(255,255,255,0.06);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
     .code-block {
       background: #080b13;
       border: 1px solid var(--border);
@@ -1288,35 +1307,14 @@
     <p class="section-sub">Choose your container runtime. Copy the commands. You're developing on Polarion in minutes.</p>
 
     <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('ghcr', this)">Pre-built Image</button>
-      <button class="tab-btn" onclick="switchTab('docker', this)">Build from Source</button>
+      <button class="tab-btn active" onclick="switchTab('docker', this)">Build from Source</button>
       <button class="tab-btn" onclick="switchTab('apple', this)">Apple Container</button>
       <button class="tab-btn" onclick="switchTab('vscode-config', this)">VS Code Setup</button>
       <button class="tab-btn" onclick="switchTab('debug', this)">Debugger</button>
+      <button class="tab-btn" onclick="switchTab('ghcr', this)">Pre-built Image</button>
     </div>
 
-    <div id="tab-ghcr" class="tab-content active">
-      <div class="code-block">
-        <button class="code-copy" onclick="copyCode('ghcr')">Copy</button>
-        <pre id="code-ghcr"><span style="color:#6b7280"># Every Polarion version ships its own image tag (e.g. 2506, 2606).</span>
-<span style="color:#6b7280"># Use :latest to always get the most recent release.</span>
-<span style="color:#86efac">docker run</span> -d \
-  <span style="color:#93c5fd">--name</span> polarion \
-  <span style="color:#93c5fd">--platform</span> linux/amd64 \
-  <span style="color:#93c5fd">--memory</span> 4g \
-  <span style="color:#93c5fd">-p</span> 80:80 \       <span style="color:#6b7280"># Polarion web UI → http://localhost/</span>
-  <span style="color:#93c5fd">-p</span> 8025:8025 \   <span style="color:#6b7280"># Mailpit        → http://localhost:8025/</span>
-  <span style="color:#93c5fd">-p</span> 5433:5433 \   <span style="color:#6b7280"># PostgreSQL</span>
-  <span style="color:#93c5fd">-p</span> 5005:5005 \   <span style="color:#6b7280"># JDWP debugger</span>
-  <span style="color:#93c5fd">-e</span> JAVA_OPTS=<span style="color:#fde68a">"-Xmx3g -Xms3g"</span> \
-  <span style="color:#93c5fd">-e</span> JDWP_ENABLED=<span style="color:#fde68a">true</span> \
-  <span style="color:#93c5fd">--volume</span> polarion_repo:/opt/polarion/data/svn \
-  <span style="color:#93c5fd">--volume</span> polarion_extensions:/opt/polarion/polarion/extensions \
-  <span style="color:#fde68a">ghcr.io/phillipboesger/polarion-docker:latest</span></pre>
-      </div>
-    </div>
-
-    <div id="tab-docker" class="tab-content">
+    <div id="tab-docker" class="tab-content active">
       <div class="code-block">
         <button class="code-copy" onclick="copyCode('docker')">Copy</button>
         <pre id="code-docker"><span style="color:#6b7280"># Clone and drop in your Polarion ZIP</span>
@@ -1406,6 +1404,30 @@
 <span style="color:#6b7280">// Container must be started with JDWP enabled (-p 5005:5005 -e JDWP_ENABLED=true)</span>
 <span style="color:#6b7280">// Then use the VS Code "Debugger: Attach" task or F5</span>
 <span style="color:#6b7280">// Set breakpoints in your plugin or Polarion classes — they hit live.</span></pre>
+      </div>
+    </div>
+
+    <div id="tab-ghcr" class="tab-content">
+      <div class="setup-disclaimer">
+        <strong>Not publicly available.</strong> The <code>ghcr.io/phillipboesger/polarion-docker</code> image bundles a licensed Polarion install and is only accessible to authorized pull accounts. Use <em>Build from Source</em> above unless you already have access.
+      </div>
+      <div class="code-block">
+        <button class="code-copy" onclick="copyCode('ghcr')">Copy</button>
+        <pre id="code-ghcr"><span style="color:#6b7280"># Every Polarion version ships its own image tag (e.g. 2506, 2606).</span>
+<span style="color:#6b7280"># Use :latest to always get the most recent release.</span>
+<span style="color:#86efac">docker run</span> -d \
+  <span style="color:#93c5fd">--name</span> polarion \
+  <span style="color:#93c5fd">--platform</span> linux/amd64 \
+  <span style="color:#93c5fd">--memory</span> 4g \
+  <span style="color:#93c5fd">-p</span> 80:80 \       <span style="color:#6b7280"># Polarion web UI → http://localhost/</span>
+  <span style="color:#93c5fd">-p</span> 8025:8025 \   <span style="color:#6b7280"># Mailpit        → http://localhost:8025/</span>
+  <span style="color:#93c5fd">-p</span> 5433:5433 \   <span style="color:#6b7280"># PostgreSQL</span>
+  <span style="color:#93c5fd">-p</span> 5005:5005 \   <span style="color:#6b7280"># JDWP debugger</span>
+  <span style="color:#93c5fd">-e</span> JAVA_OPTS=<span style="color:#fde68a">"-Xmx3g -Xms3g"</span> \
+  <span style="color:#93c5fd">-e</span> JDWP_ENABLED=<span style="color:#fde68a">true</span> \
+  <span style="color:#93c5fd">--volume</span> polarion_repo:/opt/polarion/data/svn \
+  <span style="color:#93c5fd">--volume</span> polarion_extensions:/opt/polarion/polarion/extensions \
+  <span style="color:#fde68a">ghcr.io/phillipboesger/polarion-docker:latest</span></pre>
       </div>
     </div>
   </div>
