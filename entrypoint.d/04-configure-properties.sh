@@ -13,6 +13,7 @@ OTHER_PARAMS=(
     "com.siemens.polarion.license.salt.enabled=false"
     "com.siemens.polarion.analytics.enabled=false"
     "com.polarion.platform.internalPG=polarion:polarion@localhost:5433"
+    "com.siemens.polarion.platform.locationIndex.enabled=true"
 )
 
 # Configure allowed hosts for Tomcat service
@@ -33,6 +34,28 @@ PARAMS=(
     "$TomcatServiceRequestSafeListedHosts"
     "${OTHER_PARAMS[@]}"
 )
+
+# The built-in Mailpit catcher (entrypoint.d/60-mailpit.sh) runs by default, so unless
+# it is disabled (MAILPIT_EMBEDDED=false) or Polarion is pointed at a real mail server
+# (SMTP_HOST), wire notifications to the in-container catcher at 127.0.0.1:25. An explicit
+# external SMTP_HOST always takes precedence.
+if [[ "${MAILPIT_EMBEDDED:-}" != "false" && -z "${SMTP_HOST:-}" ]]; then
+    SMTP_HOST="127.0.0.1"
+    SMTP_PORT="${SMTP_PORT:-25}"
+fi
+
+# Configure outgoing SMTP for mail notifications. Routes Polarion's notification mail to
+# the resolved SMTP host — the built-in catcher by default, or a real server via SMTP_HOST.
+# Skipped only when the catcher is disabled (MAILPIT_EMBEDDED=false) and no SMTP_HOST is set.
+if [[ -n "${SMTP_HOST:-}" ]]; then
+    echo "Configuring SMTP notifications via $SMTP_HOST:${SMTP_PORT:-25}"
+    PARAMS+=(
+        "com.polarion.platform.persistence.notifications.disabled=false"
+        "announcer.smtp.host=$SMTP_HOST"
+        "announcer.smtp.port=${SMTP_PORT:-25}"
+        "announcer.smtp.auth=false"
+    )
+fi
 
 # Remove existing end marker
 sed -i '/^# End property file$/d' "$FILE"

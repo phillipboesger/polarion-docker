@@ -98,6 +98,110 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Verify SMTP mail configuration in image
+        run: |
+          echo "🔍 SMTP_HOST set -> entrypoint must route mail to that external server"
+          docker run --rm --entrypoint bash \
+            -e SMTP_HOST=smtp.example.com -e SMTP_PORT=2525 \
+            polarion:test -c '
+              set -e
+              . /opt/polarion/entrypoint.d/04-configure-properties.sh
+              F=/opt/polarion/etc/polarion.properties
+              grep -q "^announcer.smtp.host=smtp.example.com$" "$F"
+              grep -q "^announcer.smtp.port=2525$" "$F"
+              grep -q "^announcer.smtp.auth=false$" "$F"
+              grep -q "^com.polarion.platform.persistence.notifications.disabled=false$" "$F"
+              echo "✅ External SMTP host honoured (overrides the built-in catcher)"
+            '
+          echo "🔍 default (no env) -> built-in catcher on: wire SMTP to 127.0.0.1:25"
+          docker run --rm --entrypoint bash \
+            polarion:test -c '
+              set -e
+              . /opt/polarion/entrypoint.d/04-configure-properties.sh
+              F=/opt/polarion/etc/polarion.properties
+              grep -q "^announcer.smtp.host=127.0.0.1$" "$F"
+              grep -q "^announcer.smtp.port=25$" "$F"
+              grep -q "^announcer.smtp.auth=false$" "$F"
+              grep -q "^com.polarion.platform.persistence.notifications.disabled=false$" "$F"
+              command -v mailpit >/dev/null
+              echo "✅ Built-in Mailpit wiring written by default and mailpit binary present"
+            '
+          echo "🔍 MAILPIT_EMBEDDED=false (no SMTP_HOST) -> leave stock SMTP config untouched"
+          docker run --rm --entrypoint bash \
+            -e MAILPIT_EMBEDDED=false \
+            polarion:test -c '
+              set -e
+              F=/opt/polarion/etc/polarion.properties
+              pat="^(announcer\.smtp\.|com\.polarion\.platform\.persistence\.notifications\.disabled=)"
+              before=$(grep -E "$pat" "$F" | sort || true)
+              . /opt/polarion/entrypoint.d/04-configure-properties.sh >/dev/null
+              after=$(grep -E "$pat" "$F" | sort || true)
+              if [ "$before" != "$after" ]; then
+                echo "❌ SMTP config changed even though the catcher is disabled and no SMTP_HOST is set"
+                echo "--- before ---"; echo "$before"
+                echo "--- after ---"; echo "$after"
+                exit 1
+              fi
+              echo "✅ SMTP config correctly left untouched when the catcher is disabled"
+            '
+
+      - name: Verify embedded Mailpit catches mail end-to-end
+        run: |
+          # End-to-end proof that the *new image* runs the built-in catcher BY DEFAULT
+          # (no MAILPIT_EMBEDDED flag) and captures mail — not just that the binary
+          # exists / config is written. The catcher launches in entrypoint.d/60-mailpit.sh
+          # before Polarion fully boots, so this stays fast. Short-lived container on its
+          # own ports (25/8025), torn down via trap so it never runs alongside the heavy
+          # "Test Docker Image" container below.
+          trap 'docker rm -f polarion-embedded-mail-test >/dev/null 2>&1 || true' EXIT
+
+          echo "🚀 default run (no mail env) -> image must launch the built-in catcher and capture mail"
+          docker run -d \
+            --name polarion-embedded-mail-test \
+            -e JAVA_OPTS="-Xmx2g -Xms512m" \
+            -p 8025:8025 \
+            -p 25:25 \
+            polarion:test
+
+          echo "⏳ Waiting for the embedded Mailpit web API (:8025)..."
+          ready=false
+          for _ in $(seq 1 90); do
+            if curl -fsS http://localhost:8025/api/v1/messages >/dev/null 2>&1; then
+              echo "✅ Embedded Mailpit API is up"; ready=true; break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != "true" ]; then
+            echo "❌ Embedded Mailpit API did not become ready in the image"
+            docker logs polarion-embedded-mail-test || true
+            exit 1
+          fi
+
+          echo "📨 Sending a probe mail to the in-container SMTP (:25)..."
+          python3 - <<'PY'
+          import smtplib
+          from email.message import EmailMessage
+
+          msg = EmailMessage()
+          msg["From"] = "polarion@example.test"
+          msg["To"] = "dev@example.test"
+          msg["Subject"] = "CI embedded-Mailpit probe"
+          msg.set_content("If the embedded catcher captured this, the single-container mail setup works.")
+          with smtplib.SMTP("localhost", 25, timeout=15) as smtp:
+              smtp.send_message(msg)
+          print("✅ Probe mail sent to localhost:25")
+          PY
+
+          echo "🔍 Asserting the embedded Mailpit captured the mail..."
+          total=$(curl -fsS http://localhost:8025/api/v1/messages \
+            | python3 -c "import sys, json; print(json.load(sys.stdin).get('total', 0))")
+          echo "Captured messages: $total"
+          if [ "$total" -lt 1 ]; then
+            echo "❌ Embedded Mailpit did not capture the probe mail"
+            exit 1
+          fi
+          echo "✅ Embedded Mailpit verified end-to-end in the image (SMTP 25 -> embedded Mailpit -> API 8025)"
+
       - name: Test Docker Image
         run: |
           echo "🚀 Starting container for testing..."
@@ -306,6 +410,20 @@ jobs:
             echo "### Polarion Version: ${{ steps.version.outputs.version }} 🏷️" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "### ✅ Validated before publish" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All checks below passed on the freshly built image before it was pushed." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | What it verifies | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :---: |" >> $GITHUB_STEP_SUMMARY
+          echo "| JVM startup | JAVA_OPTS / polarion.ini do not crash the VM | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| PostgreSQL (5433) | Bundled database is reachable | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| JDWP debug (5005) | Remote debug port is open | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Apache (80) | Web server is serving | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Polarion startup | Startup sequence completes without fatal errors | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| SMTP mail config | Entrypoint wires announcer.smtp.* when SMTP_HOST set, skips otherwise | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| UI smoke (Playwright) | Admin can load and log into the Polarion UI | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Available Tags:" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" | sed 's/,/\n/g' >> $GITHUB_STEP_SUMMARY
