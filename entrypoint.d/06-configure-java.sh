@@ -2,6 +2,11 @@
 # Configure JDWP debugging by modifying config.sh before service start
 CONFIG_FILE="/opt/polarion/etc/config.sh"
 
+# Polarion 2506 still ships biased-locking flags that were removed in modern JDKs.
+# Strip them from the installed config so the service can start on Temurin 21.
+sed -i '/UseBiasedLocking/d' "$CONFIG_FILE"
+sed -i '/BiasedLockingStartupDelay/d' "$CONFIG_FILE"
+
 # Configure Memory settings from JAVA_OPTS
 if [[ -n "$JAVA_OPTS" ]]; then
     echo "Applying JAVA_OPTS: $JAVA_OPTS"
@@ -25,7 +30,7 @@ if [[ -z "$JDWP_ENABLED" ]] || [[ "$JDWP_ENABLED" == "true" ]]; then
 
     # 2. Den Agenten sauber neu einfügen
     sed -i '/export PSVN_JServer_opt="-server \\/a \  -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \\' "$CONFIG_FILE"
-    
+
     echo "JDWP debugging enabled on port 5005 (Duplicates cleaned)"
 else
     # Falls JDWP deaktiviert ist, stellen wir sicher, dass es auch aus der Datei verschwindet
