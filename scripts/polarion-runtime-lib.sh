@@ -14,6 +14,7 @@ POLARION_IMAGE="${POLARION_IMAGE:-polarion:local}"
 POLARION_HTTP_PORT="${POLARION_HTTP_PORT:-80}"
 POLARION_DB_PORT="${POLARION_DB_PORT:-5433}"
 POLARION_JDWP_PORT="${POLARION_JDWP_PORT:-5005}"
+POLARION_MAILPIT_PORT="${POLARION_MAILPIT_PORT:-8025}"
 POLARION_BIND_HOST="${POLARION_BIND_HOST:-127.0.0.1}"
 POLARION_JAVA_OPTS="${POLARION_JAVA_OPTS:--Xmx3g -Xms3g}"
 POLARION_JDWP_ENABLED="${POLARION_JDWP_ENABLED:-true}"
@@ -342,6 +343,44 @@ polarion_stop_builder() {
 
 	polarion_require_command container
 	container builder stop >/dev/null 2>&1 || true
+}
+
+polarion_list_zips() {
+	# Print the basenames of Polarion installer archives in POLARION_DATA_DIR, sorted.
+	# Used by the build-image action and the VS Code ZIP picker input.
+	[ -d "${POLARION_DATA_DIR}" ] || return 0
+	find "${POLARION_DATA_DIR}" -maxdepth 1 -type f -iname 'polarion*.zip' -exec basename {} \; 2>/dev/null | sort
+}
+
+polarion_derive_image_tag_from_zip() {
+	# Derive a version-specific image tag from a ZIP filename
+	# (e.g. PolarionALM_2512.zip -> polarion:2512). Falls back to polarion:local
+	# when no version-like trailing number can be extracted.
+	local zip_name base version
+	zip_name="$1"
+	base="$(basename "${zip_name}")"
+	base="${base%.*}"
+	version="$(printf '%s' "${base}" | grep -oE '[0-9]{3,}$' || true)"
+	if [ -n "${version}" ]; then
+		printf 'polarion:%s\n' "${version}"
+	else
+		printf 'polarion:local\n'
+	fi
+}
+
+polarion_list_images() {
+	# Print locally available Polarion image references (repo:tag) for the active
+	# runtime, sorted and de-duplicated. Used by the start action and the VS Code
+	# image picker input. Matches any image whose reference contains "polarion"
+	# (the locally built polarion:<version> tags as well as ghcr.io/...polarion-*).
+	if polarion_is_apple_container_runtime; then
+		polarion_command_available container || return 0
+		container images list 2>/dev/null \
+			| awk 'NR>1 && $1 != "" { print $1":"$2 }'
+	else
+		polarion_command_available docker || return 0
+		docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null
+	fi | grep -iE 'polarion' | grep -v '<none>' | sort -u || true
 }
 
 polarion_find_running_polarion_container() {
