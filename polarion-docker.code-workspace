@@ -42,19 +42,21 @@
 			// -- Core tasks ---------------------------------------------------
 			{
 				"label": "Container: Build Image",
-				"detail": "Build the polarion:local Docker / Apple container image from the Dockerfile.",
+				"detail": "Build the Polarion image from the Dockerfile. Prompts for the ZIP in data/ when more than one exists; the image is tagged per version (e.g. polarion:2512) and aliased to polarion:local.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "build-image"],
+				"options": { "env": { "POLARION_ZIP": "${input:polarionZip}" } },
 				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
 			},
 			{
 				"label": "Container: Start",
-				"detail": "Create and start the Polarion container, sync the license file, and wait until the HTTP endpoint is reachable.",
+				"detail": "Create and start the Polarion container, sync the license file, and wait until the HTTP endpoint is reachable. Prompts for the local Polarion image when more than one exists.",
 				"type": "shell",
 				"command": "bash",
 				"args": ["scripts/polarionctl.sh", "start"],
+				"options": { "env": { "POLARION_IMAGE": "${input:polarionImage}" } },
 				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
 			},
@@ -94,6 +96,34 @@
 				"args": ["scripts/polarionctl.sh", "builder-stop"],
 				"presentation": { "reveal": "always", "panel": "shared" },
 				"problemMatcher": []
+			}
+		],
+		// Dynamic task inputs, backed by the `augustocdias.tasks-shell-input`
+		// extension (`shellCommand.execute`, see .vscode/extensions.json), so each
+		// list reflects reality. `useSingleResult` skips the prompt when only one
+		// choice exists.
+		"inputs": [
+			{
+				"id": "polarionZip",
+				"type": "command",
+				"command": "shellCommand.execute",
+				"args": {
+					"command": "bash scripts/polarionctl.sh list-zips",
+					"cwd": "${workspaceFolder}",
+					"useSingleResult": true,
+					"description": "Select the Polarion ZIP in data/ to build"
+				}
+			},
+			{
+				"id": "polarionImage",
+				"type": "command",
+				"command": "shellCommand.execute",
+				"args": {
+					"command": "bash scripts/polarionctl.sh list-images",
+					"cwd": "${workspaceFolder}",
+					"useSingleResult": true,
+					"description": "Select the Polarion image to start"
+				}
 			}
 		]
 	}
