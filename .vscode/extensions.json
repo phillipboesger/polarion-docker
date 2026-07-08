@@ -1,0 +1,12 @@
+{
+	// Recommended extensions for this repository.
+	// `augustocdias.tasks-shell-input` provides the `shellCommand.execute` command id
+	// used by the dynamic Container task pickers in polarion-docker.code-workspace.
+	// `rioj7.command-variable` provides the `extension.commandvariable.file.pickFile` command id
+	// used by the "Debug Polarion Container (pick project)" launch config to select the
+	// projectName when multiple Java/Maven plugin projects are open in the workspace.
+	"recommendations": [
+		"augustocdias.tasks-shell-input",
+		"rioj7.command-variable"
+	]
+}
