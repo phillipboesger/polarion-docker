@@ -2,21 +2,26 @@ version: '3.8'
 
 services:
   polarion:
-    # Standard Docker image - can be pulled from registry
-    # Use the image hosted on GitHub Container Registry
-    image: ghcr.io/phillipboesger/polarion-docker:latest
+    # Local development defaults to the locally built image.
+    # Override with POLARION_IMAGE=ghcr.io/phillipboesger/polarion-docker:latest when needed.
+    image: ${POLARION_IMAGE:-polarion:local}
     platform: linux/amd64  # Important for Apple Silicon Macs
     container_name: polarion
+    mem_limit: 4g
     ports:
       - "80:80"         # HTTP port
       - "5433:5433"     # PostgreSQL port
       - "5005:5005"     # JDWP Debug port
+      - "8025:8025"     # built-in Mailpit web UI -> http://localhost:8025
     environment:
       # These can be customized when creating the container
       - POLARION_HOME=/polarion_root
-      - JAVA_OPTS=-Xmx8g -Xms8g
+      - JAVA_OPTS=-Xmx3g -Xms3g
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
       - JDWP_ENABLED=true
+      # The built-in Mailpit catcher runs by default and captures Polarion's outgoing
+      # notification mail (open http://localhost:8025). To route mail to a real server
+      # instead, set SMTP_HOST/SMTP_PORT here; to disable the catcher, set MAILPIT_EMBEDDED=false.
     healthcheck:
       test:
         - CMD
