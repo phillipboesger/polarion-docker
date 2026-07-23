@@ -13,6 +13,7 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 - **URL Correction**: Automatically fixes `localhost` references in configuration files to `127.0.0.1` for proper container behavior.
 - **Remote Debugging (JDWP)**: One-click remote debugging support on port 5005.
 - **Memory Management**: Easy configuration of JVM memory via `JAVA_OPTS`.
+- **Automatic Workspace Cleanup**: On every container start, stale Eclipse workspace metadata (`.config` and `.metadata`) is removed from `/opt/polarion/data/workspace/` before Polarion launches, preventing stale data caused by changed plugins in the `/opt/polarion/polarion/extensions/` directory.
 
 ## 🚀 Getting Started
 
@@ -39,6 +40,7 @@ Since Polarion requires a license and the installation media is proprietary, you
     - Put the Polarion core XML license in `files/` as `polarion.lic`. The start scripts sync XML `polarion.lic` files from `files/` into `/opt/polarion/polarion/license/polarion.lic`.
     - Put the avasis extension license in `data/` as `avasis.licence`. The start scripts sync it into `/opt/polarion/polarion/license/avasis.licence`.
 4.  **Build** the Docker image:
+
     ```bash
     # With Docker
     docker build --platform linux/amd64 -t polarion:local .
@@ -202,14 +204,14 @@ To add your own configuration:
 
 ### Environment Variables
 
-| Variable        | Description                                  | Default                       |
-| :-------------- | :------------------------------------------- | :---------------------------- |
-| `JAVA_OPTS`     | Java memory and VM arguments                 | `-Xmx3g -Xms3g`               |
-| `JDWP_ENABLED`  | Enable Java Debug Wire Protocol              | `true`                        |
-| `ALLOWED_HOSTS` | Comma-separated list of allowed host headers | `localhost,127.0.0.1,0.0.0.0` |
-| `SMTP_HOST`     | Route mail to a **real** SMTP server instead of the built-in catcher. When set, the entrypoint points Polarion's `announcer.smtp.host` at it and the catcher steps aside. | _(unset → built-in catcher)_ |
-| `SMTP_PORT`     | SMTP port used together with `SMTP_HOST`     | `25`                          |
-| `MAILPIT_EMBEDDED` | Built-in Mailpit catcher (SMTP `:25`, web UI `:8025`). **On by default** — captures Polarion's outgoing mail so no real mailbox is needed. Set `false` to disable. | `true` |
+| Variable           | Description                                                                                                                                                               | Default                       |
+| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------- |
+| `JAVA_OPTS`        | Java memory and VM arguments                                                                                                                                              | `-Xmx3g -Xms3g`               |
+| `JDWP_ENABLED`     | Enable Java Debug Wire Protocol                                                                                                                                           | `true`                        |
+| `ALLOWED_HOSTS`    | Comma-separated list of allowed host headers                                                                                                                              | `localhost,127.0.0.1,0.0.0.0` |
+| `SMTP_HOST`        | Route mail to a **real** SMTP server instead of the built-in catcher. When set, the entrypoint points Polarion's `announcer.smtp.host` at it and the catcher steps aside. | _(unset → built-in catcher)_  |
+| `SMTP_PORT`        | SMTP port used together with `SMTP_HOST`                                                                                                                                  | `25`                          |
+| `MAILPIT_EMBEDDED` | Built-in Mailpit catcher (SMTP `:25`, web UI `:8025`). **On by default** — captures Polarion's outgoing mail so no real mailbox is needed. Set `false` to disable.        | `true`                        |
 
 ### External SVN Endpoints
 
@@ -260,6 +262,15 @@ docker run -d --name polarion -p 80:80 -p 8025:8025 polarion:local
 
 **Want real mail instead?** Point Polarion at a real SMTP server with `SMTP_HOST` / `SMTP_PORT` (e.g. `host.docker.internal`) — the built-in catcher then steps aside automatically. To turn the catcher off entirely, set `MAILPIT_EMBEDDED=false`.
 
+### Container Shell Aliases
+
+Two convenience aliases are pre-installed for the `root` user and are available in any interactive shell session inside the container (e.g. `docker exec -it polarion bash`):
+
+| Alias        | Effect                                                                                                                                                                                               |
+| :----------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plnrestart` | Stops the Polarion service, clears workspace `.config` / `.metadata`, restarts the service, and tails the main log. Useful after updating plugins in the `/opt/polarion/polarion/extensions` folder. |
+| `plnmainlog` | Tails the current `log4j-20*.log` file under `/opt/polarion/data/logs/main/`.                                                                                                                        |
+
 ### Plugin Development
 
 For developing custom plugins with live reloading, refer to [PLUGIN-DEVELOPMENT.md](./PLUGIN-DEVELOPMENT.md).
@@ -270,10 +281,10 @@ If you are developing on Apple silicon with macOS 26 or later, see [docs/apple-c
 
 Open [`polarion-docker.code-workspace`](./polarion-docker.code-workspace) in VS Code to get all tasks available in the task picker:
 
-| Group | Tasks |
-| :--- | :--- |
-| Container | `Build Image` · `Start` · `Stop` · `System Start` · `Builder Start/Stop` |
-| Polarion | `Logs` · `Error Logs` · `Redeploy Single` · `Redeploy All` · `Redeploy Preflight` |
+| Group     | Tasks                                                                             |
+| :-------- | :-------------------------------------------------------------------------------- |
+| Container | `Build Image` · `Start` · `Stop` · `System Start` · `Builder Start/Stop`          |
+| Polarion  | `Logs` · `Error Logs` · `Redeploy Single` · `Redeploy All` · `Redeploy Preflight` |
 
 #### Selecting which Polarion version to start
 
