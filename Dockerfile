@@ -25,18 +25,18 @@ ENV RUNLEVEL=1
 
 # Configure apt to be more resilient
 RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
-	echo 'Acquire::http::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries && \
-	echo 'Acquire::ftp::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries
+  echo 'Acquire::http::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries && \
+  echo 'Acquire::ftp::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
-	apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
-	apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
-	postgresql postgresql-client postgresql-contrib util-linux-extra iputils-ping && \
-	locale-gen en_US.UTF-8 && \
-	update-locale LANG=en_US.UTF-8 && \
-	apt-get clean && \
-	rm -rf /var/lib/apt/lists/*
+  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
+  apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
+  postgresql postgresql-client postgresql-contrib util-linux-extra iputils-ping && \
+  locale-gen en_US.UTF-8 && \
+  update-locale LANG=en_US.UTF-8 && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
 
 # Add postgres symlink for genericity
 RUN ln -s /usr/lib/postgresql/* /usr/lib/postgresql/current
@@ -59,63 +59,63 @@ RUN sed -i 's/\r//' polarion_starter.sh && chmod +x polarion_starter.sh
 # Download and install OpenJDK 21 (Temurin)
 # Select the correct archive for the image architecture (x86_64 vs aarch64)
 RUN set -eux; \
-	arch="$(uname -m)"; \
-	if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then \
-		jdk_file="$JDK_FILE_X64"; \
-	elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
-		jdk_file="$JDK_FILE_AARCH64"; \
-	else \
-		echo "Unsupported architecture: $arch"; exit 1; \
-	fi; \
-	wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
-	mkdir -p /usr/lib/jvm; \
-	tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
-	rm jdk.tar.gz
+  arch="$(uname -m)"; \
+  if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then \
+  jdk_file="$JDK_FILE_X64"; \
+  elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
+  jdk_file="$JDK_FILE_AARCH64"; \
+  else \
+  echo "Unsupported architecture: $arch"; exit 1; \
+  fi; \
+  wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
+  mkdir -p /usr/lib/jvm; \
+  tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
+  rm jdk.tar.gz
 
 # Configure Java alternatives for JDK 21
 RUN ln -s /usr/lib/jvm/* /usr/lib/jvm/current && \
-	update-alternatives --install /usr/bin/java java /usr/lib/jvm/current/bin/java 100 && \
-	update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/current/bin/jar 100 && \
-	update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/current/bin/javac 100 && \
-	update-alternatives --set jar /usr/lib/jvm/current/bin/jar && \
-	update-alternatives --set javac /usr/lib/jvm/current/bin/javac
+  update-alternatives --install /usr/bin/java java /usr/lib/jvm/current/bin/java 100 && \
+  update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/current/bin/jar 100 && \
+  update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/current/bin/javac 100 && \
+  update-alternatives --set jar /usr/lib/jvm/current/bin/jar && \
+  update-alternatives --set javac /usr/lib/jvm/current/bin/javac
 
 # Set Java environment variables
 ENV JAVA_HOME="/usr/lib/jvm/current" \
-	JDK_HOME="/usr/lib/jvm/current"
+  JDK_HOME="/usr/lib/jvm/current"
 
 # Add Java environment to system environment
 RUN echo "JAVA_HOME=\"$JAVA_HOME\"" >> /etc/environment && \
-	echo "JDK_HOME=\"$JDK_HOME\"" >> /etc/environment
+  echo "JDK_HOME=\"$JDK_HOME\"" >> /etc/environment
 
 # Verify Java installation
 RUN echo "JAVA_HOME and JDK_HOME have been successfully set to:" && \
-	echo "JAVA_HOME=$JAVA_HOME" && \
-	echo "JDK_HOME=$JDK_HOME"  && \
-	java -version
+  echo "JAVA_HOME=$JAVA_HOME" && \
+  echo "JDK_HOME=$JDK_HOME"  && \
+  java -version
 
 # Install the Mailpit binary for the built-in mail catcher.
 # It runs by default at runtime (entrypoint.d/60-mailpit.sh); disable with MAILPIT_EMBEDDED=false.
 # With MAILPIT_VERSION=latest the build resolves the newest release via GitHub's
 # "releases/latest/download" redirect; a pinned vX.Y.Z uses the exact release asset.
 RUN set -eux; \
-	arch="$(uname -m)"; \
-	if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then \
-		mp_arch="amd64"; \
-	elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
-		mp_arch="arm64"; \
-	else \
-		echo "Unsupported architecture for Mailpit: $arch"; exit 1; \
-	fi; \
-	if [ "$MAILPIT_VERSION" = "latest" ]; then \
-		mp_url="https://github.com/axllent/mailpit/releases/latest/download/mailpit-linux-${mp_arch}.tar.gz"; \
-	else \
-		mp_url="https://github.com/axllent/mailpit/releases/download/${MAILPIT_VERSION}/mailpit-linux-${mp_arch}.tar.gz"; \
-	fi; \
-	wget --progress=dot:giga -O /tmp/mailpit.tar.gz --no-check-certificate "$mp_url"; \
-	tar -xzf /tmp/mailpit.tar.gz -C /usr/local/bin mailpit; \
-	rm -f /tmp/mailpit.tar.gz; \
-	test -x /usr/local/bin/mailpit
+  arch="$(uname -m)"; \
+  if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then \
+  mp_arch="amd64"; \
+  elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
+  mp_arch="arm64"; \
+  else \
+  echo "Unsupported architecture for Mailpit: $arch"; exit 1; \
+  fi; \
+  if [ "$MAILPIT_VERSION" = "latest" ]; then \
+  mp_url="https://github.com/axllent/mailpit/releases/latest/download/mailpit-linux-${mp_arch}.tar.gz"; \
+  else \
+  mp_url="https://github.com/axllent/mailpit/releases/download/${MAILPIT_VERSION}/mailpit-linux-${mp_arch}.tar.gz"; \
+  fi; \
+  wget --progress=dot:giga -O /tmp/mailpit.tar.gz --no-check-certificate "$mp_url"; \
+  tar -xzf /tmp/mailpit.tar.gz -C /usr/local/bin mailpit; \
+  rm -f /tmp/mailpit.tar.gz; \
+  test -x /usr/local/bin/mailpit
 
 # Copy install.expect to Polarion directory and make both scripts executable
 COPY --chmod=755 --chown=0:0 install.expect ./
@@ -125,40 +125,44 @@ RUN sed -i 's/\r//' install.expect
 # The Polarion dir is created by unzip mid-RUN under a transient bind-mount, so WORKDIR cannot target it.
 # hadolint ignore=DL3003
 RUN --mount=type=bind,source=./data/,target=/data/ \
-	set -x && \
-	if [ -n "${POLARION_ZIP}" ]; then \
-		zip_path="/data/${POLARION_ZIP}"; \
-	else \
-		set -- /data/[Pp]olarion*.zip; \
-		if [ "$#" -gt 1 ]; then \
-			echo "ERROR: Multiple polarion*.zip archives in data/; pass --build-arg POLARION_ZIP=<file> to choose one of:" >&2; \
-			for candidate in "$@"; do echo "  - $(basename "${candidate}")" >&2; done; \
-			exit 1; \
-		fi; \
-		zip_path="$1"; \
-	fi && \
-	if [ ! -f "${zip_path}" ]; then \
-		echo "ERROR: No Polarion installer ZIP found at ${zip_path}. Add a polarion*.zip (e.g. PolarionALM_2512.zip) to data/ or pass --build-arg POLARION_ZIP=<file>." >&2; \
-		exit 1; \
-	fi && \
-	echo "Installing Polarion from ${zip_path}" && \
-	unzip -q "${zip_path}" && \
-	cd Polarion && \
-	../install.expect || true && \
-	test -d /opt/polarion/polarion && \
-	test -d /opt/polarion/data/svn && \
-	cd .. && \
-	rm -r Polarion && \
-	mkdir -p /opt/polarion/bootstrap/svn && \
-	cp -a /opt/polarion/data/svn/. /opt/polarion/bootstrap/svn/ && \
-	apt-get clean && \
-	rm -rf /var/lib/apt/lists/*
+  set -x && \
+  if [ -n "${POLARION_ZIP}" ]; then \
+  zip_path="/data/${POLARION_ZIP}"; \
+  else \
+  set -- /data/[Pp]olarion*.zip; \
+  if [ "$#" -gt 1 ]; then \
+  echo "ERROR: Multiple polarion*.zip archives in data/; pass --build-arg POLARION_ZIP=<file> to choose one of:" >&2; \
+  for candidate in "$@"; do echo "  - $(basename "${candidate}")" >&2; done; \
+  exit 1; \
+  fi; \
+  zip_path="$1"; \
+  fi && \
+  if [ ! -f "${zip_path}" ]; then \
+  echo "ERROR: No Polarion installer ZIP found at ${zip_path}. Add a polarion*.zip (e.g. PolarionALM_2512.zip) to data/ or pass --build-arg POLARION_ZIP=<file>." >&2; \
+  exit 1; \
+  fi && \
+  echo "Installing Polarion from ${zip_path}" && \
+  unzip -q "${zip_path}" && \
+  cd Polarion && \
+  ../install.expect || true && \
+  test -d /opt/polarion/polarion && \
+  test -d /opt/polarion/data/svn && \
+  cd .. && \
+  rm -r Polarion && \
+  mkdir -p /opt/polarion/bootstrap/svn && \
+  cp -a /opt/polarion/data/svn/. /opt/polarion/bootstrap/svn/ && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
 
 # Add PostgreSQL to PATH
 ENV PATH="/usr/lib/postgresql/current/bin:${PATH}"
 
 # Set environment variables for debugging support (default: enabled)
 ENV JDWP_ENABLED="true"
+
+# Add convenience aliases for root
+RUN printf '\nalias plnrestart='"'"'service polarion stop && rm -rf /opt/polarion/data/workspace/.config /opt/polarion/data/workspace/.metadata && service polarion start && tail -f /var/log/polarion/polarion.log'"'"'\n' >> /root/.bashrc && \
+  printf 'alias plnmainlog='"'"'tail -f "$(ls -t /opt/polarion/data/logs/main/log4j-20*.log 2>/dev/null | head -1)"'"'"'\n' >> /root/.bashrc
 
 # Set exposed ports
 EXPOSE 80/tcp

@@ -79,5 +79,8 @@ chmod 0664 "$SVN_PASSWD_FILE" || true
 # Ensure Apache (www-data) can write SVN repo lock/index files during commits.
 normalize_repo_permissions
 
+# Remove Polarion workspace config and metadata to avoid issues with stale data
+rm -rf /opt/polarion/data/workspace/.config /opt/polarion/data/workspace/.metadata
+
 # Start Polarion service
 service polarion start
