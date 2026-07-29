@@ -91,5 +91,8 @@ if ! pgrep -x apache2 >/dev/null 2>&1; then
     service apache2 start || true
 fi
 
+# Remove Polarion workspace config and metadata to avoid issues with stale data
+rm -rf /opt/polarion/data/workspace/.config /opt/polarion/data/workspace/.metadata
+
 # Start Polarion service
 service polarion start
