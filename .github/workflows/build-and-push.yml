@@ -5,6 +5,11 @@ on:
     branches: [main, master, v*] # Include version branches
     tags: ["v*"]
   workflow_dispatch: # Manual trigger
+    inputs:
+      version:
+        description: "Polarion version to build (e.g. v2512). Leave empty to build from the newest installer ZIP."
+        required: false
+        default: ""
 
 env:
   REGISTRY: ghcr.io
@@ -43,19 +48,79 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version from branch
+      - name: Resolve Polarion version and immutable build tag
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          DISPATCH_VERSION: ${{ inputs.version }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          if [[ "${{ github.ref_name }}" =~ ^v[0-9]+$ ]]; then
-            VERSION="${{ github.ref_name }}"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "is_version_branch=true" >> $GITHUB_OUTPUT
-            echo "🏷️ Detected Polarion version branch: $VERSION"
+          set -euo pipefail
+
+          # A Polarion version branch/tag is exactly "v" + 4 digits (v2512).
+          # The push trigger above uses the much broader "v*" glob, so a branch
+          # like "v2410-sync" reaches this step too — it must fail loudly rather
+          # than silently fall back to the newest ZIP and publish a stray tag.
+          version="main"
+          is_version_branch="false"
+
+          case "${EVENT_NAME}" in
+            workflow_dispatch)
+              if [[ -z "${DISPATCH_VERSION}" || "${DISPATCH_VERSION}" == "main" ]]; then
+                echo "📝 Manual run without a version input — building from the newest Polarion ZIP."
+              elif [[ "${DISPATCH_VERSION}" =~ ^v[0-9]{4}$ ]]; then
+                version="${DISPATCH_VERSION}"
+                is_version_branch="true"
+                echo "🏷️ Manual run for Polarion version: ${version}"
+              else
+                echo "::error::Invalid 'version' input '${DISPATCH_VERSION}'. Expected a Polarion version like 'v2512', or leave it empty to build from the newest ZIP."
+                exit 1
+              fi
+              ;;
+            push)
+              if [[ "${REF_TYPE}" == "tag" ]]; then
+                if [[ "${REF_NAME}" =~ ^v[0-9]{4}$ ]]; then
+                  version="${REF_NAME}"
+                  is_version_branch="true"
+                  echo "🏷️ Polarion version tag: ${version}"
+                else
+                  echo "::warning::Tag '${REF_NAME}' is not a Polarion version tag (vNNNN); building from the newest Polarion ZIP and publishing under 'main'."
+                fi
+              elif [[ "${REF_NAME}" =~ ^v[0-9]{4}$ ]]; then
+                version="${REF_NAME}"
+                is_version_branch="true"
+                echo "🏷️ Detected Polarion version branch: ${version}"
+              elif [[ "${REF_NAME}" == v* ]]; then
+                echo "::error::Branch '${REF_NAME}' matches this workflow's 'v*' push trigger but is not a Polarion version branch (vNNNN). Building it would download the newest installer ZIP instead of the intended version and publish an image tagged after the branch. Rename the branch (e.g. 'sync/${REF_NAME}' or 'feat/…') or push a real vNNNN branch."
+                exit 1
+              else
+                echo "📝 Building from branch '${REF_NAME}'"
+              fi
+              ;;
+            *)
+              echo "::warning::Unhandled event '${EVENT_NAME}'; building from the newest Polarion ZIP and publishing under 'main'."
+              ;;
+          esac
+
+          # Immutable per-build tag: vNNNN-YYMMDD-<short sha>, e.g. v2512-260728-d0450b0.
+          # UTC so the tag does not depend on the runner's timezone. Rebuilding the same
+          # commit on the same day intentionally yields the same tag (idempotent).
+          immutable_tag=""
+          if [[ "${is_version_branch}" == "true" ]]; then
+            immutable_tag="${version}-$(date -u +%y%m%d)-${COMMIT_SHA:0:7}"
+            echo "📌 Immutable build tag: ${immutable_tag}"
           else
-            echo "version=main" >> $GITHUB_OUTPUT
-            echo "is_version_branch=false" >> $GITHUB_OUTPUT
-            echo "📝 Building from main/master branch"
+            echo "📌 No immutable build tag (not a Polarion version build)."
           fi
+
+          {
+            echo "version=${version}"
+            echo "is_version_branch=${is_version_branch}"
+            echo "immutable_tag=${immutable_tag}"
+            echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Download Polarion ZIP from Google Drive via API
         id: polarion-file
@@ -73,19 +138,31 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Immutable build tag first, then the floating aliases that re-point to it.
+          # Removed: type=ref,event=pr (this workflow has no pull_request trigger, so it
+          # could never fire) and the two type=semver rules (Polarion versions like
+          # "v2512" are not semver, and the repo publishes no semver tags or releases).
+          # type=ref,event=tag replaces them so a non-vNNNN tag push still publishes
+          # something identifiable instead of no tag at all.
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.immutable_tag }},enable=${{ steps.version.outputs.is_version_branch }}
             type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.is_version_branch }}
             type=raw,value=polarion-${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.is_version_branch }}
+            type=ref,event=branch
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+          # polarion.build is what `polarionctl start` reads to pin a floating tag to the
+          # exact build it resolved to. It is empty for non-version builds, which the
+          # resolver treats the same as a missing label (it falls back to the tag as given).
           labels: |
             org.opencontainers.image.title=Polarion Docker
             org.opencontainers.image.description=Polarion ALM running in Docker
             org.opencontainers.image.vendor=Phillip Bösger
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.version.outputs.created }}
             polarion.version=${{ steps.version.outputs.version }}
+            polarion.build=${{ steps.version.outputs.immutable_tag }}
+            polarion.zip=${{ steps.polarion-file.outputs.zip_name }}
 
       - name: Build and load for testing
         uses: docker/build-push-action@v5
@@ -435,3 +512,15 @@ jobs:
           echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "docker run -p 80:80 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+
+          # The tag above floats to the newest build; surface the immutable one too.
+          if [[ -n "${{ steps.version.outputs.immutable_tag }}" ]]; then
+            {
+              echo ""
+              echo "### Pin this exact build:"
+              echo ""
+              echo '```'
+              echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.immutable_tag }}"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

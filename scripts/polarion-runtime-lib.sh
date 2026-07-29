@@ -368,6 +368,140 @@ polarion_derive_image_tag_from_zip() {
 	fi
 }
 
+polarion_image_repository() {
+	# Print the repository part of an image reference, i.e. everything before the
+	# tag. A colon only introduces a tag when it comes after the last slash —
+	# "localhost:5000/polarion" is a registry host and port, not a tag.
+	local ref="$1" last_segment
+	last_segment="${ref##*/}"
+	if [ "${last_segment}" = "${last_segment#*:}" ]; then
+		printf '%s\n' "${ref}"
+	else
+		printf '%s\n' "${ref%:*}"
+	fi
+}
+
+polarion_image_tag() {
+	# Print the tag part of an image reference, or nothing when it carries none.
+	local ref="$1" last_segment
+	last_segment="${ref##*/}"
+	if [ "${last_segment}" = "${last_segment#*:}" ]; then
+		printf '\n'
+	else
+		printf '%s\n' "${ref##*:}"
+	fi
+}
+
+polarion_image_has_registry_host() {
+	# True when the reference names a registry (ghcr.io/..., localhost:5000/...).
+	# Locally built references like "polarion:2512" name no registry, so they must
+	# never be pulled — the tag exists in no registry and the pull would fail.
+	local ref="$1" first_segment
+	case "${ref}" in
+		*/*) first_segment="${ref%%/*}" ;;
+		*) return 1 ;;
+	esac
+	case "${first_segment}" in
+		*.* | *:* | localhost) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+polarion_image_build_label() {
+	# Print the polarion.build label of a local image, or nothing if the image is
+	# absent, carries no such label, or the runtime cannot report it. Never fails.
+	local ref="$1" runtime label
+	runtime="${POLARION_RUNTIME}"
+	[ -n "${runtime}" ] || return 0
+	polarion_command_available "${runtime}" || return 0
+
+	label="$("${runtime}" inspect --format '{{index .Config.Labels "polarion.build"}}' "${ref}" 2>/dev/null || true)"
+	if [ -z "${label}" ] || [ "${label}" = "<no value>" ]; then
+		# Apple's container CLI may not support --format; fall back to reading the
+		# raw JSON. Deliberately tolerant: any failure means "no label".
+		label="$("${runtime}" inspect "${ref}" 2>/dev/null \
+			| grep -o '"polarion\.build"[[:space:]]*:[[:space:]]*"[^"]*"' \
+			| head -n 1 | sed 's/.*"\([^"]*\)"$/\1/' || true)"
+	fi
+	if [ "${label}" = "<no value>" ]; then
+		label=""
+	fi
+	printf '%s\n' "${label}"
+}
+
+polarion_image_exists() {
+	# True when the runtime can resolve the reference locally.
+	local ref="$1" runtime
+	runtime="${POLARION_RUNTIME}"
+	[ -n "${runtime}" ] || return 1
+	polarion_command_available "${runtime}" || return 1
+	"${runtime}" inspect "${ref}" >/dev/null 2>&1
+}
+
+polarion_resolve_immutable_image() {
+	# Pin a floating Polarion version tag to the immutable build it currently
+	# resolves to, so a started container stays identifiable after the floating tag
+	# moves on (see the "Image tags and versions" section in README.md).
+	#
+	# Prints the reference to actually start. Falls back to the reference it was
+	# given whenever anything is missing or unexpected — images built before the
+	# polarion.build label existed must keep working unchanged.
+	local requested="$1" repo tag label candidate runtime
+
+	[ -n "${requested}" ] || return 0
+
+	tag="$(polarion_image_tag "${requested}")"
+	# Only floating version tags are pinned: vNNNN (published) or NNNN (local build).
+	# "polarion:local", an already-immutable tag and untagged references are left alone.
+	case "${tag}" in
+		v[0-9][0-9][0-9][0-9] | [0-9][0-9][0-9][0-9]) ;;
+		*)
+			printf '%s\n' "${requested}"
+			return 0
+			;;
+	esac
+
+	repo="$(polarion_image_repository "${requested}")"
+
+	if polarion_image_has_registry_host "${requested}"; then
+		runtime="${POLARION_RUNTIME}"
+		if [ -n "${runtime}" ] && polarion_command_available "${runtime}"; then
+			# Best effort: without a local copy there is no label to read. A failure
+			# here (offline, not logged in) just means we cannot pin.
+			"${runtime}" pull "${requested}" >/dev/null 2>&1 || true
+		fi
+	fi
+
+	label="$(polarion_image_build_label "${requested}")"
+	if [ -z "${label}" ]; then
+		printf '%s\n' "${requested}"
+		return 0
+	fi
+
+	# The label holds a bare tag ("v2512-260728-d0450b0"), not a full reference —
+	# rebuild the reference by replacing only the tag portion of what was requested.
+	candidate="${repo}:${label}"
+	if [ "${candidate}" = "${requested}" ]; then
+		printf '%s\n' "${requested}"
+		return 0
+	fi
+
+	if ! polarion_image_exists "${candidate}"; then
+		if polarion_image_has_registry_host "${candidate}"; then
+			runtime="${POLARION_RUNTIME}"
+			if [ -n "${runtime}" ] && polarion_command_available "${runtime}"; then
+				"${runtime}" pull "${candidate}" >/dev/null 2>&1 || true
+			fi
+		fi
+	fi
+
+	if polarion_image_exists "${candidate}"; then
+		printf '%s\n' "${candidate}"
+	else
+		printf '%s\n' "${requested}"
+	fi
+}
+
 polarion_list_images() {
 	# Print locally available Polarion image references (repo:tag) for the active
 	# runtime, sorted and de-duplicated. Used by the start action and the VS Code

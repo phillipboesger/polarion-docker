@@ -93,6 +93,21 @@ def main() -> None:
         f.write(fh.read())
 
     print(f"Downloaded {target_name} to data/polarion-linux.zip")
+    _report_resolved_zip(target_name)
+
+
+def _report_resolved_zip(target_name: str) -> None:
+    """Expose the resolved installer basename to the calling GitHub Actions step.
+
+    The build labels the published image with the exact archive it consumed
+    (polarion.zip), which is what distinguishes two builds of the same Polarion
+    version. Outside Actions GITHUB_OUTPUT is unset and this is a no-op.
+    """
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if not github_output:
+        return
+    with open(github_output, "a", encoding="utf-8") as out:
+        out.write(f"zip_name={target_name}\n")
 
 
 if __name__ == "__main__":

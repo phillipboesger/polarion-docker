@@ -187,6 +187,48 @@ Note: Docker Compose files in this repository are Docker-only. Apple `container`
 
 The checked-in Compose files cap the Polarion container at `4g` RAM and default the JVM to `-Xmx3g -Xms3g`.
 
+### Image tags and versions
+
+Each Polarion version lives on its own branch, and that branch name drives everything else:
+
+| Branch | Installer archive | Published image tags |
+| :--- | :--- | :--- |
+| `v2512` | `PolarionALM_2512.zip` | `v2512-<YYMMDD>-<sha>`, `v2512`, `polarion-v2512` |
+| `main` | newest `PolarionALM_*.zip` | `main`, `latest` |
+
+A version branch must be named exactly `v` plus four digits. A branch such as `v2410-sync` still matches the workflow's `v*` push trigger, so the build fails deliberately rather than downloading the wrong installer and publishing a stray tag — use a `sync/…` or `feat/…` name instead.
+
+Two kinds of tag are published for a version:
+
+- **`v<NNNN>-<YYMMDD>-<short-sha>`** (e.g. `v2512-260728-d0450b0`) — one specific build, **never overwritten**. Rebuilding the same commit on the same day produces the same tag.
+- **`v<NNNN>`** (e.g. `v2512`) — floating; always re-points to the newest build of that version. `polarion-v<NNNN>` is kept as a backward-compatible alias, and `latest` still means "newest build of `main`".
+
+Day to day you keep using the short form:
+
+```bash
+POLARION_IMAGE=ghcr.io/phillipboesger/polarion-docker:v2512 bash scripts/polarionctl.sh start
+```
+
+**Pin at start.** `polarionctl start` resolves that floating tag to the immutable build it currently points at, and starts the container against the immutable tag:
+
+```
+Pinned ghcr.io/phillipboesger/polarion-docker:v2512 to immutable build ghcr.io/phillipboesger/polarion-docker:v2512-260728-d0450b0
+```
+
+A running container is bound to the image ID, so a newly published `v2512` never disturbs it either way — but pinning means `docker ps` tells you *which* build you are on, and a later `docker pull v2512` is unambiguously a no-op for that container. Images built before this existed carry no `polarion.build` label; they simply start from the tag as given.
+
+Every published image also records its provenance, which is how two builds of the same Polarion version are told apart:
+
+```bash
+docker inspect --format '{{json .Config.Labels}}' ghcr.io/phillipboesger/polarion-docker:v2512
+# polarion.version=v2512
+# polarion.build=v2512-260728-d0450b0
+# polarion.zip=PolarionALM_2512.zip
+# org.opencontainers.image.revision / .created
+```
+
+Locally built images are tagged `polarion:<NNNN>` (no `v`) plus `polarion:local`, and are pinned the same way when they carry the label.
+
 ## ⚙️ Configuration & Customization
 
 ### Modular Customization

@@ -24,6 +24,26 @@ docker run --rm -it \
 
 - Access UI at `http://localhost:8080/` after startup completes.
 
+## Branches, versions and image tags
+
+Which Polarion version you get is decided entirely by the branch you build from. There is one branch per supported Polarion version, named exactly `v` + four digits:
+
+| Branch | Installer archive it builds from | Published image tags |
+| :--- | :--- | :--- |
+| `v2512` | `PolarionALM_2512.zip` | `v2512-<YYMMDD>-<sha>`, `v2512`, `polarion-v2512` |
+| `main` | newest `PolarionALM_*.zip` in the Drive folder | `main`, `latest` |
+
+Points worth knowing before you script against this:
+
+- **`v<NNNN>` floats, `v<NNNN>-<YYMMDD>-<short-sha>` does not.** The dated tag is written once and never overwritten, so it is the one to quote in a bug report or pin in a reproducible test.
+- **`polarionctl start` pins automatically.** Ask for `…:v2512` and the container is started against the immutable build that tag currently resolves to, with a `Pinned … to immutable build …` line in the output. Legacy images with no `polarion.build` label start from the tag as given.
+- **A branch like `v2410-sync` fails the build on purpose.** It matches the workflow's `v*` push trigger but is not a version branch, and building it would silently use the newest installer. Name working branches `sync/…` or `feat/…`.
+- **Provenance is on the image, not just in the tag** — `polarion.version`, `polarion.build`, `polarion.zip` (the exact Siemens archive consumed), plus `org.opencontainers.image.revision` / `.created`. `polarion.zip` is what distinguishes two builds of the same Polarion version.
+
+Local builds are tagged `polarion:<NNNN>` (no `v` prefix) plus `polarion:local`; the examples in this document use `polarion:local`, which always points at your most recent local build. Prefer `bash scripts/polarionctl.sh build-image` / `start` over raw `docker` commands — it handles tag derivation, volumes and pinning for you.
+
+See the "Image tags and versions" section of [README.md](./README.md) for the user-facing version.
+
 ## Playwright & automation guidance
 
 - Use the CLI wrapper (`PWCLI`) when available. Set it once:
