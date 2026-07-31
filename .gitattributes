@@ -8,6 +8,7 @@ Dockerfile     text eol=lf
 Dockerfile.*   text eol=lf
 entrypoint.d/* text eol=lf
 scripts/*      text eol=lf
+config/*       text eol=lf
 install.expect text eol=lf
 .env           text eol=lf
 *.env          text eol=lf
