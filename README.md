@@ -187,6 +187,38 @@ Note: Docker Compose files in this repository are Docker-only. Apple `container`
 
 The checked-in Compose files cap the Polarion container at `4g` RAM and default the JVM to `-Xmx3g -Xms3g`.
 
+### Image tags and versions
+
+Each Polarion version lives on its own branch, and that branch name drives everything else (a manual **Run workflow** can override it with the `version` input):
+
+| Branch | Installer archive | Published image tags |
+| :--- | :--- | :--- |
+| `v2512` | `PolarionALM_2512.zip` | `v2512`, `polarion-v2512` |
+| `main` | newest `PolarionALM_*.zip` | `main`, `latest` |
+
+A version branch must be named exactly `v` plus four digits — the build workflow only triggers on `v[0-9][0-9][0-9][0-9]`. Working branches such as `v2410-sync` therefore start no build at all; previously they matched a broad `v*` trigger, downloaded the wrong installer and published a stray tag under their own name.
+
+`v<NNNN>` is a floating tag: every build of that branch re-points it at the newest image, exactly like `latest`. Pull it to update, no matter how many containers still use the old one:
+
+```bash
+docker run --pull=always ghcr.io/phillipboesger/polarion-docker:v2512
+```
+
+Existing containers keep running on the image they were started from — a container is bound to the image ID, not the tag. To tell which build a container is actually on, read the provenance labels:
+
+```bash
+docker ps --format '{{.Names}}\t{{.Image}}\t{{.Label "polarion.build"}}'
+docker inspect --format '{{json .Config.Labels}}' ghcr.io/phillipboesger/polarion-docker:v2512
+# polarion.version=v2512
+# polarion.build=v2512-260728-d0450b0   ← identifies the exact build behind the floating tag
+# polarion.zip=PolarionALM_2512.zip     ← the Siemens archive it was built from
+# org.opencontainers.image.revision / .created
+```
+
+`polarion.zip` is what distinguishes two builds of the same Polarion version. Images built before these labels existed do not carry them at all.
+
+Locally built images are tagged `polarion:<NNNN>` (no `v`) plus `polarion:local`.
+
 ## ⚙️ Configuration & Customization
 
 ### Modular Customization

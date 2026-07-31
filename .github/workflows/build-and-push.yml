@@ -2,9 +2,17 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [main, master, v*] # Include version branches
+    # Version branches are exactly "v" + 4 digits. The pattern used to be the much
+    # broader "v*", which also fired on working branches like "v2410-sync" (wrong
+    # installer + stray GHCR tag) and on unrelated ones like "vscode-…".
+    branches: [main, master, "v[0-9][0-9][0-9][0-9]"]
     tags: ["v*"]
   workflow_dispatch: # Manual trigger
+    inputs:
+      version:
+        description: "Polarion version to build (e.g. v2512). Leave empty to use the branch/tag this run is dispatched from."
+        required: false
+        default: ""
 
 env:
   REGISTRY: ghcr.io
@@ -43,19 +51,62 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version from branch
+      - name: Resolve Polarion version and build id
         id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          DISPATCH_VERSION: ${{ inputs.version }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          if [[ "${{ github.ref_name }}" =~ ^v[0-9]+$ ]]; then
-            VERSION="${{ github.ref_name }}"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "is_version_branch=true" >> $GITHUB_OUTPUT
-            echo "🏷️ Detected Polarion version branch: $VERSION"
-          else
-            echo "version=main" >> $GITHUB_OUTPUT
-            echo "is_version_branch=false" >> $GITHUB_OUTPUT
-            echo "📝 Building from main/master branch"
+          set -euo pipefail
+
+          # A Polarion version branch/tag is exactly "v" + 4 digits (v2512).
+          # Anything else builds the newest ZIP and publishes under "main".
+          version="main"
+          is_version_branch="false"
+
+          # An explicit workflow_dispatch input wins; otherwise the ref decides, so a
+          # manual run from branch v2512 still builds v2512 instead of the newest ZIP.
+          candidate="${DISPATCH_VERSION:-${REF_NAME}}"
+
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" && -n "${DISPATCH_VERSION:-}" \
+                && ! "${DISPATCH_VERSION}" =~ ^v[0-9]{4}$ && "${DISPATCH_VERSION}" != "main" ]]; then
+            echo "::error::Invalid 'version' input '${DISPATCH_VERSION}'. Expected a Polarion version like 'v2512', or leave it empty to build from the current ref."
+            exit 1
           fi
+
+          if [[ "${candidate}" =~ ^v[0-9]{4}$ ]]; then
+            version="${candidate}"
+            is_version_branch="true"
+            echo "🏷️ Polarion version: ${version} (event=${EVENT_NAME}, ref=${REF_NAME}, type=${REF_TYPE})"
+          elif [[ "${REF_TYPE}" == "tag" && "${EVENT_NAME}" == "push" ]]; then
+            echo "::warning::Tag '${REF_NAME}' is not a Polarion version tag (vNNNN); building from the newest Polarion ZIP and publishing under 'main'."
+          elif [[ "${REF_NAME}" == v* && "${EVENT_NAME}" == "push" && "${REF_TYPE}" != "tag" ]]; then
+            # Unreachable via the narrowed push trigger above; kept as a guard in case
+            # the trigger is ever widened again.
+            echo "::error::Branch '${REF_NAME}' starts with 'v' but is not a Polarion version branch (vNNNN). Building it would download the newest installer ZIP instead of the intended version and publish an image tagged after the branch. Rename it (e.g. 'sync/${REF_NAME}' or 'feat/…')."
+            exit 1
+          else
+            echo "📝 Building from '${REF_NAME}' with the newest Polarion ZIP, publishing under 'main'."
+          fi
+
+          # Build identifier: vNNNN-YYMMDD-<short sha>, e.g. v2512-260728-d0450b0.
+          # Published only as the polarion.build image label, not as a tag — the tags
+          # stay as they were, so an old build still goes dangling and `docker image
+          # prune` keeps working. UTC so it does not depend on the runner's timezone.
+          build_id=""
+          if [[ "${is_version_branch}" == "true" ]]; then
+            build_id="${version}-$(date -u +%y%m%d)-${COMMIT_SHA:0:7}"
+            echo "📌 Build id: ${build_id}"
+          fi
+
+          {
+            echo "version=${version}"
+            echo "is_version_branch=${is_version_branch}"
+            echo "build_id=${build_id}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Download Polarion ZIP from Google Drive via API
         id: polarion-file
@@ -81,11 +132,17 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.is_version_branch }}
             type=raw,value=polarion-${{ steps.version.outputs.version }},enable=${{ steps.version.outputs.is_version_branch }}
+          # Provenance. polarion.build identifies the exact build behind a floating tag
+          # (docker ps --format '{{.Label "polarion.build"}}'), polarion.zip the Siemens
+          # archive it was built from. Both are empty for non-version builds.
+          # image.revision / image.created are supplied by metadata-action itself.
           labels: |
             org.opencontainers.image.title=Polarion Docker
             org.opencontainers.image.description=Polarion ALM running in Docker
             org.opencontainers.image.vendor=Phillip Bösger
             polarion.version=${{ steps.version.outputs.version }}
+            polarion.build=${{ steps.version.outputs.build_id }}
+            polarion.zip=${{ steps.polarion-file.outputs.zip_name }}
 
       - name: Build and load for testing
         uses: docker/build-push-action@v5
