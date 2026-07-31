@@ -160,10 +160,10 @@ ENV PATH="/usr/lib/postgresql/current/bin:${PATH}"
 # Set environment variables for debugging support (default: enabled)
 ENV JDWP_ENABLED="true"
 
-# Add convenience aliases for interactive root shells (see scripts/bash_aliases).
+# Add convenience aliases for interactive root shells (see config/bash_aliases).
 # Debian-based images source ~/.bash_aliases from ~/.bashrc already; the explicit
 # source keeps the aliases working for a non-Debian SOURCE_IMAGE too.
-COPY scripts/bash_aliases /root/.bash_aliases
+COPY config/bash_aliases /root/.bash_aliases
 RUN sed -i 's/\r//' /root/.bash_aliases && \
   printf '\n. /root/.bash_aliases\n' >> /root/.bashrc
 
