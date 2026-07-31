@@ -1,0 +1,8 @@
+# Convenience aliases for interactive root shells inside the container.
+# Copied to /root/.bash_aliases and sourced from /root/.bashrc (see Dockerfile).
+
+# Restart Polarion with a cleared workspace cache, then follow the startup log.
+alias plnrestart='service polarion stop && rm -rf /opt/polarion/data/workspace/.config /opt/polarion/data/workspace/.metadata && service polarion start && tail -f /var/log/polarion/polarion.log'
+
+# Follow the most recent main log4j log file.
+alias plnmainlog='tail -f "$(ls -t /opt/polarion/data/logs/main/log4j-20*.log 2>/dev/null | head -1)"'

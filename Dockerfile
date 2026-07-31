@@ -160,9 +160,12 @@ ENV PATH="/usr/lib/postgresql/current/bin:${PATH}"
 # Set environment variables for debugging support (default: enabled)
 ENV JDWP_ENABLED="true"
 
-# Add convenience aliases for root
-RUN printf '\nalias plnrestart='"'"'service polarion stop && rm -rf /opt/polarion/data/workspace/.config /opt/polarion/data/workspace/.metadata && service polarion start && tail -f /var/log/polarion/polarion.log'"'"'\n' >> /root/.bashrc && \
-  printf 'alias plnmainlog='"'"'tail -f "$(ls -t /opt/polarion/data/logs/main/log4j-20*.log 2>/dev/null | head -1)"'"'"'\n' >> /root/.bashrc
+# Add convenience aliases for interactive root shells (see scripts/bash_aliases).
+# Debian-based images source ~/.bash_aliases from ~/.bashrc already; the explicit
+# source keeps the aliases working for a non-Debian SOURCE_IMAGE too.
+COPY scripts/bash_aliases /root/.bash_aliases
+RUN sed -i 's/\r//' /root/.bash_aliases && \
+  printf '\n. /root/.bash_aliases\n' >> /root/.bashrc
 
 # Set exposed ports
 EXPOSE 80/tcp
