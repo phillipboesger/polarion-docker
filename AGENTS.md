@@ -30,17 +30,17 @@ Which Polarion version you get is decided entirely by the branch you build from.
 
 | Branch | Installer archive it builds from | Published image tags |
 | :--- | :--- | :--- |
-| `v2512` | `PolarionALM_2512.zip` | `v2512-<YYMMDD>-<sha>`, `v2512`, `polarion-v2512` |
+| `v2512` | `PolarionALM_2512.zip` | `v2512`, `polarion-v2512` |
 | `main` | newest `PolarionALM_*.zip` in the Drive folder | `main`, `latest` |
 
 Points worth knowing before you script against this:
 
-- **`v<NNNN>` floats, `v<NNNN>-<YYMMDD>-<short-sha>` does not.** The dated tag is written once and never overwritten, so it is the one to quote in a bug report or pin in a reproducible test.
-- **`polarionctl start` pins automatically.** Ask for `…:v2512` and the container is started against the immutable build that tag currently resolves to, with a `Pinned … to immutable build …` line in the output. Legacy images with no `polarion.build` label start from the tag as given.
-- **A branch like `v2410-sync` fails the build on purpose.** It matches the workflow's `v*` push trigger but is not a version branch, and building it would silently use the newest installer. Name working branches `sync/…` or `feat/…`.
-- **Provenance is on the image, not just in the tag** — `polarion.version`, `polarion.build`, `polarion.zip` (the exact Siemens archive consumed), plus `org.opencontainers.image.revision` / `.created`. `polarion.zip` is what distinguishes two builds of the same Polarion version.
+- **Only `v[0-9][0-9][0-9][0-9]` branches build.** A working branch like `v2410-sync` starts no run; the trigger used to be a broad `v*`, which silently built the newest installer and published an image tagged after the branch. Name working branches `sync/…` or `feat/…`.
+- **A manual run can override the version.** Actions → Run workflow takes an optional `version` input; left empty it uses the branch/tag it was dispatched from.
+- **`v<NNNN>` floats.** It re-points to the newest build of that version, like `latest`. Use `--pull=always` if you need the newest at start.
+- **Provenance is on the image** — `polarion.version`, `polarion.build` (which exact build is behind the floating tag), `polarion.zip` (the Siemens archive consumed), plus `org.opencontainers.image.revision` / `.created`. Read them with `docker ps --format '{{.Label "polarion.build"}}'`.
 
-Local builds are tagged `polarion:<NNNN>` (no `v` prefix) plus `polarion:local`; the examples in this document use `polarion:local`, which always points at your most recent local build. Prefer `bash scripts/polarionctl.sh build-image` / `start` over raw `docker` commands — it handles tag derivation, volumes and pinning for you.
+Local builds are tagged `polarion:<NNNN>` (no `v` prefix) plus `polarion:local`; the examples in this document use `polarion:local`, which always points at your most recent local build.
 
 See the "Image tags and versions" section of [README.md](./README.md) for the user-facing version.
 

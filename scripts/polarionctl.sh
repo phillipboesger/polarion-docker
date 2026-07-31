@@ -108,16 +108,6 @@ case "${action}" in
 		polarion_list_images
 		;;
 	start)
-		# Pin a floating version tag (v2512 / 2512) to the immutable build it resolves
-		# to right now, so this container stays identifiable after the floating tag
-		# moves on. Falls back to the requested reference for legacy images without a
-		# polarion.build label. See "Image tags and versions" in README.md.
-		resolved_image="$(polarion_resolve_immutable_image "${POLARION_IMAGE}")"
-		if [ "${resolved_image}" != "${POLARION_IMAGE}" ]; then
-			echo "Pinned ${POLARION_IMAGE} to immutable build ${resolved_image}"
-			POLARION_IMAGE="${resolved_image}"
-		fi
-
 		echo "Starting Polarion from image ${POLARION_IMAGE} (runtime: ${POLARION_RUNTIME})"
 		polarion_ensure_volume "${POLARION_DATA_VOLUME}"
 		polarion_ensure_volume "${POLARION_EXTENSIONS_VOLUME}"

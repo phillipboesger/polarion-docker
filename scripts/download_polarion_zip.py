@@ -107,7 +107,9 @@ def _report_resolved_zip(target_name: str) -> None:
     if not github_output:
         return
     with open(github_output, "a", encoding="utf-8") as out:
-        out.write(f"zip_name={target_name}\n")
+        # Drive allows newlines in file names; they would inject extra step outputs.
+        safe_name = target_name.replace("\r", " ").replace("\n", " ")
+        out.write(f"zip_name={safe_name}\n")
 
 
 if __name__ == "__main__":

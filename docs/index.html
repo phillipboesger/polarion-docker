@@ -1413,10 +1413,8 @@
       </div>
       <div class="code-block">
         <button class="code-copy" onclick="copyCode('ghcr')">Copy</button>
-        <pre id="code-ghcr"><span style="color:#6b7280"># Every Polarion version ships its own image tag (e.g. v2512, v2606),</span>
-<span style="color:#6b7280"># which always points at the newest build of that version. Each build also</span>
-<span style="color:#6b7280"># gets an immutable tag (v2512-260728-d0450b0) if you need to pin one.</span>
-<span style="color:#6b7280"># Use :latest to always get the most recent build of the main branch.</span>
+        <pre id="code-ghcr"><span style="color:#6b7280"># Every Polarion version ships its own image tag (e.g. 2506, 2606).</span>
+<span style="color:#6b7280"># Use :latest to always get the most recent release.</span>
 <span style="color:#86efac">docker run</span> -d \
   <span style="color:#93c5fd">--name</span> polarion \
   <span style="color:#93c5fd">--platform</span> linux/amd64 \
