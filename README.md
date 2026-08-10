@@ -219,6 +219,22 @@ docker inspect --format '{{json .Config.Labels}}' ghcr.io/phillipboesger/polario
 
 Locally built images are tagged `polarion:<NNNN>` (no `v`) plus `polarion:local`.
 
+### Supported versions
+
+This repository tracks roughly the same ~2-year window Siemens supports, one branch per Polarion version:
+
+| Branch | Status |
+| :--- | :--- |
+| `v2606` | maintained |
+| `v2512` | maintained |
+| `v2506` | maintained |
+| `v2410` | maintained |
+| `v2404` | **proposed end of life** — see [#77](https://github.com/phillipboesger/polarion-docker/issues/77) |
+
+`main` always builds the newest installer archive available and is where changes land first; the maintained version branches are synced from it.
+
+`v2404` predates the `POLARION_ZIP` refactor, has no multi-arch (Apple silicon) support and no Mailpit catcher, and has not been touched since 2026-03-04. It is not maintained. Whether to tag and archive it is still open in #77.
+
 ## ⚙️ Configuration & Customization
 
 ### Modular Customization
