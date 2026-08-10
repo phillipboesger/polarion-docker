@@ -8,7 +8,7 @@ This repository contains a reproducible Polarion Docker image and helper scripts
 
 ```bash
 # from repo root
-DOCKER_BUILDKIT=1 docker build --progress=plain -t polarion:local -f Dockerfile .
+DOCKER_BUILDKIT=1 docker build --progress=plain -t "${POLARION_IMAGE:-polarion:local}" -f Dockerfile .
 ```
 
 - Run example (mount `data/`, expose host port 8080):
@@ -19,7 +19,7 @@ docker run --rm -it \
   -v "$PWD/data":/data:ro \
   -e JDWP_ENABLED=false \
   --name polarion-dev \
-  polarion:local
+  "${POLARION_IMAGE:-polarion:local}"
 ```
 
 - Access UI at `http://localhost:8080/` after startup completes.
@@ -40,7 +40,7 @@ Points worth knowing before you script against this:
 - **`v<NNNN>` floats.** It re-points to the newest build of that version, like `latest`. Use `--pull=always` if you need the newest at start.
 - **Provenance is on the image** — `polarion.version`, `polarion.build` (which exact build is behind the floating tag), `polarion.zip` (the Siemens archive consumed), plus `org.opencontainers.image.revision` / `.created`. Read them with `docker ps --format '{{.Label "polarion.build"}}'`.
 
-Local builds are tagged `polarion:<NNNN>` (no `v` prefix) plus `polarion:local`; the examples in this document use `polarion:local`, which always points at your most recent local build.
+Local builds are tagged `polarion:<NNNN>` (no `v` prefix) plus `polarion:local`, which always points at your most recent local build. The examples in this document write the image as `${POLARION_IMAGE:-polarion:local}`, so they default to that most recent build but honour `POLARION_IMAGE` when you set it — the same variable `docker-compose.yml` and `scripts/polarionctl.sh start` read.
 
 See the "Image tags and versions" section of [README.md](./README.md) for the user-facing version.
 
@@ -86,7 +86,7 @@ node capture-pages.js
 
 ```bash
 docker network create polarion-net
-docker run -d --network polarion-net --name polarion-dev -p 8080:80 -v "$PWD/data":/data:ro polarion:local
+docker run -d --network polarion-net --name polarion-dev -p 8080:80 -v "$PWD/data":/data:ro "${POLARION_IMAGE:-polarion:local}"
 docker run --rm --network polarion-net my-agent-image:latest node run-capture.js --host http://polarion-dev
 ```
 
@@ -143,20 +143,20 @@ scripts/
 - Build with BuildKit:
 
 ```bash
-DOCKER_BUILDKIT=1 docker build -t polarion:local -f Dockerfile .
+DOCKER_BUILDKIT=1 docker build -t "${POLARION_IMAGE:-polarion:local}" -f Dockerfile .
 ```
 
 - Run Polarion locally:
 
 ```bash
-docker run --rm -it -p 8080:80 -v "$PWD/data":/data:ro --name polarion-dev polarion:local
+docker run --rm -it -p 8080:80 -v "$PWD/data":/data:ro --name polarion-dev "${POLARION_IMAGE:-polarion:local}"
 ```
 
 - Create a dev network and run agent container on same network:
 
 ```bash
 docker network create polarion-net
-docker run -d --network polarion-net --name polarion-dev -p 8080:80 -v "$PWD/data":/data:ro polarion:local
+docker run -d --network polarion-net --name polarion-dev -p 8080:80 -v "$PWD/data":/data:ro "${POLARION_IMAGE:-polarion:local}"
 docker run --rm --network polarion-net my-agent-image node run-capture.js --host http://polarion-dev
 ```
 
