@@ -14,6 +14,13 @@ on:
         required: false
         default: ""
 
+# One build per ref at a time. A superseded branch push is cancelled so the
+# published floating tag can't end up pointing at the older commit, but a tag
+# build is never cancelled — it may already be mid-upload to GHCR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -21,6 +28,9 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    # Healthy runs are 6–10 min; the 6 h Actions default let two hung runs burn
+    # ~53 min each. 30 min is ~3x the slowest observed success (9m24s).
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
