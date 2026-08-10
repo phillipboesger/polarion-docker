@@ -11,10 +11,15 @@ services:
     container_name: polarion
     mem_limit: 4g
     ports:
-      - "80:80"         # Standard HTTP port
-      - "5433:5433"     # PostgreSQL port (if PostgreSQL runs in container)
-      - "5005:5005"     # JDWP Debug port
-      - "8025:8025"     # built-in Mailpit web UI -> http://localhost:8025
+      # Only HTTP is published on all interfaces — the container is meant to be
+      # reachable from other machines/VMs. The rest are loopback-only: JDWP has no
+      # authentication at all, and PostgreSQL accepts the polarion:polarion
+      # credentials documented in this repo. To reach one of them from another
+      # host, override the mapping in a local compose override file.
+      - "80:80"                   # Standard HTTP port
+      - "127.0.0.1:5433:5433"     # PostgreSQL port (if PostgreSQL runs in container)
+      - "127.0.0.1:5005:5005"     # JDWP Debug port
+      - "127.0.0.1:8025:8025"     # built-in Mailpit web UI -> http://localhost:8025
     environment:
       - POLARION_HOME=/polarion_root
       - JAVA_OPTS=-Xmx3g -Xms3g
