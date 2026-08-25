@@ -195,10 +195,10 @@ The checked-in Compose files cap the Polarion container at `4g` RAM and default 
 
 Each Polarion version lives on its own branch, and that branch name drives everything else (a manual **Run workflow** can override it with the `version` input):
 
-| Branch | Installer archive | Published image tags |
-| :--- | :--- | :--- |
-| `v2512` | `PolarionALM_2512.zip` | `v2512`, `polarion-v2512` |
-| `main` | newest `PolarionALM_*.zip` | `main`, `latest` |
+| Branch  | Installer archive          | Published image tags      |
+| :------ | :------------------------- | :------------------------ |
+| `v2512` | `PolarionALM_2512.zip`     | `v2512`, `polarion-v2512` |
+| `main`  | newest `PolarionALM_*.zip` | `main`, `latest`          |
 
 A version branch must be named exactly `v` plus four digits — the build workflow only triggers on `v[0-9][0-9][0-9][0-9]`. Working branches such as `v2410-sync` therefore start no build at all; previously they matched a broad `v*` trigger, downloaded the wrong installer and published a stray tag under their own name.
 
