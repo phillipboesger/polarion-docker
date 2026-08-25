@@ -18,6 +18,7 @@ POLARION_MAILPIT_PORT="${POLARION_MAILPIT_PORT:-8025}"
 POLARION_BIND_HOST="${POLARION_BIND_HOST:-127.0.0.1}"
 POLARION_JAVA_OPTS="${POLARION_JAVA_OPTS:--Xmx3g -Xms3g}"
 POLARION_JDWP_ENABLED="${POLARION_JDWP_ENABLED:-true}"
+POLARION_TZ="${POLARION_TZ:-${TZ:-}}"
 POLARION_PLATFORM="${POLARION_PLATFORM:-linux/amd64}"
 POLARION_CONTAINER_CPUS="${POLARION_CONTAINER_CPUS:-8}"
 POLARION_CONTAINER_MEMORY="${POLARION_CONTAINER_MEMORY:-4g}"
@@ -47,6 +48,29 @@ polarion_command_available() {
 polarion_host_is_apple_silicon() {
 	[[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "arm64" ]]
 }
+
+polarion_detect_host_timezone() {
+	local tz=""
+
+	if [ -f /etc/timezone ]; then
+		tz="$(cat /etc/timezone 2>/dev/null)"
+	fi
+
+	if [ -z "$tz" ] && [ -L /etc/localtime ]; then
+		tz="$(readlink /etc/localtime 2>/dev/null)"
+		tz="${tz#*zoneinfo/}"
+	fi
+
+	if [ -z "$tz" ]; then
+		tz="Etc/UTC"
+	fi
+
+	printf '%s\n' "$tz"
+}
+
+if [ -z "${POLARION_TZ}" ]; then
+	POLARION_TZ="$(polarion_detect_host_timezone)"
+fi
 
 polarion_runtime_has_named_container() {
 	local runtime="$1"

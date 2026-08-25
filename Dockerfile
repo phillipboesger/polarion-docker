@@ -9,10 +9,9 @@ FROM $SOURCE_IMAGE
 # single-file glob below, preserving the previous behaviour.
 ARG POLARION_ZIP=
 
-# Temurin JDK download metadata — choose appropriate archive at build time
-ARG JDK_TAG=jdk-21.0.4%2B7
-ARG JDK_FILE_X64=OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
-ARG JDK_FILE_AARCH64=OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.4_7.tar.gz
+# Temurin JDK major version to install; the build always fetches the latest GA release for
+# this major version via the Adoptium API instead of pinning an exact build.
+ARG JDK_MAJOR_VERSION=21
 
 # Mailpit version for the built-in mail catcher (runs by default at runtime; disable
 # with MAILPIT_EMBEDDED=false). Defaults to "latest" so each image build picks up the
@@ -22,6 +21,11 @@ ARG MAILPIT_VERSION=latest
 # Environment configuration
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RUNLEVEL=1
+# Default container timezone. Overridable at "docker run" / "container run" time with
+# "-e TZ=Region/City"; the 00-configure-timezone.sh entrypoint script applies it to
+# /etc/localtime at container startup so the container clock matches the value passed in
+# (typically the host/root system's local timezone) instead of defaulting to UTC ("Zulu").
+ENV TZ=Etc/UTC
 
 # Configure apt to be more resilient
 RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
@@ -30,11 +34,12 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
-  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
+  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 tzdata \
   apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
   postgresql postgresql-client postgresql-contrib util-linux-extra iputils-ping && \
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8 && \
+  ln -snf "/usr/share/zoneinfo/${TZ}" /etc/localtime && echo "${TZ}" > /etc/timezone && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
@@ -56,18 +61,17 @@ RUN sed -i 's/\r//' /opt/polarion/entrypoint.d/*.sh && chmod +x /opt/polarion/en
 COPY polarion_starter.sh ./
 RUN sed -i 's/\r//' polarion_starter.sh && chmod +x polarion_starter.sh
 
-# Download and install OpenJDK 21 (Temurin)
-# Select the correct archive for the image architecture (x86_64 vs aarch64)
+# Download and install the latest OpenJDK (Temurin) GA release for JDK_MAJOR_VERSION
+# Resolve the correct archive for the image architecture (x86_64 vs aarch64) via the Adoptium API
 RUN set -eux; \
   arch="$(uname -m)"; \
-  if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then \
-  jdk_file="$JDK_FILE_X64"; \
-  elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
-  jdk_file="$JDK_FILE_AARCH64"; \
-  else \
-  echo "Unsupported architecture: $arch"; exit 1; \
-  fi; \
-  wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
+  case "$arch" in \
+  x86_64|amd64) jdk_arch="x64" ;; \
+  aarch64|arm64) jdk_arch="aarch64" ;; \
+  *) echo "Unsupported architecture: $arch"; exit 1 ;; \
+  esac; \
+  wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate \
+  "https://api.adoptium.net/v3/binary/latest/${JDK_MAJOR_VERSION}/ga/linux/${jdk_arch}/jdk/hotspot/normal/eclipse"; \
   mkdir -p /usr/lib/jvm; \
   tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
   rm jdk.tar.gz

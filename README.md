@@ -13,6 +13,7 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 - **URL Correction**: Automatically fixes `localhost` references in configuration files to `127.0.0.1` for proper container behavior.
 - **Remote Debugging (JDWP)**: One-click remote debugging support on port 5005.
 - **Memory Management**: Easy configuration of JVM memory via `JAVA_OPTS`.
+- **Always-Current JDK**: The build fetches the latest Eclipse Temurin GA release for the configured major version (`--build-arg JDK_MAJOR_VERSION=21` by default) from the Adoptium API on every build, so images always ship the newest patch/security updates instead of a pinned build.
 - **Automatic Workspace Cleanup**: On every container start, stale Eclipse workspace metadata (`.config` and `.metadata`) is removed from `/opt/polarion/data/workspace/` before Polarion launches, preventing stale data caused by changed plugins in the `/opt/polarion/polarion/extensions/` directory.
 
 ## 🚀 Getting Started
@@ -73,7 +74,7 @@ Since Polarion requires a license and the installation media is proprietary, you
 
 5.  **Run** the container using the locally built image:
     ```bash
-    # With Docker
+    # With Docker (add -e TZ=Region/City to match your host's local time; defaults to UTC)
     docker run -d \
       --name polarion \
       --platform linux/amd64 \
@@ -83,6 +84,7 @@ Since Polarion requires a license and the installation media is proprietary, you
       -p 5005:5005 \
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
+      -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
       --volume polarion_repo:/opt/polarion/data/svn \
       --volume polarion_extensions:/opt/polarion/polarion/extensions \
       polarion:local
@@ -95,6 +97,7 @@ Since Polarion requires a license and the installation media is proprietary, you
       -p 5005:5005 \
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
+      -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
       --volume polarion_repo:/opt/polarion/data/svn \
       --volume polarion_extensions:/opt/polarion/polarion/extensions \
       polarion:local
@@ -110,6 +113,7 @@ Since Polarion requires a license and the installation media is proprietary, you
       -p 127.0.0.1:5005:5005 \
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
+      -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
       -v polarion_repo:/opt/polarion/data/svn \
       -v polarion_extensions:/opt/polarion/polarion/extensions \
       polarion:local
@@ -236,14 +240,15 @@ To add your own configuration:
 
 ### Environment Variables
 
-| Variable           | Description                                                                                                                                                               | Default                       |
-| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------- |
-| `JAVA_OPTS`        | Java memory and VM arguments                                                                                                                                              | `-Xmx3g -Xms3g`               |
-| `JDWP_ENABLED`     | Enable Java Debug Wire Protocol                                                                                                                                           | `true`                        |
-| `ALLOWED_HOSTS`    | Comma-separated list of allowed host headers                                                                                                                              | `localhost,127.0.0.1,0.0.0.0` |
-| `SMTP_HOST`        | Route mail to a **real** SMTP server instead of the built-in catcher. When set, the entrypoint points Polarion's `announcer.smtp.host` at it and the catcher steps aside. | _(unset → built-in catcher)_  |
-| `SMTP_PORT`        | SMTP port used together with `SMTP_HOST`                                                                                                                                  | `25`                          |
-| `MAILPIT_EMBEDDED` | Built-in Mailpit catcher (SMTP `:25`, web UI `:8025`). **On by default** — captures Polarion's outgoing mail so no real mailbox is needed. Set `false` to disable.        | `true`                        |
+| Variable           | Description                                                                                                                                                                                                                                              | Default                       |
+| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------- |
+| `JAVA_OPTS`        | Java memory and VM arguments                                                                                                                                                                                                                             | `-Xmx3g -Xms3g`               |
+| `JDWP_ENABLED`     | Enable Java Debug Wire Protocol                                                                                                                                                                                                                          | `true`                        |
+| `ALLOWED_HOSTS`    | Comma-separated list of allowed host headers                                                                                                                                                                                                             | `localhost,127.0.0.1,0.0.0.0` |
+| `SMTP_HOST`        | Route mail to a **real** SMTP server instead of the built-in catcher. When set, the entrypoint points Polarion's `announcer.smtp.host` at it and the catcher steps aside.                                                                                | _(unset → built-in catcher)_  |
+| `SMTP_PORT`        | SMTP port used together with `SMTP_HOST`                                                                                                                                                                                                                 | `25`                          |
+| `MAILPIT_EMBEDDED` | Built-in Mailpit catcher (SMTP `:25`, web UI `:8025`). **On by default** — captures Polarion's outgoing mail so no real mailbox is needed. Set `false` to disable.                                                                                       | `true`                        |
+| `TZ`               | Container clock timezone (IANA name, e.g. `Europe/Berlin`). `scripts/polarionctl.sh start` auto-detects the host's local timezone and passes it in; with plain `docker run`/`docker compose`, set it explicitly to avoid the default UTC ("Zulu") clock. | `Etc/UTC`                     |
 
 ### External SVN Endpoints
 

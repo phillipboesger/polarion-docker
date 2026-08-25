@@ -20,6 +20,10 @@ services:
       - JAVA_OPTS=-Xmx3g -Xms3g
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
       - JDWP_ENABLED=true
+      # Container clock timezone (IANA name, e.g. Europe/Berlin). Defaults to UTC unless TZ is
+      # exported in the host shell before running "docker compose up" (e.g.
+      # export TZ=$(readlink /etc/localtime | sed 's#.*zoneinfo/##') to match the host's local time).
+      - TZ=${TZ:-Etc/UTC}
       # The built-in Mailpit catcher runs by default and captures Polarion's outgoing
       # notification mail (open http://localhost:8025). To route mail to a real server
       # instead, set SMTP_HOST/SMTP_PORT here; to disable the catcher, set MAILPIT_EMBEDDED=false.

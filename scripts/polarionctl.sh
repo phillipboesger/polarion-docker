@@ -135,6 +135,7 @@ case "${action}" in
 				-p "${POLARION_BIND_HOST}:${POLARION_MAILPIT_PORT}:8025"
 				-e "JAVA_OPTS=${POLARION_JAVA_OPTS}"
 				-e "JDWP_ENABLED=${POLARION_JDWP_ENABLED}"
+				-e "TZ=${POLARION_TZ}"
 				-v "${POLARION_DATA_VOLUME}:/opt/polarion/data/svn"
 				-v "${POLARION_EXTENSIONS_VOLUME}:/opt/polarion/polarion/extensions"
 			)
@@ -160,6 +161,7 @@ case "${action}" in
 				-p "${POLARION_MAILPIT_PORT}:8025"
 				-e "JAVA_OPTS=${POLARION_JAVA_OPTS}"
 				-e "JDWP_ENABLED=${POLARION_JDWP_ENABLED}"
+				-e "TZ=${POLARION_TZ}"
 				-v "${POLARION_DATA_VOLUME}:/opt/polarion/data/svn"
 				-v "${POLARION_EXTENSIONS_VOLUME}:/opt/polarion/polarion/extensions"
 			)
