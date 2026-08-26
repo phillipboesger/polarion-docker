@@ -30,7 +30,7 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 
 # Install basic dependencies and setup locale
 RUN apt-get -y update && \
-  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
+  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 ca-certificates \
   apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
   postgresql postgresql-client postgresql-contrib util-linux-extra iputils-ping && \
   locale-gen en_US.UTF-8 && \
@@ -38,8 +38,15 @@ RUN apt-get -y update && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
-# Add postgres symlink for genericity
-RUN ln -s /usr/lib/postgresql/* /usr/lib/postgresql/current
+# Add postgres symlink for genericity.
+# Resolved to the highest installed major version rather than globbed: with two
+# versions present, `ln -s a b current` would treat `current` as a directory and
+# silently create current/a, current/b instead of the symlink everything below
+# (ENV PATH, entrypoint.d/02-start-postgres.sh) depends on.
+RUN set -eux; \
+  pg_dir="$(find /usr/lib/postgresql -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"; \
+  test -n "${pg_dir}"; \
+  ln -s "${pg_dir}" /usr/lib/postgresql/current
 
 # Set locale environment
 ENV LANG=en_US.UTF-8
@@ -48,13 +55,10 @@ ENV LC_ALL=en_US.UTF-8
 # Setup working directory
 WORKDIR /polarion_root
 
-# Copy modular entrypoint scripts
-COPY entrypoint.d/ /opt/polarion/entrypoint.d/
-RUN sed -i 's/\r//' /opt/polarion/entrypoint.d/*.sh && chmod +x /opt/polarion/entrypoint.d/*.sh
-
-# Copy startup script to root
-COPY polarion_starter.sh ./
-RUN sed -i 's/\r//' polarion_starter.sh && chmod +x polarion_starter.sh
+# NOTE: entrypoint.d/ and polarion_starter.sh are deliberately copied near the END of
+# this file, below the JDK, Mailpit and Polarion layers. They change far more often
+# than those expensive layers do, so copying them here would bust the cache on every
+# script edit and re-run the whole install.
 
 # Download and install OpenJDK 21 (Temurin)
 # Select the correct archive for the image architecture (x86_64 vs aarch64)
@@ -67,7 +71,7 @@ RUN set -eux; \
   else \
   echo "Unsupported architecture: $arch"; exit 1; \
   fi; \
-  wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
+  wget --progress=dot:giga -O jdk.tar.gz "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
   mkdir -p /usr/lib/jvm; \
   tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
   rm jdk.tar.gz
@@ -112,7 +116,7 @@ RUN set -eux; \
   else \
   mp_url="https://github.com/axllent/mailpit/releases/download/${MAILPIT_VERSION}/mailpit-linux-${mp_arch}.tar.gz"; \
   fi; \
-  wget --progress=dot:giga -O /tmp/mailpit.tar.gz --no-check-certificate "$mp_url"; \
+  wget --progress=dot:giga -O /tmp/mailpit.tar.gz "$mp_url"; \
   tar -xzf /tmp/mailpit.tar.gz -C /usr/local/bin mailpit; \
   rm -f /tmp/mailpit.tar.gz; \
   test -x /usr/local/bin/mailpit
@@ -144,7 +148,7 @@ RUN --mount=type=bind,source=./data/,target=/data/ \
   echo "Installing Polarion from ${zip_path}" && \
   unzip -q "${zip_path}" && \
   cd Polarion && \
-  ../install.expect || true && \
+  if ! ../install.expect; then echo "install.expect returned non-zero, continuing to verification" >&2; fi && \
   test -d /opt/polarion/polarion && \
   test -d /opt/polarion/data/svn && \
   cd .. && \
@@ -166,6 +170,24 @@ ENV JDWP_ENABLED="true"
 COPY config/bash_aliases /root/.bash_aliases
 RUN sed -i 's/\r//' /root/.bash_aliases && \
   printf '\n. /root/.bash_aliases\n' >> /root/.bashrc
+
+# Copy modular entrypoint scripts.
+# Kept last on purpose (see the note above the JDK layer): these change often, and
+# anything below a COPY re-runs when it does. WORKDIR is still /polarion_root.
+COPY entrypoint.d/ /opt/polarion/entrypoint.d/
+RUN sed -i 's/\r//' /opt/polarion/entrypoint.d/*.sh && chmod +x /opt/polarion/entrypoint.d/*.sh
+
+# Copy startup script to root
+COPY polarion_starter.sh ./
+RUN sed -i 's/\r//' polarion_starter.sh && chmod +x polarion_starter.sh
+
+# Report health the same way the compose files do (GET /polarion/ over loopback), so a
+# plain `docker run` gets a health signal too. The timings deliberately do NOT mirror
+# compose's (interval 5s / retries 10 / start_period 10s): that budget is ~60s, while a
+# first Polarion boot takes minutes, so it would mark a perfectly good container
+# unhealthy. Compose's own healthcheck still overrides this one for compose users.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10m --retries=5 \
+  CMD wget -o /dev/null -O /dev/null http://localhost/polarion/ || exit 1
 
 # Set exposed ports
 EXPOSE 80/tcp
