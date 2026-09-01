@@ -29,14 +29,28 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
   echo 'Acquire::ftp::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries
 
 # Install basic dependencies and setup locale
+# tzdata provides /usr/share/zoneinfo so entrypoint.d/00-configure-timezone.sh can resolve an
+# explicit TZ override. Installed noninteractively it defaults /etc/localtime to Etc/UTC, the
+# fallback used whenever nothing else sets the container clock.
 RUN apt-get -y update && \
-  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
+  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 tzdata \
   apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
   postgresql postgresql-client postgresql-contrib util-linux-extra iputils-ping && \
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8 && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
+
+# Make /etc/localtime a real, freely rewritable file instead of the symlink tzdata installs
+# (-> /usr/share/zoneinfo/Etc/UTC) — cp'ing onto a symlinked /etc/localtime would silently
+# overwrite that shared Etc/UTC reference file itself instead of /etc/localtime, corrupting
+# it for every consumer, including entrypoint.d/00-configure-timezone.sh's own reverse zone
+# lookup. That script rewrites both this file and /etc/timezone on every container start
+# (some JDKs read /etc/timezone's text content before /etc/localtime; PostgreSQL and Apache
+# are started via "service", which drops the TZ env var entirely), so what's baked in here
+# only matters if entrypoint.d is ever bypassed — Etc/UTC is a safe default either way.
+RUN cp --remove-destination /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
+  rm -f /etc/timezone
 
 # Add postgres symlink for genericity
 RUN ln -s /usr/lib/postgresql/* /usr/lib/postgresql/current

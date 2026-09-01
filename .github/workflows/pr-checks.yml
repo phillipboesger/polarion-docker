@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main, master, v*]
 
+permissions:
+  contents: read
+
 jobs:
   static-checks:
     name: Static Analysis
@@ -48,3 +51,264 @@ jobs:
           echo "✅ docker-compose.yml valid"
           docker compose -f docker-compose.dev.yml config --quiet
           echo "✅ docker-compose.dev.yml valid"
+
+  timezone-tests:
+    name: Timezone Auto-Detection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build isolated timezone test image
+        run: |
+          # Standalone image (not the full Polarion Dockerfile, no licensed ZIP needed) that
+          # replicates just the tzdata/JVM layer entrypoint.d/00-configure-timezone.sh and
+          # entrypoint.d/01-configure-postgres.sh depend on, so this job stays fast and runs
+          # on every PR from anyone. It COPYs the real scripts from this checkout, so it always
+          # tests what would actually ship, not a duplicated copy of the logic. Built from a
+          # dedicated context dir, not the checkout root, so nothing needs cleaning up after.
+          mkdir -p /tmp/tz-test-ctx
+          cp entrypoint.d/00-configure-timezone.sh entrypoint.d/01-configure-postgres.sh /tmp/tz-test-ctx/
+
+          # Fixed-offset, DST-free zones (Etc/GMT-N) so assertions never depend on the date
+          # this job happens to run on. Also probes the JVM (jshell), not just glibc's `date`
+          # — the two resolve timezone via different mechanisms (env var vs. symlink-target
+          # name vs. byte-content matching) and have silently disagreed with each other in
+          # every prior version of this feature; a check that only looks at `date` would have
+          # missed every one of those bugs. Each value is captured twice — once inherited
+          # normally, once under "env -i" — because Apache/PostgreSQL/Polarion in the real
+          # image start via "service", which drops TZ from the environment entirely; a fix
+          # that only works when TZ is inherited directly is not actually fixed.
+          cat > /tmp/tz-test-ctx/tz-test-runner.sh <<'EOF'
+          #!/bin/bash
+          . /opt/tz/00-configure-timezone.sh
+          echo "TZFILE=$(cat /etc/timezone 2>/dev/null || echo MISSING)"
+          echo "OFFSET=$(date +%z)"
+          echo "JVM_ZONE=$(echo 'System.out.println(java.util.TimeZone.getDefault().getID());' | jshell -q - 2>&1 | tail -1)"
+          echo "ENVI_OFFSET=$(env -i PATH="$PATH" date +%z)"
+          echo "ENVI_JVM_ZONE=$(env -i PATH="$PATH" bash -c "echo 'System.out.println(java.util.TimeZone.getDefault().getID());' | jshell -q -" 2>&1 | tail -1)"
+          EOF
+
+          cat > /tmp/tz-test-ctx/Dockerfile <<'EOF'
+          FROM eclipse-temurin:21-jdk
+          ENV DEBIAN_FRONTEND=noninteractive
+          RUN apt-get -y update && \
+            apt-get -y install --no-install-recommends tzdata postgresql && \
+            apt-get clean && rm -rf /var/lib/apt/lists/* && \
+            cp --remove-destination /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
+            rm -f /etc/timezone
+          COPY 00-configure-timezone.sh /opt/tz/00-configure-timezone.sh
+          COPY 01-configure-postgres.sh /opt/tz/01-configure-postgres.sh
+          COPY tz-test-runner.sh /tz-test-runner.sh
+          RUN sed -i 's/\r//' /opt/tz/*.sh /tz-test-runner.sh && chmod +x /tz-test-runner.sh
+          EOF
+
+          docker build -q -t tz-test:ci /tmp/tz-test-ctx
+          echo "✅ Timezone test image built"
+
+      - name: Prepare shared assertions
+        run: |
+          # Shared by the two TZ verification steps below (sourced, not duplicated) so the assertion logic
+          # only needs fixing/extending in one place. Checks TZFILE, OFFSET and JVM_ZONE, each
+          # both direct and under "env -i" — asserting only OFFSET previously let a broken
+          # reverse-lookup fix (JVM falling back to bare "GMT" while glibc showed the correct
+          # host time) pass every scenario silently; this suite is only worth having if it
+          # actually re-fails that exact class of bug.
+          cat > /tmp/assert-tz-scenario.sh <<'EOF'
+          assert_tz_scenario() {
+              local label="$1" expected_tzfile="$2" expected_offset="$3" expected_jvm="$4" output="$5"
+              local field expected actual
+              for field in TZFILE OFFSET JVM_ZONE ENVI_OFFSET ENVI_JVM_ZONE; do
+                  case "$field" in
+                      TZFILE) expected="$expected_tzfile" ;;
+                      OFFSET|ENVI_OFFSET) expected="$expected_offset" ;;
+                      JVM_ZONE|ENVI_JVM_ZONE) expected="$expected_jvm" ;;
+                  esac
+                  actual="$(printf '%s\n' "$output" | grep "^${field}=" | cut -d= -f2-)"
+                  if [ "$actual" != "$expected" ]; then
+                      echo "FAIL: $label: $field expected '$expected', got '$actual'"
+                      printf '%s\n' "$output"
+                      exit 1
+                  fi
+              done
+              echo "OK: $label: TZFILE=$expected_tzfile OFFSET=$expected_offset JVM=$expected_jvm — glibc and the JVM agree, both direct and under env -i"
+          }
+          EOF
+          echo "✅ Shared assertion helper written"
+
+      - name: Verify auto-detect and explicit override
+        run: |
+          . /tmp/assert-tz-scenario.sh
+
+          echo "🔍 No mount, no TZ -> image default Etc/UTC"
+          out=$(docker run --rm tz-test:ci /tz-test-runner.sh)
+          assert_tz_scenario "no mount / no TZ" "Etc/UTC" "+0000" "UTC" "$out"
+
+          echo "🔍 Host timezone mounted (Etc/GMT-5), no TZ -> auto-detected"
+          out=$(docker run --rm -v /usr/share/zoneinfo/Etc/GMT-5:/etc/host-localtime:ro tz-test:ci /tz-test-runner.sh)
+          assert_tz_scenario "auto-detect" "Etc/GMT-5" "+0500" "Etc/GMT-5" "$out"
+
+          echo "🔍 Host mounted (Etc/GMT-5) + explicit TZ=Etc/GMT-8 -> override wins"
+          out=$(docker run --rm -v /usr/share/zoneinfo/Etc/GMT-5:/etc/host-localtime:ro -e TZ=Etc/GMT-8 tz-test:ci /tz-test-runner.sh)
+          assert_tz_scenario "explicit override" "Etc/GMT-8" "+0800" "Etc/GMT-8" "$out"
+
+      - name: Verify malformed/hostile TZ input can't crash or leak through
+        run: |
+          . /tmp/assert-tz-scenario.sh
+
+          echo "🔍 Unknown TZ name -> warns, falls back to detected zone, doesn't leak into children"
+          out=$(docker run --rm -v /usr/share/zoneinfo/Etc/GMT-5:/etc/host-localtime:ro -e TZ=Bogus/Zone tz-test:ci /tz-test-runner.sh 2>&1)
+          echo "$out" | grep -q "WARNING: TZ='Bogus/Zone' is not a valid timezone" || { echo "FAIL: expected warning not printed"; echo "$out"; exit 1; }
+          assert_tz_scenario "unknown TZ" "Etc/GMT-5" "+0500" "Etc/GMT-5" "$out"
+
+          echo "🔍 TZ pointing at non-zone zoneinfo metadata (zone.tab) -> rejected, not silently accepted"
+          out=$(docker run --rm -e TZ=zone.tab tz-test:ci /tz-test-runner.sh)
+          assert_tz_scenario "non-zone TZ" "Etc/UTC" "+0000" "UTC" "$out"
+
+          echo "🔍 Path-traversal-shaped TZ -> rejected"
+          out=$(docker run --rm -e "TZ=../../etc/hostname" tz-test:ci /tz-test-runner.sh)
+          assert_tz_scenario "path traversal TZ" "Etc/UTC" "+0000" "UTC" "$out"
+
+          echo "🔍 Host timezone data with no byte-identical match anywhere in this image's tzdata -> uniform Etc/UTC fallback, not a glibc/JVM split"
+          head -c 200 /dev/urandom > /tmp/random-localtime
+          out=$(docker run --rm -v /tmp/random-localtime:/etc/host-localtime:ro tz-test:ci /tz-test-runner.sh 2>&1)
+          echo "$out" | grep -q "WARNING: the host's timezone data has no byte-identical match" || { echo "FAIL: expected warning not printed"; echo "$out"; exit 1; }
+          assert_tz_scenario "unmatched host tzdata" "Etc/UTC" "+0000" "UTC" "$out"
+
+          echo "🔍 Bind-mounted straight onto /etc/localtime (wrong target) -> warns instead of silently claiming success"
+          out=$(docker run --rm -v /usr/share/zoneinfo/Etc/GMT-5:/etc/localtime:ro tz-test:ci /tz-test-runner.sh 2>&1)
+          echo "$out" | grep -q "WARNING: /etc/localtime is not writable" || { echo "FAIL: expected warning not printed"; echo "$out"; exit 1; }
+          # /etc/timezone stays unwritten (apply_zone must not report success), while
+          # /etc/localtime itself keeps showing what the host actually mounted there.
+          assert_tz_scenario "wrong mount target" "MISSING" "+0500" "Etc/GMT-5" "$out"
+
+      - name: Verify polarion_detect_host_timezone's fallback chain
+        run: |
+          # scripts/polarion-runtime-lib.sh runs on the HOST (not in the container being
+          # started), so it can't rely on a bind mount — it reads the host's timezone
+          # directly instead, and this is the only detection path scripts/polarionctl.sh
+          # actually uses (it forwards the result as -e TZ=..., never bind-mounts
+          # /etc/host-localtime). Exercised in a disposable container per scenario so each
+          # can freely manipulate /etc/localtime, /etc/timezone, and stub out "timedatectl"
+          # without touching this job's own runner.
+          assert_detected_tz() {
+              local label="$1" expected="$2" actual="$3"
+              if [ "$actual" != "$expected" ]; then
+                  echo "FAIL: $label: expected POLARION_TZ='$expected', got '$actual'"
+                  exit 1
+              fi
+              echo "OK: $label -> POLARION_TZ='$expected'"
+          }
+          run_detect() {
+              docker run --rm -v "$(pwd)/scripts/polarion-runtime-lib.sh:/opt/lib/polarion-runtime-lib.sh:ro" \
+                ubuntu:24.04 bash -c "$1"
+          }
+
+          echo "🔍 /etc/localtime is a symlink into zoneinfo/ -> detected from its target"
+          result=$(run_detect '
+            apt-get -y update >/dev/null 2>&1 && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends tzdata >/dev/null 2>&1
+            ln -snf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+            source /opt/lib/polarion-runtime-lib.sh
+            echo "$POLARION_TZ"
+          ')
+          assert_detected_tz "symlink" "Europe/Berlin" "$result"
+
+          echo "🔍 /etc/localtime is not a symlink, but timedatectl reports a zone -> detected from timedatectl"
+          result=$(run_detect '
+            rm -f /etc/localtime
+            printf "#!/bin/bash\necho Asia/Tokyo\n" > /usr/local/bin/timedatectl
+            chmod +x /usr/local/bin/timedatectl
+            source /opt/lib/polarion-runtime-lib.sh
+            echo "$POLARION_TZ"
+          ')
+          assert_detected_tz "timedatectl fallback" "Asia/Tokyo" "$result"
+
+          echo "🔍 Neither a symlink nor timedatectl, but /etc/timezone has content -> detected from that file"
+          result=$(run_detect '
+            rm -f /etc/localtime
+            echo "America/Sao_Paulo" > /etc/timezone
+            source /opt/lib/polarion-runtime-lib.sh
+            echo "$POLARION_TZ"
+          ')
+          assert_detected_tz "/etc/timezone fallback" "America/Sao_Paulo" "$result"
+
+          echo "🔍 None of the three available -> empty (caller falls back to the image default, NOTE printed)"
+          result=$(run_detect '
+            rm -f /etc/localtime /etc/timezone
+            source /opt/lib/polarion-runtime-lib.sh
+            echo "[$POLARION_TZ]"
+          ' 2>&1)
+          echo "$result" | grep -q "NOTE: could not detect this host's timezone" && { echo "FAIL: the NOTE must only print inside polarionctl.sh's start) case, not from the library itself"; exit 1; }
+          assert_detected_tz "nothing detectable" "[]" "$(echo "$result" | tail -1)"
+
+          echo "🔍 POLARION_TZ already set -> detection skipped, explicit value wins"
+          result=$(run_detect '
+            apt-get -y update >/dev/null 2>&1 && DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends tzdata >/dev/null 2>&1
+            ln -snf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+            export POLARION_TZ=Custom/Zone
+            source /opt/lib/polarion-runtime-lib.sh
+            echo "$POLARION_TZ"
+          ')
+          assert_detected_tz "explicit POLARION_TZ wins" "Custom/Zone" "$result"
+
+      - name: Verify PostgreSQL timezone config stays in sync, including on revert
+        run: |
+          # Written to a file and mounted in rather than passed via "docker run ... bash -c"
+          # so the script's own single/double quoting (postgresql.conf's "timezone = 'X'"
+          # syntax) never has to fight the outer shell's quoting.
+          cat > /tmp/pg-tz-test.sh <<'EOF'
+          #!/bin/bash
+          set -e
+          if ! su postgres -c "/usr/lib/postgresql/*/bin/initdb -D /tmp/pgdata" >/tmp/initdb.log 2>&1; then
+              echo "FAIL: initdb failed:"
+              cat /tmp/initdb.log
+              exit 1
+          fi
+          mkdir -p /opt/polarion/data
+          ln -s /tmp/pgdata /opt/polarion/data/postgres-data
+          PG_CONF=/tmp/pgdata/postgresql.conf
+
+          apply_pg_tz() {
+              echo "$1" > /etc/timezone
+              . /opt/tz/01-configure-postgres.sh >/dev/null 2>&1 || true
+          }
+
+          # A -> B -> B -> C -> B -> B: the repeat and the revert-to-a-prior-zone are both
+          # deliberate. An earlier version of this fix used an unanchored substring match to
+          # decide whether a rewrite was needed, which also matched its own commented-out
+          # line — so reverting to zone B after C silently kept Postgres on C.
+          for z in Etc/UTC Etc/GMT-5 Etc/GMT-5 Etc/GMT-8 Etc/GMT-5 Etc/GMT-5; do
+              apply_pg_tz "$z"
+              active="$(grep -E "^timezone = '${z}'" "$PG_CONF" || true)"
+              if [ -z "$active" ]; then
+                  echo "FAIL: after setting $z, postgresql.conf timezone is not active:"
+                  grep -E "^timezone|^#timezone" "$PG_CONF"
+                  exit 1
+              fi
+              tz_count=$(grep -cE "^timezone = " "$PG_CONF")
+              logtz_count=$(grep -cE "^log_timezone = " "$PG_CONF")
+              if [ "$tz_count" != "1" ] || [ "$logtz_count" != "1" ]; then
+                  echo "FAIL: after setting $z, expected exactly 1 active timezone/log_timezone line, got $tz_count/$logtz_count (config growing unbounded on restart)"
+                  exit 1
+              fi
+          done
+          echo "OK: PostgreSQL timezone/log_timezone track every change, including reverting to a prior zone, without growing unbounded"
+
+          # initdb ships this commented out, so the earlier version of this check (asserting
+          # it's still commented) could never fail regardless of correctness. Uncomment it
+          # first, then apply a zone the loop above didn't just leave active (Etc/GMT-3,
+          # never used yet) so the idempotency guard can't skip the rewrite and hide a
+          # regression — to prove the timezone sed pattern, anchored on "=" since round 4,
+          # leaves an unrelated, already-active setting alone instead of also matching and
+          # re-commenting it.
+          sed -i "s/^#timezone_abbreviations/timezone_abbreviations/" "$PG_CONF"
+          apply_pg_tz "Etc/GMT-3"
+          if ! grep -q "^timezone_abbreviations" "$PG_CONF"; then
+              echo "FAIL: timezone_abbreviations was commented out — the timezone sed pattern is matching more than intended"
+              exit 1
+          fi
+          echo "OK: timezone_abbreviations left untouched by the timezone sed pattern"
+          EOF
+
+          docker run --rm -v /tmp/pg-tz-test.sh:/pg-tz-test.sh:ro tz-test:ci bash /pg-tz-test.sh

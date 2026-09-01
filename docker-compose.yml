@@ -19,9 +19,21 @@ services:
       - JAVA_OPTS=-Xmx3g -Xms3g
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
       - JDWP_ENABLED=true
+      # Container clock timezone. The bind mount below auto-detects it from the host, so TZ
+      # is normally left unset here (bare "TZ" passes the host shell's value through only if
+      # exported there — "TZ=${TZ:-}" would set it to an empty string, which glibc/the JVM
+      # both treat as UTC). Export TZ=Region/City before "docker compose up" to force a
+      # different zone than the host's.
+      - TZ
       # The built-in Mailpit catcher runs by default and captures Polarion's outgoing
       # notification mail (open http://localhost:8025). To route mail to a real server
       # instead, set SMTP_HOST/SMTP_PORT here; to disable the catcher, set MAILPIT_EMBEDDED=false.
+    volumes:
+      # Matches the container clock to the host's real timezone with no configuration needed.
+      # Mounted to /etc/host-localtime, not /etc/localtime directly: entrypoint.d/00-configure
+      # -timezone.sh copies it into the container's own /etc/localtime at startup, which also
+      # keeps that file rewritable there for an explicit TZ override (see that script).
+      - /etc/localtime:/etc/host-localtime:ro
     healthcheck:
       test:
         - CMD

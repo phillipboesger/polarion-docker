@@ -1335,6 +1335,7 @@
   <span style="color:#93c5fd">-p</span> 5005:5005 \
   <span style="color:#93c5fd">-e</span> JAVA_OPTS=<span style="color:#fde68a">"-Xmx3g -Xms3g"</span> \
   <span style="color:#93c5fd">-e</span> JDWP_ENABLED=<span style="color:#fde68a">true</span> \
+  <span style="color:#93c5fd">-v</span> /etc/localtime:/etc/host-localtime:ro \
   <span style="color:#93c5fd">--volume</span> polarion_repo:/opt/polarion/data/svn \
   <span style="color:#93c5fd">--volume</span> polarion_extensions:/opt/polarion/polarion/extensions \
   <span style="color:#f9a8d4">polarion:local</span>
@@ -1364,6 +1365,7 @@
   <span style="color:#93c5fd">-p</span> 127.0.0.1:5005:5005 \
   <span style="color:#93c5fd">-e</span> JAVA_OPTS=<span style="color:#fde68a">"-Xmx3g -Xms3g"</span> \
   <span style="color:#93c5fd">-e</span> JDWP_ENABLED=<span style="color:#fde68a">true</span> \
+  <span style="color:#93c5fd">-e</span> TZ=<span style="color:#fde68a">"$(readlink /etc/localtime | sed 's#.*zoneinfo/##')"</span> \
   <span style="color:#93c5fd">-v</span> polarion_repo:/opt/polarion/data/svn \
   <span style="color:#93c5fd">-v</span> polarion_extensions:/opt/polarion/polarion/extensions \
   <span style="color:#f9a8d4">polarion:local</span>
@@ -1425,6 +1427,7 @@
   <span style="color:#93c5fd">-p</span> 5005:5005 \   <span style="color:#6b7280"># JDWP debugger</span>
   <span style="color:#93c5fd">-e</span> JAVA_OPTS=<span style="color:#fde68a">"-Xmx3g -Xms3g"</span> \
   <span style="color:#93c5fd">-e</span> JDWP_ENABLED=<span style="color:#fde68a">true</span> \
+  <span style="color:#93c5fd">-v</span> /etc/localtime:/etc/host-localtime:ro \
   <span style="color:#93c5fd">--volume</span> polarion_repo:/opt/polarion/data/svn \
   <span style="color:#93c5fd">--volume</span> polarion_extensions:/opt/polarion/polarion/extensions \
   <span style="color:#fde68a">ghcr.io/phillipboesger/polarion-docker:latest</span></pre>
