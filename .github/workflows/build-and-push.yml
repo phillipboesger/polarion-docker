@@ -202,6 +202,66 @@ jobs:
               echo "✅ SMTP config correctly left untouched when the catcher is disabled"
             '
 
+      - name: Verify timezone auto-detection and override in the built image
+        run: |
+          # Runs against the actual built image (real Ubuntu base, real bundled JDK, real
+          # PostgreSQL cluster initialized by install.expect at build time), on top of the
+          # isolated PR-level unit tests in .github/workflows/pr-checks.yml — this catches
+          # anything specific to the real image that a standalone test image can't replicate.
+          # Fixed-offset Etc/GMT-N zones from the runner's own tzdata keep this deterministic
+          # regardless of what date/DST the runner happens to execute on.
+          cat > /tmp/tz-image-test.sh <<'EOF'
+          #!/bin/bash
+          set -e
+          . /opt/polarion/entrypoint.d/00-configure-timezone.sh
+
+          # jshell isn't on PATH in this image (Dockerfile's update-alternatives only links
+          # java/jar/javac) — the JDK it ships is always at $JAVA_HOME.
+          jvm_zone() {
+              echo 'System.out.println(java.util.TimeZone.getDefault().getID());' \
+                | "${JAVA_HOME:-/usr/lib/jvm/current}/bin/jshell" -q - 2>&1 | tail -1
+          }
+
+          echo "-- auto-detected from mounted host zone --"
+          date_offset="$(date +%z)"
+          jvm="$(jvm_zone)"
+          [ "$date_offset" = "+0500" ] || { echo "FAIL: date offset $date_offset, expected +0500"; exit 1; }
+          [ "$jvm" = "Etc/GMT-5" ] || { echo "FAIL: JVM zone $jvm, expected Etc/GMT-5"; exit 1; }
+          echo "OK: glibc and JVM both auto-detected Etc/GMT-5"
+
+          PG_CONF="/opt/polarion/data/postgres-data/postgresql.conf"
+          if [ -f "$PG_CONF" ]; then
+              . /opt/polarion/entrypoint.d/01-configure-postgres.sh >/dev/null
+              grep -qxF "timezone = 'Etc/GMT-5'" "$PG_CONF" || { echo "FAIL: postgresql.conf timezone not updated to Etc/GMT-5"; grep -E "^timezone|^#timezone" "$PG_CONF"; exit 1; }
+              echo "OK: PostgreSQL's baked-in UTC config picked up the detected zone"
+          else
+              echo "FAIL: $PG_CONF not found — expected a PostgreSQL cluster baked in at build time"
+              exit 1
+          fi
+          EOF
+
+          docker run --rm --entrypoint bash \
+            -v /usr/share/zoneinfo/Etc/GMT-5:/etc/host-localtime:ro \
+            -v /tmp/tz-image-test.sh:/tz-image-test.sh:ro \
+            polarion:test -c 'bash /tz-image-test.sh'
+
+          echo "-- explicit TZ override wins over the mounted zone --"
+          cat > /tmp/tz-override-test.sh <<'EOF'
+          #!/bin/bash
+          set -e
+          . /opt/polarion/entrypoint.d/00-configure-timezone.sh
+          jvm="$(echo 'System.out.println(java.util.TimeZone.getDefault().getID());' \
+              | "${JAVA_HOME:-/usr/lib/jvm/current}/bin/jshell" -q - 2>&1 | tail -1)"
+          [ "$(date +%z)" = "+0800" ] || { echo "FAIL: date offset $(date +%z), expected +0800"; exit 1; }
+          [ "$jvm" = "Etc/GMT-8" ] || { echo "FAIL: JVM zone $jvm, expected Etc/GMT-8"; exit 1; }
+          echo "OK: explicit TZ override applied over the mounted host zone (glibc and JVM)"
+          EOF
+          docker run --rm --entrypoint bash \
+            -v /usr/share/zoneinfo/Etc/GMT-5:/etc/host-localtime:ro \
+            -v /tmp/tz-override-test.sh:/tz-override-test.sh:ro \
+            -e TZ=Etc/GMT-8 \
+            polarion:test -c 'bash /tz-override-test.sh'
+
       - name: Verify embedded Mailpit catches mail end-to-end
         run: |
           # End-to-end proof that the *new image* runs the built-in catcher BY DEFAULT

@@ -339,6 +339,12 @@ bash scripts/polarionctl.sh list-images          # show locally available Polari
 POLARION_IMAGE=polarion:2512 bash scripts/polarionctl.sh start
 ```
 
+### Automated Tests (CI)
+
+Every PR runs [`.github/workflows/pr-checks.yml`](./.github/workflows/pr-checks.yml): hadolint/shellcheck/yamllint, `docker compose config` validation, and a dedicated **Timezone Auto-Detection** job that builds a small standalone test image (no licensed Polarion ZIP needed) and exercises `entrypoint.d/00-configure-timezone.sh` / `entrypoint.d/01-configure-postgres.sh` end-to-end — auto-detect, explicit override, malformed/hostile `TZ` input, PostgreSQL's `timezone`/`log_timezone` GUCs staying in sync (including on reverting to a previously-used zone), and `scripts/polarion-runtime-lib.sh`'s host-side detection fallback chain (symlink → `timedatectl` → `/etc/timezone`) — checking both glibc (`date`) and the JVM, since the two resolve timezone differently and have silently disagreed with each other before.
+
+Every push to `main`/a version branch additionally runs [`.github/workflows/build-and-push.yml`](./.github/workflows/build-and-push.yml) against the real built image: JVM startup, PostgreSQL/Apache/JDWP reachability, the Polarion startup sequence, built-in Mailpit end-to-end, a Playwright UI smoke test, SMTP mail configuration, and the same timezone auto-detection/override checks re-run against the actual bundled JDK and the real PostgreSQL cluster — before anything is pushed to GHCR.
+
 ## 🖥️ Platform Support
 
 - **macOS (Apple Silicon)**: Supported via Docker `--platform linux/amd64` and via Apple `container` on macOS 26+ using `--platform linux/amd64 --rosetta`.
