@@ -120,6 +120,13 @@ case "${action}" in
 		if [ -n "${SMTP_HOST:-}" ]; then extra_env_args+=(-e "SMTP_HOST=${SMTP_HOST}"); fi
 		if [ -n "${SMTP_PORT:-}" ]; then extra_env_args+=(-e "SMTP_PORT=${SMTP_PORT}"); fi
 		if [ -n "${MAILPIT_EMBEDDED:-}" ]; then extra_env_args+=(-e "MAILPIT_EMBEDDED=${MAILPIT_EMBEDDED}"); fi
+		# POLARION_TZ is auto-detected from this host by polarion-runtime-lib.sh; set it (or
+		# plain TZ) before calling this script to force a different zone instead.
+		if [ -n "${POLARION_TZ}" ]; then
+			extra_env_args+=(-e "TZ=${POLARION_TZ}")
+		else
+			echo "NOTE: could not detect this host's timezone; the container will default to Etc/UTC. Set POLARION_TZ=Region/City to fix this." >&2
+		fi
 
 		if polarion_is_apple_container_runtime; then
 			polarion_ensure_container_system
