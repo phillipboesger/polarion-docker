@@ -14,6 +14,7 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 - **Remote Debugging (JDWP)**: One-click remote debugging support on port 5005.
 - **Memory Management**: Easy configuration of JVM memory via `JAVA_OPTS`.
 - **Automatic Timezone Detection**: The container clock matches the host's real timezone with no configuration (Docker/Podman/Compose via a bind-mounted `/etc/localtime`, `polarionctl.sh`/Apple `container` by detecting and passing it); set `TZ=Region/City` to force a different zone instead.
+- **Always-Current JDK**: The build fetches the latest Eclipse Temurin GA release for the configured major version (`--build-arg JDK_MAJOR_VERSION=21` by default) from the Adoptium API on every build, so images always ship the newest patch/security updates instead of a pinned build.
 - **Automatic Workspace Cleanup**: On every container start, stale Eclipse workspace metadata (`.config` and `.metadata`) is removed from `/opt/polarion/data/workspace/` before Polarion launches, preventing stale data caused by changed plugins in the `/opt/polarion/polarion/extensions/` directory.
 
 ## 🚀 Getting Started
