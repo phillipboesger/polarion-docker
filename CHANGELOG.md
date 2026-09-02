@@ -5,7 +5,20 @@ style. Image tags stay as documented in the README's "Image tags and versions" s
 (`v<NNNN>` / `latest` are floating; `polarion.build` on the running container identifies the
 exact build); this file tracks repository-side changes, not a separate release-numbering scheme.
 
+**Releases:** each dated section below (`## [YYYY-MM-DD]`) corresponds to a git tag of the same
+name (e.g. `2026-09-02`, no `v` prefix — that prefix is reserved for the Polarion-version branch
+tags `vNNNN` and would be ambiguous with them) pushed to `origin`, plus a
+[GitHub Release](https://github.com/phillipboesger/polarion-docker/releases) whose notes are that
+section. This lets you pin a *repository* state ("the scripts/Dockerfile as of release X") the
+same way `eol/vNNNN` pins an archived version branch — it's independent of, and does not replace,
+the per-build image tags. To cut one: move `[Unreleased]`'s contents under a new dated heading,
+commit, then `git tag <date> && git push origin <date>` and
+`gh release create <date> --title <date> --notes-file <(awk -v d="## [<date>]" '$0==d{f=1;next} f&&/^## \[/{exit} f' CHANGELOG.md)`
+(or just paste the section manually).
+
 ## [Unreleased]
+
+## [2026-09-02]
 
 ### Security
 
