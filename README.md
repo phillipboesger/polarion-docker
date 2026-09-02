@@ -1,8 +1,47 @@
-# Polarion Docker
+<div align="center">
 
-Run Polarion ALM in OCI-compatible containers on macOS, Windows, and Linux. This repository provides a flexible Dockerfile and setup scripts to easily containerize a fresh Polarion installation.
+# 🐳 Polarion Docker
 
-## 🌟 Features
+**Run Siemens Polarion ALM in reproducible, OCI-compatible containers — on macOS, Windows, and Linux.**
+
+[![Build and Push](https://github.com/phillipboesger/polarion-docker/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/phillipboesger/polarion-docker/actions/workflows/build-and-push.yml)
+[![PR Checks](https://github.com/phillipboesger/polarion-docker/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/phillipboesger/polarion-docker/actions/workflows/pr-checks.yml)
+[![License](https://img.shields.io/github/license/phillipboesger/polarion-docker)](./LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/phillipboesger/polarion-docker)](https://github.com/phillipboesger/polarion-docker/commits/main)
+[![Open issues](https://img.shields.io/github/issues/phillipboesger/polarion-docker)](https://github.com/phillipboesger/polarion-docker/issues)
+[![Stars](https://img.shields.io/github/stars/phillipboesger/polarion-docker?style=social)](https://github.com/phillipboesger/polarion-docker/stargazers)
+
+</div>
+
+---
+
+## Overview
+
+Polarion's installer is proprietary and manual to set up — PostgreSQL, Apache proxying, SVN, mail, and JVM tuning all need hand configuration. This repository turns that install into a self-configuring Docker image: bring your own Polarion license and installer ZIP, run one `docker build` + `docker run`, and get a fully wired-up instance.
+
+| | |
+| :--- | :--- |
+| **Runtimes** | Docker (primary) · Podman · Apple `container` |
+| **Platforms** | macOS (Apple Silicon & Intel) · Windows (WSL2) · Linux |
+| **Maintained versions** | [`v2606`, `v2512`, `v2506`, `v2410`](#supported-versions) |
+| **License** | [MIT](./LICENSE) |
+
+### Table of Contents
+
+- [Features](#features)
+- [Getting Started](#getting-started)
+  - [Runtime Support](#runtime-support)
+  - [Option A: Local Build](#option-a-local-build-recommended)
+  - [Option B: Pre-built Images](#option-b-pre-built-images)
+  - [Via Docker Compose](#via-docker-compose)
+  - [Image Tags & Versions](#image-tags-and-versions)
+  - [Supported Versions](#supported-versions)
+- [Configuration & Customization](#configuration--customization)
+- [Development & Debugging](#development--debugging)
+- [Platform Support](#platform-support)
+- [Troubleshooting](#troubleshooting)
+
+## Features
 
 The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint.d/`) automatically handle many complex configurations that are usually manual:
 
@@ -17,7 +56,7 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 - **Always-Current JDK**: The build fetches the latest Eclipse Temurin GA release for the configured major version (`--build-arg JDK_MAJOR_VERSION=21` by default) from the Adoptium API on every build, so images always ship the newest patch/security updates instead of a pinned build.
 - **Automatic Workspace Cleanup**: On every container start, stale Eclipse workspace metadata (`.config` and `.metadata`) is removed from `/opt/polarion/data/workspace/` before Polarion launches, preventing stale data caused by changed plugins in the `/opt/polarion/polarion/extensions/` directory.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Runtime Support
 
@@ -229,7 +268,23 @@ docker inspect --format '{{json .Config.Labels}}' ghcr.io/phillipboesger/polario
 
 Locally built images are tagged `polarion:<NNNN>` (no `v`) plus `polarion:local`.
 
-## ⚙️ Configuration & Customization
+### Supported versions
+
+This repository tracks roughly the same ~2-year window Siemens supports, one branch per Polarion version:
+
+| Branch | Status |
+| :--- | :--- |
+| `v2606` | maintained |
+| `v2512` | maintained |
+| `v2506` | maintained |
+| `v2410` | maintained |
+| `v2404` | **proposed end of life** — see [#77](https://github.com/phillipboesger/polarion-docker/issues/77) |
+
+`main` always builds the newest installer archive available and is where changes land first; the maintained version branches are synced from it.
+
+`v2404` predates the `POLARION_ZIP` refactor, has no multi-arch (Apple silicon) support and no Mailpit catcher, and has not been touched since 2026-03-04. It is not maintained. Whether to tag and archive it is still open in #77.
+
+## Configuration & Customization
 
 ### Modular Customization
 
@@ -265,7 +320,7 @@ After startup, Apache serves the bundled Subversion repository through both of t
 
 The startup scripts also normalize the bundled SVN password file so the default bootstrap user remains `admin` / `admin`.
 
-## 🛠️ Development & Debugging
+## Development & Debugging
 
 ### Remote Debugging (JDWP)
 
@@ -353,7 +408,7 @@ Every push to `main`/a version branch additionally runs [`.github/workflows/buil
 - **Windows (WSL2)**: Recommended for best performance.
 - **Linux**: Native support.
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 - **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free. The built-in Mailpit web UI is published on host port **8025**; SMTP is handled inside the container, so port 25 is not published unless you explicitly add `-p 25:25`.
 - **Memory:** This repo defaults Polarion to `4g` container RAM and a `3g` JVM heap so the process still has native headroom. Increase only if a specific workload requires it.
