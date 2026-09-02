@@ -418,6 +418,11 @@ jobs:
           COPY pg_ctl /usr/lib/postgresql/current/bin/pg_ctl
           RUN chmod +x /opt/polarion/entrypoint.d/01-fail.sh /polarion_root/polarion_starter.sh \
             /usr/local/bin/service /usr/lib/postgresql/current/bin/pg_ctl
+          # Pre-created world-writable, at build time: whichever stub writes to it FIRST at
+          # runtime (root via the "service" stub, or the "postgres" user via "sudo -u postgres"
+          # in the pg_ctl stub) must not end up implicitly owning it at a mode the other can't
+          # append to.
+          RUN touch /tmp/shutdown-log && chmod 666 /tmp/shutdown-log
           WORKDIR /polarion_root
           EOF
 
@@ -426,22 +431,25 @@ jobs:
 
       - name: Verify SIGTERM stops services in order and the startup message reflects failures
         run: |
-          rm -f /tmp/shutdown-log && touch /tmp/shutdown-log && chmod 666 /tmp/shutdown-log
-          out=$(mktemp)
-
-          docker run --rm --name shutdown-test -v /tmp/shutdown-log:/tmp/shutdown-log \
-            shutdown-test:ci ./polarion_starter.sh > "$out" 2>&1 &
-          run_pid=$!
+          # Log file lives inside the container's own filesystem, retrieved via "docker cp"
+          # after stop instead of a host bind-mount: a bind-mounted log hit permission-denied
+          # writes from inside the container on hosted runners even after chmod 666 on the host
+          # side, which a plain in-container file + "docker cp" sidesteps entirely.
+          docker rm -f shutdown-test >/dev/null 2>&1 || true
+          docker run -d --name shutdown-test shutdown-test:ci ./polarion_starter.sh >/dev/null
           sleep 3
 
           start_ts=$(date +%s)
           docker stop -t 30 shutdown-test >/dev/null
           end_ts=$(date +%s)
-          wait "$run_pid" || true
           elapsed=$((end_ts - start_ts))
 
+          out="$(docker logs shutdown-test 2>&1)"
+          docker cp shutdown-test:/tmp/shutdown-log /tmp/shutdown-log 2>/dev/null || : > /tmp/shutdown-log
+          docker rm shutdown-test >/dev/null
+
           echo "--- container output ---"
-          cat "$out"
+          echo "$out"
           echo "--- shutdown-log ---"
           cat /tmp/shutdown-log
 
@@ -465,6 +473,6 @@ jobs:
           fi
           echo "OK: polarion, apache2 and postgres were stopped in that exact order on SIGTERM"
 
-          grep -q "!!! FAILED (1): /opt/polarion/entrypoint.d/01-fail.sh" "$out" || { echo "FAIL: the simulated entrypoint failure was not reported"; exit 1; }
-          grep -q "step(s) failed" "$out" || { echo "FAIL: the final startup message doesn't reflect the failed step"; exit 1; }
+          echo "$out" | grep -q "!!! FAILED (1): /opt/polarion/entrypoint.d/01-fail.sh" || { echo "FAIL: the simulated entrypoint failure was not reported"; exit 1; }
+          echo "$out" | grep -q "step(s) failed" || { echo "FAIL: the final startup message doesn't reflect the failed step"; exit 1; }
           echo "OK: a failed entrypoint.d script is reported in the startup log instead of being silently ignored"
