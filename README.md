@@ -1,6 +1,45 @@
-# Polarion Docker
+<div align="center">
 
-Run Polarion ALM in OCI-compatible containers on macOS, Windows, and Linux. This repository provides a flexible Dockerfile and setup scripts to easily containerize a fresh Polarion installation.
+# 🐳 Polarion Docker
+
+**Run Siemens Polarion ALM in reproducible, OCI-compatible containers — on macOS, Windows, and Linux.**
+
+[![Build and Push](https://github.com/phillipboesger/polarion-docker/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/phillipboesger/polarion-docker/actions/workflows/build-and-push.yml)
+[![PR Checks](https://github.com/phillipboesger/polarion-docker/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/phillipboesger/polarion-docker/actions/workflows/pr-checks.yml)
+[![License](https://img.shields.io/github/license/phillipboesger/polarion-docker)](./LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/phillipboesger/polarion-docker)](https://github.com/phillipboesger/polarion-docker/commits/main)
+[![Open issues](https://img.shields.io/github/issues/phillipboesger/polarion-docker)](https://github.com/phillipboesger/polarion-docker/issues)
+[![Stars](https://img.shields.io/github/stars/phillipboesger/polarion-docker?style=social)](https://github.com/phillipboesger/polarion-docker/stargazers)
+
+</div>
+
+---
+
+## Overview
+
+Polarion's installer is proprietary and manual to set up — PostgreSQL, Apache proxying, SVN, mail, and JVM tuning all need hand configuration. This repository turns that install into a self-configuring Docker image: bring your own Polarion license and installer ZIP, run one `docker build` + `docker run`, and get a fully wired-up instance.
+
+| | |
+| :--- | :--- |
+| **Runtimes** | Docker (primary) · Podman · Apple `container` |
+| **Platforms** | macOS (Apple Silicon & Intel) · Windows (WSL2) · Linux |
+| **Maintained versions** | [`v2606`, `v2512`, `v2506`, `v2410`](#supported-versions) |
+| **License** | [MIT](./LICENSE) |
+
+### Table of Contents
+
+- [Features](#features)
+- [Getting Started](#getting-started)
+  - [Runtime Support](#runtime-support)
+  - [Option A: Local Build](#option-a-local-build-recommended)
+  - [Option B: Pre-built Images](#option-b-pre-built-images)
+  - [Via Docker Compose](#via-docker-compose)
+  - [Image Tags & Versions](#image-tags-and-versions)
+  - [Supported Versions](#supported-versions)
+- [Configuration & Customization](#configuration--customization)
+- [Development & Debugging](#development--debugging)
+- [Platform Support](#platform-support)
+- [Troubleshooting](#troubleshooting)
 
 ## 🌟 Features
 
