@@ -338,9 +338,17 @@ polarion_ensure_volume() {
 polarion_remove_container() {
 	polarion_require_selected_runtime_command
 
+	# Try a real graceful stop first (polarion_starter.sh's shutdown trap needs time to
+	# stop Polarion/Apache/PostgreSQL in order) before the force-delete fallback, which
+	# only matters for a container that's already stopped/gone or wedged. This can take up
+	# to 2 minutes for a container that's actually running, so say so up front instead of
+	# leaving the caller staring at a silent hang.
+	echo "Stopping any existing ${POLARION_CONTAINER_NAME} container (up to 120s for a clean shutdown)..."
 	if polarion_is_apple_container_runtime; then
+		container stop --time 120 "${POLARION_CONTAINER_NAME}" >/dev/null 2>&1 || true
 		container delete --force "${POLARION_CONTAINER_NAME}" >/dev/null 2>&1 || true
 	else
+		docker stop -t 120 "${POLARION_CONTAINER_NAME}" >/dev/null 2>&1 || true
 		docker rm -f "${POLARION_CONTAINER_NAME}" >/dev/null 2>&1 || true
 	fi
 }

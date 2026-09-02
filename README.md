@@ -38,6 +38,7 @@ Polarion's installer is proprietary and manual to set up — PostgreSQL, Apache 
   - [Supported Versions](#supported-versions)
 - [Configuration & Customization](#configuration--customization)
 - [Development & Debugging](#development--debugging)
+  - [Graceful Shutdown](#graceful-shutdown)
 - [Platform Support](#platform-support)
 - [Troubleshooting](#troubleshooting)
 
@@ -120,6 +121,7 @@ Since Polarion requires a license and the installation media is proprietary, you
       --name polarion \
       --platform linux/amd64 \
       --memory 4g \
+      --stop-timeout 120 \
       -p 80:80 \
       -p 5433:5433 \
       -p 5005:5005 \
@@ -133,6 +135,7 @@ Since Polarion requires a license and the installation media is proprietary, you
     podman run -d \
       --name polarion \
       --memory 4g \
+      --stop-timeout 120 \
       -p 80:80 \
       -p 5433:5433 \
       -p 5005:5005 \
@@ -162,6 +165,8 @@ Since Polarion requires a license and the installation media is proprietary, you
     ```
     `scripts/polarionctl.sh start` detects and passes the host's timezone the same way automatically; set `POLARION_TZ=Region/City` (or plain `TZ`) before running it to force a different zone.
 
+    Polarion, Apache and PostgreSQL now shut down in order on SIGTERM (see [Graceful shutdown](#graceful-shutdown) below); `--stop-timeout 120` above gives that room to finish instead of a `docker stop`/`podman stop` SIGKILLing after Docker's default 10s. `scripts/polarionctl.sh stop` and `start` already do this for you. For Apple `container`, pass the same grace period explicitly when stopping: `container stop --time 120 polarion`.
+
 ### Option B: Pre-built Images
 
 Pre-built images are hosted on the GitHub Container Registry (`ghcr.io/phillipboesger/polarion-docker`).
@@ -184,6 +189,7 @@ If you have access:
     --name polarion \
     --platform linux/amd64 \
     --memory 4g \
+    --stop-timeout 120 \
     -p 80:80 \
     -p 5433:5433 \
     -p 5005:5005 \
@@ -270,7 +276,7 @@ Locally built images are tagged `polarion:<NNNN>` (no `v`) plus `polarion:local`
 
 ### Supported versions
 
-This repository tracks roughly the same ~2-year window Siemens supports, one branch per Polarion version:
+This repository tracks roughly the same ~2-year window Siemens supports, one branch per Polarion version. Once a branch falls outside that window and has diverged too far for a merge to still be a straightforward sync, it is declared EOL: its head is tagged (`eol/vNNNN`) so the exact state remains buildable, and the branch itself is removed so the branch list only shows what's actively maintained.
 
 | Branch | Status |
 | :--- | :--- |
@@ -278,11 +284,11 @@ This repository tracks roughly the same ~2-year window Siemens supports, one bra
 | `v2512` | maintained |
 | `v2506` | maintained |
 | `v2410` | maintained |
-| `v2404` | **proposed end of life** — see [#77](https://github.com/phillipboesger/polarion-docker/issues/77) |
+| `v2404` | EOL — see tag `eol/v2404` |
 
 `main` always builds the newest installer archive available and is where changes land first; the maintained version branches are synced from it.
 
-`v2404` predates the `POLARION_ZIP` refactor, has no multi-arch (Apple silicon) support and no Mailpit catcher, and has not been touched since 2026-03-04. It is not maintained. Whether to tag and archive it is still open in #77.
+`v2404` predated the `POLARION_ZIP` refactor, had no multi-arch (Apple silicon) support and no Mailpit catcher, and had not been touched since 2026-03-04 — declared EOL and archived per [#77](https://github.com/phillipboesger/polarion-docker/issues/77).
 
 ## Configuration & Customization
 
@@ -359,6 +365,17 @@ docker run -d --name polarion -p 80:80 -p 8025:8025 polarion:local
 > Notifications are delivered on Polarion's notification cron, so a captured mail can take a short moment to appear.
 
 **Want real mail instead?** Point Polarion at a real SMTP server with `SMTP_HOST` / `SMTP_PORT` (e.g. `host.docker.internal`) — the built-in catcher then steps aside automatically. To turn the catcher off entirely, set `MAILPIT_EMBEDDED=false`.
+
+### Graceful shutdown
+
+On `SIGTERM`/`SIGINT`, `polarion_starter.sh` stops Polarion, Apache and PostgreSQL in that order via `pg_ctl -m fast stop`, instead of being SIGKILLed once Docker's grace period runs out. That ordered shutdown needs more than Docker's 10s default, so whatever stops the container needs to grant it:
+
+- `scripts/polarionctl.sh stop` (and `start`, which stops any existing container before recreating it) already does this for you.
+- `docker compose down` / `docker compose stop` — both compose files set `stop_grace_period: 120s`.
+- A bare `docker run`/`podman run` — pass `--stop-timeout 120` at run time (see the examples above), or `docker stop -t 120 polarion` / `podman stop -t 120 polarion` when stopping it later.
+- Apple `container` — `container stop --time 120 polarion`.
+
+A container stopped without enough grace time SIGKILLs Postgres mid-write, which is what the stale-lock self-heal in `entrypoint.d/02-start-postgres.sh` cleans up on the next start — harmless, but avoidable.
 
 ### Container Shell Aliases
 

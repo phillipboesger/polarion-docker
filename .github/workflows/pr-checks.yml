@@ -312,3 +312,159 @@ jobs:
           EOF
 
           docker run --rm -v /tmp/pg-tz-test.sh:/pg-tz-test.sh:ro tz-test:ci bash /pg-tz-test.sh
+
+      - name: Verify listen_addresses config stays in sync, without growing unbounded
+        run: |
+          # Same script as the timezone step above (01-configure-postgres.sh configures both
+          # listen_addresses and timezone/log_timezone in one pass), same tz-test:ci image,
+          # same real initdb-created postgresql.conf — just asserting the OTHER guard in that
+          # file. Regression test for #83: the original code unconditionally commented out the
+          # previous listen_addresses line and appended a fresh one on every container start,
+          # so postgresql.conf grew by two lines per restart forever.
+          cat > /tmp/pg-listen-test.sh <<'EOF'
+          #!/bin/bash
+          set -e
+          if ! su postgres -c "/usr/lib/postgresql/*/bin/initdb -D /tmp/pgdata" >/tmp/initdb.log 2>&1; then
+              echo "FAIL: initdb failed:"
+              cat /tmp/initdb.log
+              exit 1
+          fi
+          mkdir -p /opt/polarion/data
+          ln -s /tmp/pgdata /opt/polarion/data/postgres-data
+          PG_CONF=/tmp/pgdata/postgresql.conf
+
+          # NOTE: a live-line-count assertion alone is not enough here — the ORIGINAL bug
+          # comments out the previously-appended active line before appending a new one, so
+          # exactly 1 active line is true on every single run even though the file grows by
+          # one commented-out line every time. The real regression signal is the TOTAL count
+          # (live + commented-out) and the file's line count staying flat from the second run
+          # onward, once the guard has had one run to settle.
+          . /opt/tz/01-configure-postgres.sh >/dev/null 2>&1 || true
+          live_count=$(grep -cxF "listen_addresses = '*'" "$PG_CONF" || true)
+          if [ "$live_count" != "1" ]; then
+              echo "FAIL: after the first start, expected exactly 1 active listen_addresses line, got $live_count"
+              grep -E "^listen_addresses|^#listen_addresses" "$PG_CONF" || true
+              exit 1
+          fi
+          base_total=$(grep -c "listen_addresses" "$PG_CONF" || true)
+          base_lines=$(wc -l < "$PG_CONF")
+
+          for i in 2 3 4 5; do
+              . /opt/tz/01-configure-postgres.sh >/dev/null 2>&1 || true
+              live_count=$(grep -cxF "listen_addresses = '*'" "$PG_CONF" || true)
+              total_count=$(grep -c "listen_addresses" "$PG_CONF" || true)
+              total_lines=$(wc -l < "$PG_CONF")
+              if [ "$live_count" != "1" ] || [ "$total_count" != "$base_total" ] || [ "$total_lines" != "$base_lines" ]; then
+                  echo "FAIL: after start #$i, expected 1 active line and $base_total total listen_addresses line(s) in a $base_lines-line file, got $live_count active / $total_count total in a $total_lines-line file (config growing unbounded on restart)"
+                  grep -nE "listen_addresses" "$PG_CONF" || true
+                  exit 1
+              fi
+          done
+          echo "OK: listen_addresses stays at exactly 1 active line across 5 restarts, and the total listen_addresses line count ($base_total) and file size ($base_lines lines) never grow after the first start"
+          EOF
+
+          docker run --rm -v /tmp/pg-listen-test.sh:/pg-listen-test.sh:ro tz-test:ci bash /pg-listen-test.sh
+
+  shutdown-tests:
+    name: Graceful Shutdown & Startup Reporting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build isolated shutdown test image
+        run: |
+          # No licensed Polarion ZIP needed: `service` and `pg_ctl` are stubbed as fake
+          # executables that log their own invocation to a file, so this exercises the REAL
+          # polarion_starter.sh (COPYed from this checkout) against a fake environment instead
+          # of duplicating its logic. Regression coverage for #80 (SIGTERM/INT now stop
+          # Polarion/Apache/PostgreSQL in order instead of the container being SIGKILLed once
+          # Docker's stop grace period runs out) and #87 (a failed entrypoint.d script is
+          # reported in the final startup message instead of being silently swallowed).
+          mkdir -p /tmp/shutdown-test-ctx/entrypoint.d
+          cp polarion_starter.sh /tmp/shutdown-test-ctx/
+
+          cat > /tmp/shutdown-test-ctx/entrypoint.d/01-fail.sh <<'EOF'
+          #!/bin/bash
+          echo "simulating a failed entrypoint step"
+          return 1
+          EOF
+
+          cat > /tmp/shutdown-test-ctx/service <<'EOF'
+          #!/bin/bash
+          echo "STUB service $*" >> /tmp/shutdown-log
+          exit 0
+          EOF
+
+          cat > /tmp/shutdown-test-ctx/pg_ctl <<'EOF'
+          #!/bin/bash
+          echo "STUB pg_ctl $*" >> /tmp/shutdown-log
+          exit 0
+          EOF
+
+          cat > /tmp/shutdown-test-ctx/Dockerfile <<'EOF'
+          FROM ubuntu:24.04
+          # Only "sudo" plus a bare "postgres" system account are needed here — the real
+          # PostgreSQL package isn't, since pg_ctl itself is stubbed out below.
+          RUN apt-get -y update && \
+            apt-get -y install --no-install-recommends sudo && \
+            apt-get clean && rm -rf /var/lib/apt/lists/* && \
+            useradd --system --no-create-home postgres
+          RUN mkdir -p /opt/polarion/entrypoint.d /opt/polarion/data/postgres-data /usr/lib/postgresql/current/bin
+          COPY entrypoint.d/01-fail.sh /opt/polarion/entrypoint.d/01-fail.sh
+          COPY polarion_starter.sh /polarion_root/polarion_starter.sh
+          COPY service /usr/local/bin/service
+          COPY pg_ctl /usr/lib/postgresql/current/bin/pg_ctl
+          RUN chmod +x /opt/polarion/entrypoint.d/01-fail.sh /polarion_root/polarion_starter.sh \
+            /usr/local/bin/service /usr/lib/postgresql/current/bin/pg_ctl
+          WORKDIR /polarion_root
+          EOF
+
+          docker build -q -t shutdown-test:ci /tmp/shutdown-test-ctx
+          echo "✅ Shutdown test image built"
+
+      - name: Verify SIGTERM stops services in order and the startup message reflects failures
+        run: |
+          rm -f /tmp/shutdown-log && touch /tmp/shutdown-log && chmod 666 /tmp/shutdown-log
+          out=$(mktemp)
+
+          docker run --rm --name shutdown-test -v /tmp/shutdown-log:/tmp/shutdown-log \
+            shutdown-test:ci ./polarion_starter.sh > "$out" 2>&1 &
+          run_pid=$!
+          sleep 3
+
+          start_ts=$(date +%s)
+          docker stop -t 30 shutdown-test >/dev/null
+          end_ts=$(date +%s)
+          wait "$run_pid" || true
+          elapsed=$((end_ts - start_ts))
+
+          echo "--- container output ---"
+          cat "$out"
+          echo "--- shutdown-log ---"
+          cat /tmp/shutdown-log
+
+          if [ "$elapsed" -ge 25 ]; then
+            echo "FAIL: docker stop took ${elapsed}s (30s timeout) — the SIGTERM trap did not fire promptly, the container was likely SIGKILLed after the grace period instead of shutting down cleanly"
+            exit 1
+          fi
+          echo "OK: docker stop returned in ${elapsed}s, well inside the 30s grace period — no SIGKILL fallback needed"
+
+          grep -q "STUB service polarion stop" /tmp/shutdown-log || { echo "FAIL: 'service polarion stop' was not called"; exit 1; }
+          grep -q "STUB service apache2 stop" /tmp/shutdown-log || { echo "FAIL: 'service apache2 stop' was not called"; exit 1; }
+          grep -q "STUB pg_ctl.*-m fast stop" /tmp/shutdown-log || { echo "FAIL: 'pg_ctl -m fast stop' was not called"; exit 1; }
+
+          # Presence alone doesn't prove ORDER — assert the actual sequence in the log.
+          actual_order="$(grep -E 'STUB (service|pg_ctl)' /tmp/shutdown-log | sed -E 's/^STUB (service polarion|service apache2|pg_ctl) .*/\1/')"
+          expected_order="$(printf 'service polarion\nservice apache2\npg_ctl')"
+          if [ "$actual_order" != "$expected_order" ]; then
+            echo "FAIL: services were not stopped in the expected order (polarion, then apache2, then postgres). Got:"
+            echo "$actual_order"
+            exit 1
+          fi
+          echo "OK: polarion, apache2 and postgres were stopped in that exact order on SIGTERM"
+
+          grep -q "!!! FAILED (1): /opt/polarion/entrypoint.d/01-fail.sh" "$out" || { echo "FAIL: the simulated entrypoint failure was not reported"; exit 1; }
+          grep -q "step(s) failed" "$out" || { echo "FAIL: the final startup message doesn't reflect the failed step"; exit 1; }
+          echo "OK: a failed entrypoint.d script is reported in the startup log instead of being silently ignored"

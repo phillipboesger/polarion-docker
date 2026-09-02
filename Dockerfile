@@ -32,7 +32,7 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
 # explicit TZ override. Installed noninteractively it defaults /etc/localtime to Etc/UTC, the
 # fallback used whenever nothing else sets the container clock.
 RUN apt-get -y update && \
-  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 tzdata \
+  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 tzdata ca-certificates \
   apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
   postgresql postgresql-client postgresql-contrib util-linux-extra iputils-ping && \
   locale-gen en_US.UTF-8 && \
@@ -51,8 +51,16 @@ RUN apt-get -y update && \
 RUN cp --remove-destination /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
   rm -f /etc/timezone
 
-# Add postgres symlink for genericity
-RUN ln -s /usr/lib/postgresql/* /usr/lib/postgresql/current
+# Add postgres symlink for genericity.
+# Resolved to the highest installed major version rather than globbed: with two versions
+# present, `ln -s a b current` would treat `current` as a directory and silently create
+# current/a, current/b instead of the symlink everything below (ENV PATH,
+# entrypoint.d/02-start-postgres.sh) depends on.
+# hadolint ignore=DL4006
+RUN set -eux; \
+  pg_dir="$(find /usr/lib/postgresql -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"; \
+  test -n "${pg_dir}"; \
+  ln -s "${pg_dir}" /usr/lib/postgresql/current
 
 # Set locale environment
 ENV LANG=en_US.UTF-8
@@ -60,14 +68,6 @@ ENV LC_ALL=en_US.UTF-8
 
 # Setup working directory
 WORKDIR /polarion_root
-
-# Copy modular entrypoint scripts
-COPY entrypoint.d/ /opt/polarion/entrypoint.d/
-RUN sed -i 's/\r//' /opt/polarion/entrypoint.d/*.sh && chmod +x /opt/polarion/entrypoint.d/*.sh
-
-# Copy startup script to root
-COPY polarion_starter.sh ./
-RUN sed -i 's/\r//' polarion_starter.sh && chmod +x polarion_starter.sh
 
 # Download and install the latest OpenJDK (Temurin) GA release for JDK_MAJOR_VERSION
 # Resolve the correct archive for the image architecture (x86_64 vs aarch64) via the Adoptium API
@@ -78,14 +78,21 @@ RUN set -eux; \
   aarch64|arm64) jdk_arch="aarch64" ;; \
   *) echo "Unsupported architecture: $arch"; exit 1 ;; \
   esac; \
-  wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate \
+  wget --progress=dot:giga -O jdk.tar.gz \
   "https://api.adoptium.net/v3/binary/latest/${JDK_MAJOR_VERSION}/ga/linux/${jdk_arch}/jdk/hotspot/normal/eclipse"; \
   mkdir -p /usr/lib/jvm; \
   tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
   rm jdk.tar.gz
 
-# Configure Java alternatives for JDK 21
-RUN ln -s /usr/lib/jvm/* /usr/lib/jvm/current && \
+# Configure Java alternatives for JDK 21.
+# Same deterministic-resolution reasoning as the postgres symlink above: only one JDK is
+# ever installed by this build, but resolving by highest version rather than an unbounded
+# glob avoids the same directory-instead-of-symlink failure mode if that ever changes.
+# hadolint ignore=DL4006
+RUN set -eux; \
+  jvm_dir="$(find /usr/lib/jvm -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"; \
+  test -n "${jvm_dir}"; \
+  ln -s "${jvm_dir}" /usr/lib/jvm/current && \
   update-alternatives --install /usr/bin/java java /usr/lib/jvm/current/bin/java 100 && \
   update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/current/bin/jar 100 && \
   update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/current/bin/javac 100 && \
@@ -124,7 +131,7 @@ RUN set -eux; \
   else \
   mp_url="https://github.com/axllent/mailpit/releases/download/${MAILPIT_VERSION}/mailpit-linux-${mp_arch}.tar.gz"; \
   fi; \
-  wget --progress=dot:giga -O /tmp/mailpit.tar.gz --no-check-certificate "$mp_url"; \
+  wget --progress=dot:giga -O /tmp/mailpit.tar.gz "$mp_url"; \
   tar -xzf /tmp/mailpit.tar.gz -C /usr/local/bin mailpit; \
   rm -f /tmp/mailpit.tar.gz; \
   test -x /usr/local/bin/mailpit
@@ -156,15 +163,13 @@ RUN --mount=type=bind,source=./data/,target=/data/ \
   echo "Installing Polarion from ${zip_path}" && \
   unzip -q "${zip_path}" && \
   cd Polarion && \
-  ../install.expect || true && \
+  if ! ../install.expect; then echo "install.expect returned non-zero, continuing to verification" >&2; fi && \
   test -d /opt/polarion/polarion && \
   test -d /opt/polarion/data/svn && \
   cd .. && \
   rm -r Polarion && \
   mkdir -p /opt/polarion/bootstrap/svn && \
-  cp -a /opt/polarion/data/svn/. /opt/polarion/bootstrap/svn/ && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/*
+  cp -a /opt/polarion/data/svn/. /opt/polarion/bootstrap/svn/
 
 # Add PostgreSQL to PATH
 ENV PATH="/usr/lib/postgresql/current/bin:${PATH}"
@@ -179,12 +184,37 @@ COPY config/bash_aliases /root/.bash_aliases
 RUN sed -i 's/\r//' /root/.bash_aliases && \
   printf '\n. /root/.bash_aliases\n' >> /root/.bashrc
 
+# Copy modular entrypoint scripts.
+# Kept last on purpose: these are only read at container start, never at build time, but they
+# change far more often than the JDK/Mailpit/Polarion install layers above — copying them
+# earlier would bust that cache on every script edit. WORKDIR is still /polarion_root.
+COPY entrypoint.d/ /opt/polarion/entrypoint.d/
+RUN sed -i 's/\r//' /opt/polarion/entrypoint.d/*.sh && chmod +x /opt/polarion/entrypoint.d/*.sh
+
+# Copy startup script to root
+COPY polarion_starter.sh ./
+RUN sed -i 's/\r//' polarion_starter.sh && chmod +x polarion_starter.sh
+
+# Report health the same way the compose files do (GET /polarion/ over loopback), so a plain
+# `docker run` without compose gets a health signal too. The timings deliberately do NOT
+# mirror compose's (interval 5s / retries 10 / start_period 10s): that budget is ~60s, while a
+# first Polarion boot takes minutes, so it would mark a perfectly good container unhealthy.
+# Compose's own healthcheck block still overrides this one for compose users.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10m --retries=5 \
+  CMD ["wget", "-o", "/dev/null", "-O", "/dev/null", "http://localhost/polarion/"]
+
 # Set exposed ports
 EXPOSE 80/tcp
 # Built-in Mailpit catcher (runs by default; disable with MAILPIT_EMBEDDED=false):
 # SMTP on 25, web UI on 8025. Publish -p 8025:8025 to read captured mail from the host.
 EXPOSE 25/tcp
 EXPOSE 8025/tcp
+
+# No USER directive: this image intentionally runs as root. `service polarion start`,
+# `service apache2 start` and the chown/chmod calls across entrypoint.d/ all need it, and
+# this is a development tool rather than an internet-facing service — a non-root refactor
+# would very likely break the SVN/Apache permission handling in
+# entrypoint.d/99-start-polarion.sh. Accepted tradeoff, see issue #89 item 7.
 
 # Set startup command
 ENTRYPOINT ["./polarion_starter.sh"]
