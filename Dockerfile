@@ -9,10 +9,9 @@ FROM $SOURCE_IMAGE
 # single-file glob below, preserving the previous behaviour.
 ARG POLARION_ZIP=
 
-# Temurin JDK download metadata — choose appropriate archive at build time
-ARG JDK_TAG=jdk-21.0.4%2B7
-ARG JDK_FILE_X64=OpenJDK21U-jdk_x64_linux_hotspot_21.0.4_7.tar.gz
-ARG JDK_FILE_AARCH64=OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.4_7.tar.gz
+# Temurin JDK major version to install; the build always fetches the latest GA release for
+# this major version via the Adoptium API instead of pinning an exact build.
+ARG JDK_MAJOR_VERSION=21
 
 # Mailpit version for the built-in mail catcher (runs by default at runtime; disable
 # with MAILPIT_EMBEDDED=false). Defaults to "latest" so each image build picks up the
@@ -29,14 +28,28 @@ RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
   echo 'Acquire::ftp::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries
 
 # Install basic dependencies and setup locale
+# tzdata provides /usr/share/zoneinfo so entrypoint.d/00-configure-timezone.sh can resolve an
+# explicit TZ override. Installed noninteractively it defaults /etc/localtime to Etc/UTC, the
+# fallback used whenever nothing else sets the container clock.
 RUN apt-get -y update && \
-  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 \
+  apt-get -y install --no-install-recommends sudo unzip expect wget locales libc6 tzdata \
   apache2 subversion libapache2-mod-svn libswt-gtk-4-java apache2-utils libaprutil1-dbd-pgsql \
   postgresql postgresql-client postgresql-contrib util-linux-extra iputils-ping && \
   locale-gen en_US.UTF-8 && \
   update-locale LANG=en_US.UTF-8 && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
+
+# Make /etc/localtime a real, freely rewritable file instead of the symlink tzdata installs
+# (-> /usr/share/zoneinfo/Etc/UTC) — cp'ing onto a symlinked /etc/localtime would silently
+# overwrite that shared Etc/UTC reference file itself instead of /etc/localtime, corrupting
+# it for every consumer, including entrypoint.d/00-configure-timezone.sh's own reverse zone
+# lookup. That script rewrites both this file and /etc/timezone on every container start
+# (some JDKs read /etc/timezone's text content before /etc/localtime; PostgreSQL and Apache
+# are started via "service", which drops the TZ env var entirely), so what's baked in here
+# only matters if entrypoint.d is ever bypassed — Etc/UTC is a safe default either way.
+RUN cp --remove-destination /usr/share/zoneinfo/Etc/UTC /etc/localtime && \
+  rm -f /etc/timezone
 
 # Add postgres symlink for genericity
 RUN ln -s /usr/lib/postgresql/* /usr/lib/postgresql/current
@@ -56,18 +69,17 @@ RUN sed -i 's/\r//' /opt/polarion/entrypoint.d/*.sh && chmod +x /opt/polarion/en
 COPY polarion_starter.sh ./
 RUN sed -i 's/\r//' polarion_starter.sh && chmod +x polarion_starter.sh
 
-# Download and install OpenJDK 21 (Temurin)
-# Select the correct archive for the image architecture (x86_64 vs aarch64)
+# Download and install the latest OpenJDK (Temurin) GA release for JDK_MAJOR_VERSION
+# Resolve the correct archive for the image architecture (x86_64 vs aarch64) via the Adoptium API
 RUN set -eux; \
   arch="$(uname -m)"; \
-  if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then \
-  jdk_file="$JDK_FILE_X64"; \
-  elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then \
-  jdk_file="$JDK_FILE_AARCH64"; \
-  else \
-  echo "Unsupported architecture: $arch"; exit 1; \
-  fi; \
-  wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate "https://github.com/adoptium/temurin21-binaries/releases/download/${JDK_TAG}/${jdk_file}"; \
+  case "$arch" in \
+  x86_64|amd64) jdk_arch="x64" ;; \
+  aarch64|arm64) jdk_arch="aarch64" ;; \
+  *) echo "Unsupported architecture: $arch"; exit 1 ;; \
+  esac; \
+  wget --progress=dot:giga -O jdk.tar.gz --no-check-certificate \
+  "https://api.adoptium.net/v3/binary/latest/${JDK_MAJOR_VERSION}/ga/linux/${jdk_arch}/jdk/hotspot/normal/eclipse"; \
   mkdir -p /usr/lib/jvm; \
   tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
   rm jdk.tar.gz

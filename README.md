@@ -52,6 +52,8 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 - **URL Correction**: Automatically fixes `localhost` references in configuration files to `127.0.0.1` for proper container behavior.
 - **Remote Debugging (JDWP)**: One-click remote debugging support on port 5005.
 - **Memory Management**: Easy configuration of JVM memory via `JAVA_OPTS`.
+- **Automatic Timezone Detection**: The container clock matches the host's real timezone with no configuration (Docker/Podman/Compose via a bind-mounted `/etc/localtime`, `polarionctl.sh`/Apple `container` by detecting and passing it); set `TZ=Region/City` to force a different zone instead.
+- **Always-Current JDK**: The build fetches the latest Eclipse Temurin GA release for the configured major version (`--build-arg JDK_MAJOR_VERSION=21` by default) from the Adoptium API on every build, so images always ship the newest patch/security updates instead of a pinned build.
 - **Automatic Workspace Cleanup**: On every container start, stale Eclipse workspace metadata (`.config` and `.metadata`) is removed from `/opt/polarion/data/workspace/` before Polarion launches, preventing stale data caused by changed plugins in the `/opt/polarion/polarion/extensions/` directory.
 
 ## Getting Started
@@ -112,7 +114,8 @@ Since Polarion requires a license and the installation media is proprietary, you
 
 5.  **Run** the container using the locally built image:
     ```bash
-    # With Docker
+    # With Docker (-v /etc/localtime auto-matches the container clock to your host's
+    # timezone; add -e TZ=Region/City instead only if you want a different zone)
     docker run -d \
       --name polarion \
       --platform linux/amd64 \
@@ -122,6 +125,7 @@ Since Polarion requires a license and the installation media is proprietary, you
       -p 5005:5005 \
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
+      -v /etc/localtime:/etc/host-localtime:ro \
       --volume polarion_repo:/opt/polarion/data/svn \
       --volume polarion_extensions:/opt/polarion/polarion/extensions \
       polarion:local
@@ -134,10 +138,12 @@ Since Polarion requires a license and the installation media is proprietary, you
       -p 5005:5005 \
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
+      -v /etc/localtime:/etc/host-localtime:ro \
       --volume polarion_repo:/opt/polarion/data/svn \
       --volume polarion_extensions:/opt/polarion/polarion/extensions \
       polarion:local
-    # With Apple container
+    # With Apple container (single-file bind mounts aren't verified for this runtime, so pass
+    # the host's zone by name instead of mounting /etc/localtime)
     container run -d \
       --name polarion \
       --platform linux/amd64 \
@@ -149,10 +155,12 @@ Since Polarion requires a license and the installation media is proprietary, you
       -p 127.0.0.1:5005:5005 \
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
+      -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
       -v polarion_repo:/opt/polarion/data/svn \
       -v polarion_extensions:/opt/polarion/polarion/extensions \
       polarion:local
     ```
+    `scripts/polarionctl.sh start` detects and passes the host's timezone the same way automatically; set `POLARION_TZ=Region/City` (or plain `TZ`) before running it to force a different zone.
 
 ### Option B: Pre-built Images
 
@@ -181,6 +189,7 @@ If you have access:
     -p 5005:5005 \
     -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
+    -v /etc/localtime:/etc/host-localtime:ro \
     --volume polarion_repo:/opt/polarion/data/svn \
     --volume polarion_extensions:/opt/polarion/polarion/extensions \
     ghcr.io/phillipboesger/polarion-docker:latest
@@ -202,6 +211,7 @@ container run -d \
     -p 127.0.0.1:5005:5005 \
     -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
+    -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
     -v polarion_repo:/opt/polarion/data/svn \
     -v polarion_extensions:/opt/polarion/polarion/extensions \
     ghcr.io/phillipboesger/polarion-docker:latest
@@ -299,6 +309,7 @@ To add your own configuration:
 | `SMTP_HOST`        | Route mail to a **real** SMTP server instead of the built-in catcher. When set, the entrypoint points Polarion's `announcer.smtp.host` at it and the catcher steps aside. | _(unset → built-in catcher)_  |
 | `SMTP_PORT`        | SMTP port used together with `SMTP_HOST`                                                                                                                                  | `25`                          |
 | `MAILPIT_EMBEDDED` | Built-in Mailpit catcher (SMTP `:25`, web UI `:8025`). **On by default** — captures Polarion's outgoing mail so no real mailbox is needed. Set `false` to disable.        | `true`                        |
+| `TZ`               | Container clock timezone (IANA name, e.g. `Europe/Berlin`). **Auto-detected by default** — Compose and the `docker`/`podman run` examples bind-mount `/etc/localtime`; `polarionctl.sh` and the Apple `container` example detect and pass it explicitly instead. Set `TZ`/`POLARION_TZ` only to force a different zone than the host's.                    | _(auto-detected)_             |
 
 ### External SVN Endpoints
 
@@ -384,7 +395,13 @@ bash scripts/polarionctl.sh list-images          # show locally available Polari
 POLARION_IMAGE=polarion:2512 bash scripts/polarionctl.sh start
 ```
 
-## Platform Support
+### Automated Tests (CI)
+
+Every PR runs [`.github/workflows/pr-checks.yml`](./.github/workflows/pr-checks.yml): hadolint/shellcheck/yamllint, `docker compose config` validation, and a dedicated **Timezone Auto-Detection** job that builds a small standalone test image (no licensed Polarion ZIP needed) and exercises `entrypoint.d/00-configure-timezone.sh` / `entrypoint.d/01-configure-postgres.sh` end-to-end — auto-detect, explicit override, malformed/hostile `TZ` input, PostgreSQL's `timezone`/`log_timezone` GUCs staying in sync (including on reverting to a previously-used zone), and `scripts/polarion-runtime-lib.sh`'s host-side detection fallback chain (symlink → `timedatectl` → `/etc/timezone`) — checking both glibc (`date`) and the JVM, since the two resolve timezone differently and have silently disagreed with each other before.
+
+Every push to `main`/a version branch additionally runs [`.github/workflows/build-and-push.yml`](./.github/workflows/build-and-push.yml) against the real built image: JVM startup, PostgreSQL/Apache/JDWP reachability, the Polarion startup sequence, built-in Mailpit end-to-end, a Playwright UI smoke test, SMTP mail configuration, and the same timezone auto-detection/override checks re-run against the actual bundled JDK and the real PostgreSQL cluster — before anything is pushed to GHCR.
+
+## 🖥️ Platform Support
 
 - **macOS (Apple Silicon)**: Supported via Docker `--platform linux/amd64` and via Apple `container` on macOS 26+ using `--platform linux/amd64 --rosetta`.
 - **macOS (Intel)**: Supported natively.
