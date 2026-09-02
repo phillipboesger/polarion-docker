@@ -41,7 +41,7 @@ Polarion's installer is proprietary and manual to set up — PostgreSQL, Apache 
 - [Platform Support](#platform-support)
 - [Troubleshooting](#troubleshooting)
 
-## 🌟 Features
+## Features
 
 The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint.d/`) automatically handle many complex configurations that are usually manual:
 
@@ -54,7 +54,7 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 - **Memory Management**: Easy configuration of JVM memory via `JAVA_OPTS`.
 - **Automatic Workspace Cleanup**: On every container start, stale Eclipse workspace metadata (`.config` and `.metadata`) is removed from `/opt/polarion/data/workspace/` before Polarion launches, preventing stale data caused by changed plugins in the `/opt/polarion/polarion/extensions/` directory.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Runtime Support
 
@@ -274,7 +274,7 @@ This repository tracks roughly the same ~2-year window Siemens supports, one bra
 
 `v2404` predates the `POLARION_ZIP` refactor, has no multi-arch (Apple silicon) support and no Mailpit catcher, and has not been touched since 2026-03-04. It is not maintained. Whether to tag and archive it is still open in #77.
 
-## ⚙️ Configuration & Customization
+## Configuration & Customization
 
 ### Modular Customization
 
@@ -309,7 +309,7 @@ After startup, Apache serves the bundled Subversion repository through both of t
 
 The startup scripts also normalize the bundled SVN password file so the default bootstrap user remains `admin` / `admin`.
 
-## 🛠️ Development & Debugging
+## Development & Debugging
 
 ### Remote Debugging (JDWP)
 
@@ -384,14 +384,14 @@ bash scripts/polarionctl.sh list-images          # show locally available Polari
 POLARION_IMAGE=polarion:2512 bash scripts/polarionctl.sh start
 ```
 
-## 🖥️ Platform Support
+## Platform Support
 
 - **macOS (Apple Silicon)**: Supported via Docker `--platform linux/amd64` and via Apple `container` on macOS 26+ using `--platform linux/amd64 --rosetta`.
 - **macOS (Intel)**: Supported natively.
 - **Windows (WSL2)**: Recommended for best performance.
 - **Linux**: Native support.
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 - **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free. The built-in Mailpit web UI is published on host port **8025**; SMTP is handled inside the container, so port 25 is not published unless you explicitly add `-p 25:25`.
 - **Memory:** This repo defaults Polarion to `4g` container RAM and a `3g` JVM heap so the process still has native headroom. Increase only if a specific workload requires it.
