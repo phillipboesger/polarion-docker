@@ -1,6 +1,6 @@
 # Project Log
 
-Most recent entries appear first. Older entries may be moved to PROJECT_LOG_ARCHIVE.md.
+Most recent entries appear first. Older entries may be trimmed when this file gets long.
 
 ---
 
