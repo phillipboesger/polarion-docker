@@ -54,3 +54,8 @@ services:
       retries: 10
       start_period: 10s
     restart: unless-stopped
+    # Polarion, Apache and PostgreSQL now shut down in order on SIGTERM (polarion_starter.sh
+    # traps it), but that takes well over Docker's default 10s grace period. A container
+    # still mid-stop when the grace period expires gets SIGKILLed, which is exactly the
+    # unclean shutdown this trap exists to avoid.
+    stop_grace_period: 120s

@@ -3,11 +3,15 @@
 PG_CONF="/opt/polarion/data/postgres-data/postgresql.conf"
 if [ -f "$PG_CONF" ]; then
     echo "Configuring PostgreSQL to listen on all addresses..."
-    # Ensure listen_addresses is set to '*'
-    # First, comment out any existing listen_addresses to avoid conflicts
-    sed -i "s/^listen_addresses/#listen_addresses/g" "$PG_CONF"
-    # Append the correct configuration
-    echo "listen_addresses = '*'" >> "$PG_CONF"
+    # Ensure listen_addresses is set to '*'. Guarded so a restart with the same setting
+    # doesn't grow the file forever: without this check, every start would comment out the
+    # line appended by the previous start and append a fresh one on top of it.
+    if ! grep -qxF "listen_addresses = '*'" "$PG_CONF"; then
+        # First, comment out any existing listen_addresses to avoid conflicts
+        sed -i "s/^listen_addresses/#listen_addresses/g" "$PG_CONF"
+        # Append the correct configuration
+        echo "listen_addresses = '*'" >> "$PG_CONF"
+    fi
 
     # initdb bakes timezone/log_timezone into the config at whatever zone was active during
     # "docker build" (always Etc/UTC), so they're re-applied here from the zone

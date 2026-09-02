@@ -161,6 +161,7 @@ case "${action}" in
 				--restart unless-stopped
 				--cpus "${POLARION_CONTAINER_CPUS}"
 				--memory "${POLARION_CONTAINER_MEMORY}"
+				--stop-timeout 120
 				-p "${POLARION_HTTP_PORT}:80"
 				-p "${POLARION_DB_PORT}:5433"
 				-p "${POLARION_JDWP_PORT}:5005"
@@ -179,12 +180,7 @@ case "${action}" in
 		polarion_wait_for_http_access
 		;;
 	stop)
-		if polarion_is_apple_container_runtime; then
-			container stop "${POLARION_CONTAINER_NAME}" >/dev/null 2>&1 || true
-			container delete --force "${POLARION_CONTAINER_NAME}" >/dev/null 2>&1 || true
-		else
-			docker rm -f "${POLARION_CONTAINER_NAME}" >/dev/null 2>&1 || true
-		fi
+		polarion_remove_container
 		;;
 	logs)
 		polarion_runtime_exec "${POLARION_CONTAINER_NAME}" 'tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n 1)'
