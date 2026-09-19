@@ -19,28 +19,41 @@
 
 Polarion's installer is proprietary and manual to set up — PostgreSQL, Apache proxying, SVN, mail, and JVM tuning all need hand configuration. This repository turns that install into a self-configuring Docker image: bring your own Polarion license and installer ZIP, run one `docker build` + `docker run`, and get a fully wired-up instance.
 
-| | |
-| :--- | :--- |
-| **Runtimes** | Docker (primary) · Podman · Apple `container` |
-| **Platforms** | macOS (Apple Silicon & Intel) · Windows (WSL2) · Linux |
+|                         |                                                           |
+| :---------------------- | :-------------------------------------------------------- |
+| **Runtimes**            | Docker (primary) · Podman · Apple `container`             |
+| **Platforms**           | macOS (Apple Silicon & Intel) · Windows (WSL2) · Linux    |
 | **Maintained versions** | [`v2606`, `v2512`, `v2506`, `v2410`](#supported-versions) |
-| **License** | [MIT](./LICENSE) |
+| **License**             | [MIT](./LICENSE)                                          |
 
 ### Table of Contents
 
-- [Features](#features)
-- [Getting Started](#getting-started)
-  - [Runtime Support](#runtime-support)
-  - [Option A: Local Build](#option-a-local-build-recommended)
-  - [Option B: Pre-built Images](#option-b-pre-built-images)
-  - [Via Docker Compose](#via-docker-compose)
-  - [Image Tags & Versions](#image-tags-and-versions)
-  - [Supported Versions](#supported-versions)
-- [Configuration & Customization](#configuration--customization)
-- [Development & Debugging](#development--debugging)
-  - [Graceful Shutdown](#graceful-shutdown)
-- [Platform Support](#platform-support)
-- [Troubleshooting](#troubleshooting)
+- [🐳 Polarion Docker](#-polarion-docker)
+  - [Overview](#overview)
+    - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Getting Started](#getting-started)
+    - [Runtime Support](#runtime-support)
+    - [Option A: Local Build (Recommended)](#option-a-local-build-recommended)
+    - [Option B: Pre-built Images](#option-b-pre-built-images)
+    - [Via Docker Compose](#via-docker-compose)
+    - [Image tags and versions](#image-tags-and-versions)
+    - [Supported versions](#supported-versions)
+  - [Configuration \& Customization](#configuration--customization)
+    - [Modular Customization](#modular-customization)
+    - [Environment Variables](#environment-variables)
+    - [External SVN Endpoints](#external-svn-endpoints)
+  - [Development \& Debugging](#development--debugging)
+    - [Remote Debugging (JDWP)](#remote-debugging-jdwp)
+    - [Mail Notifications (built-in Mailpit)](#mail-notifications-built-in-mailpit)
+    - [Graceful shutdown](#graceful-shutdown)
+    - [Container Shell Aliases](#container-shell-aliases)
+    - [Plugin Development](#plugin-development)
+    - [Apple `container` Workflow](#apple-container-workflow)
+      - [Selecting which Polarion version to start](#selecting-which-polarion-version-to-start)
+    - [Automated Tests (CI)](#automated-tests-ci)
+  - [🖥️ Platform Support](#️-platform-support)
+  - [Troubleshooting](#troubleshooting)
 
 ## Features
 
@@ -114,6 +127,7 @@ Since Polarion requires a license and the installation media is proprietary, you
     In VS Code, the **Container: Build Image** task offers the same picker (it lists `data/*.zip` and skips the prompt when only one exists). It relies on the recommended `augustocdias.tasks-shell-input` extension.
 
 5.  **Run** the container using the locally built image:
+
     ```bash
     # With Docker (-v /etc/localtime auto-matches the container clock to your host's
     # timezone; add -e TZ=Region/City instead only if you want a different zone)
@@ -163,6 +177,7 @@ Since Polarion requires a license and the installation media is proprietary, you
       -v polarion_extensions:/opt/polarion/polarion/extensions \
       polarion:local
     ```
+
     `scripts/polarionctl.sh start` detects and passes the host's timezone the same way automatically; set `POLARION_TZ=Region/City` (or plain `TZ`) before running it to force a different zone.
 
     Polarion, Apache and PostgreSQL now shut down in order on SIGTERM (see [Graceful shutdown](#graceful-shutdown) below); `--stop-timeout 120` above gives that room to finish instead of a `docker stop`/`podman stop` SIGKILLing after Docker's default 10s. `scripts/polarionctl.sh stop` and `start` already do this for you. For Apple `container`, pass the same grace period explicitly when stopping: `container stop --time 120 polarion`.
@@ -246,10 +261,10 @@ The checked-in Compose files cap the Polarion container at `4g` RAM and default 
 
 Each Polarion version lives on its own branch, and that branch name drives everything else (a manual **Run workflow** can override it with the `version` input):
 
-| Branch | Installer archive | Published image tags |
-| :--- | :--- | :--- |
-| `v2512` | `PolarionALM_2512.zip` | `v2512`, `polarion-v2512` |
-| `main` | newest `PolarionALM_*.zip` | `main`, `latest` |
+| Branch  | Installer archive          | Published image tags      |
+| :------ | :------------------------- | :------------------------ |
+| `v2512` | `PolarionALM_2512.zip`     | `v2512`, `polarion-v2512` |
+| `main`  | newest `PolarionALM_*.zip` | `main`, `latest`          |
 
 A version branch must be named exactly `v` plus four digits — the build workflow only triggers on `v[0-9][0-9][0-9][0-9]`. Working branches such as `v2410-sync` therefore start no build at all; previously they matched a broad `v*` trigger, downloaded the wrong installer and published a stray tag under their own name.
 
@@ -278,12 +293,12 @@ Locally built images are tagged `polarion:<NNNN>` (no `v`) plus `polarion:local`
 
 This repository tracks roughly the same ~2-year window Siemens supports, one branch per Polarion version. Once a branch falls outside that window and has diverged too far for a merge to still be a straightforward sync, it is declared EOL: its head is tagged (`eol/vNNNN`) so the exact state remains buildable, and the branch itself is removed so the branch list only shows what's actively maintained.
 
-| Branch | Status |
-| :--- | :--- |
-| `v2606` | maintained |
-| `v2512` | maintained |
-| `v2506` | maintained |
-| `v2410` | maintained |
+| Branch  | Status                    |
+| :------ | :------------------------ |
+| `v2606` | maintained                |
+| `v2512` | maintained                |
+| `v2506` | maintained                |
+| `v2410` | maintained                |
 | `v2404` | EOL — see tag `eol/v2404` |
 
 `main` always builds the newest installer archive available and is where changes land first; the maintained version branches are synced from it.
@@ -307,15 +322,15 @@ To add your own configuration:
 
 ### Environment Variables
 
-| Variable           | Description                                                                                                                                                               | Default                       |
-| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------------------------- |
-| `JAVA_OPTS`        | Java memory and VM arguments                                                                                                                                              | `-Xmx3g -Xms3g`               |
-| `JDWP_ENABLED`     | Enable Java Debug Wire Protocol                                                                                                                                           | `true`                        |
-| `ALLOWED_HOSTS`    | Comma-separated list of allowed host headers                                                                                                                              | `localhost,127.0.0.1,0.0.0.0` |
-| `SMTP_HOST`        | Route mail to a **real** SMTP server instead of the built-in catcher. When set, the entrypoint points Polarion's `announcer.smtp.host` at it and the catcher steps aside. | _(unset → built-in catcher)_  |
-| `SMTP_PORT`        | SMTP port used together with `SMTP_HOST`                                                                                                                                  | `25`                          |
-| `MAILPIT_EMBEDDED` | Built-in Mailpit catcher (SMTP `:25`, web UI `:8025`). **On by default** — captures Polarion's outgoing mail so no real mailbox is needed. Set `false` to disable.        | `true`                        |
-| `TZ`               | Container clock timezone (IANA name, e.g. `Europe/Berlin`). **Auto-detected by default** — Compose and the `docker`/`podman run` examples bind-mount `/etc/localtime`; `polarionctl.sh` and the Apple `container` example detect and pass it explicitly instead. Set `TZ`/`POLARION_TZ` only to force a different zone than the host's.                    | _(auto-detected)_             |
+| Variable           | Description                                                                                                                                                                                                                                                                                                                             | Default                       |
+| :----------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------- |
+| `JAVA_OPTS`        | Java memory and VM arguments                                                                                                                                                                                                                                                                                                            | `-Xmx3g -Xms3g`               |
+| `JDWP_ENABLED`     | Enable Java Debug Wire Protocol                                                                                                                                                                                                                                                                                                         | `true`                        |
+| `ALLOWED_HOSTS`    | Comma-separated list of allowed host headers                                                                                                                                                                                                                                                                                            | `localhost,127.0.0.1,0.0.0.0` |
+| `SMTP_HOST`        | Route mail to a **real** SMTP server instead of the built-in catcher. When set, the entrypoint points Polarion's `announcer.smtp.host` at it and the catcher steps aside.                                                                                                                                                               | _(unset → built-in catcher)_  |
+| `SMTP_PORT`        | SMTP port used together with `SMTP_HOST`                                                                                                                                                                                                                                                                                                | `25`                          |
+| `MAILPIT_EMBEDDED` | Built-in Mailpit catcher (SMTP `:25`, web UI `:8025`). **On by default** — captures Polarion's outgoing mail so no real mailbox is needed. Set `false` to disable.                                                                                                                                                                      | `true`                        |
+| `TZ`               | Container clock timezone (IANA name, e.g. `Europe/Berlin`). **Auto-detected by default** — Compose and the `docker`/`podman run` examples bind-mount `/etc/localtime`; `polarionctl.sh` and the Apple `container` example detect and pass it explicitly instead. Set `TZ`/`POLARION_TZ` only to force a different zone than the host's. | _(auto-detected)_             |
 
 ### External SVN Endpoints
 
@@ -379,12 +394,13 @@ A container stopped without enough grace time SIGKILLs Postgres mid-write, which
 
 ### Container Shell Aliases
 
-Two convenience aliases are pre-installed for the `root` user and are available in any interactive shell session inside the container (e.g. `docker exec -it polarion bash`):
+A few convenience aliases/functions are pre-installed for the `root` user and are available in any interactive shell session inside the container (e.g. `docker exec -it polarion bash`):
 
-| Alias        | Effect                                                                                                                                                                                               |
-| :----------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plnrestart` | Stops the Polarion service, clears workspace `.config` / `.metadata`, restarts the service, and tails the main log. Useful after updating plugins in the `/opt/polarion/polarion/extensions` folder. |
-| `plnmainlog` | Tails the current `log4j-20*.log` file under `/opt/polarion/data/logs/main/`.                                                                                                                        |
+| Alias        | Effect                                                                                                                                                                                                                                                                                |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `plnrestart` | Stops the Polarion service (waiting up to 2 minutes for a clean shutdown via `polstop`), clears workspace `.config` / `.metadata`, restarts the service, and tails `/var/log/polarion/polarion.log`. Useful after updating plugins in the `/opt/polarion/polarion/extensions` folder. |
+| `polstop`    | Stops the Polarion service and waits (up to a 2 minute timeout) for the server PID file to disappear, printing progress and failing with a non-zero exit code on timeout. Used internally by `plnrestart`, but can also be called directly for a clean stop.                          |
+| `plnmainlog` | Tails the current `log4j-20*.log` file under `/opt/polarion/data/logs/main/`.                                                                                                                                                                                                         |
 
 ### Plugin Development
 
