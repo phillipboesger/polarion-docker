@@ -6,6 +6,7 @@ FILE="/opt/polarion/etc/polarion.properties"
 OTHER_PARAMS=(
     "com.siemens.polarion.rest.enabled=true"
     "com.siemens.polarion.rest.swaggerUi.enabled=true"
+    "com.siemens.polarion.rest.security.restApiToken.enabled=true"
     "com.siemens.polarion.rest.cors.allowedOrigins=*"
     "com.siemens.polarion.tomcat.cors.allowedOrigins=*"
     "com.siemens.polarion.tomcat.cors.allowedHeaders=*"
@@ -14,6 +15,8 @@ OTHER_PARAMS=(
     "com.siemens.polarion.analytics.enabled=false"
     "com.polarion.platform.internalPG=polarion:polarion@localhost:5433"
     "com.siemens.polarion.platform.locationIndex.enabled=true"
+    "com.siemens.polarion.collaborationNotifications.enabled=true"
+    "com.siemens.polarion.ui.showStackTraces=true"
 )
 
 # Configure allowed hosts for Tomcat service
@@ -64,7 +67,7 @@ sed -i '/^# End property file$/d' "$FILE"
 add_or_update_param() {
     local param="$1"
     local param_name=$(echo "$param" | cut -d '=' -f 1)
-    
+
     if grep -q "^$param_name=" "$FILE"; then
         sed -i "/^$param_name=/c\\$param" "$FILE"
     else
