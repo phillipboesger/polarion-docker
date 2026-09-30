@@ -18,6 +18,12 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ## [Unreleased]
 
+### Added
+
+- Default `polarion.properties` now also enable the REST API token header
+  (`com.siemens.polarion.rest.security.restApiToken.enabled`), collaboration notifications and UI
+  stack traces (#108, thanks @avaKSC). The defaults are now listed in the README.
+
 ## [2026-09-02]
 
 ### Security
