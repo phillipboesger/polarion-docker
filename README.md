@@ -41,6 +41,7 @@ Polarion's installer is proprietary and manual to set up — PostgreSQL, Apache 
     - [Supported versions](#supported-versions)
   - [Configuration \& Customization](#configuration--customization)
     - [Modular Customization](#modular-customization)
+    - [Default Polarion Properties](#default-polarion-properties)
     - [Environment Variables](#environment-variables)
     - [External SVN Endpoints](#external-svn-endpoints)
   - [Development \& Debugging](#development--debugging)
@@ -60,6 +61,7 @@ Polarion's installer is proprietary and manual to set up — PostgreSQL, Apache 
 The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint.d/`) automatically handle many complex configurations that are usually manual:
 
 - **Modular Entrypoint System**: Startup logic is split into lightweight scripts in `/opt/polarion/entrypoint.d/` for easy extensibility.
+- **Sensible Polarion Defaults**: REST API with Swagger UI and REST API tokens, permissive CORS, collaboration notifications, and UI stack traces are pre-enabled in `polarion.properties` on every start (see [Default Polarion Properties](#default-polarion-properties)).
 - **WebSocket Support**: Automatically configures Apache `ProxyPassMatch` to enable Polarion LiveDoc collaboration and other real-time features.
 - **SVN HTTP Aliases**: Exposes the bundled Subversion repository externally under both `/repo` and `/repo-local`.
 - **PostgreSQL Auto-Config**: Sets up `listen_addresses` and `pg_hba.conf` to allow external connections (essential for container networking).
@@ -319,6 +321,27 @@ To add your own configuration:
     volumes:
       - ./my-script.sh:/opt/polarion/entrypoint.d/90-custom-setup.sh
     ```
+
+### Default Polarion Properties
+
+`entrypoint.d/04-configure-properties.sh` writes these system properties into `/opt/polarion/etc/polarion.properties` on every container start (existing values are updated in place, missing ones appended):
+
+| Property                                                   | Value                               | Purpose                                                                                                  |
+| :--------------------------------------------------------- | :---------------------------------- | :------------------------------------------------------------------------------------------------------- |
+| `com.siemens.polarion.rest.enabled`                        | `true`                              | Enables the REST API (off by default in Polarion)                                                        |
+| `com.siemens.polarion.rest.swaggerUi.enabled`              | `true`                              | Enables the Swagger UI (only effective together with `rest.enabled`)                                     |
+| `com.siemens.polarion.rest.security.restApiToken.enabled`  | `true`                              | Enables the session-bound `X-Polarion-REST-Token` header (`top.getRestApiToken()`), e.g. for Report Page widgets |
+| `com.siemens.polarion.rest.cors.allowedOrigins`            | `*`                                 | CORS for the REST API                                                                                    |
+| `com.siemens.polarion.tomcat.cors.allowedOrigins` / `allowedHeaders` / `allowedMethods` | `*`     | CORS for Polarion's Tomcat                                                                               |
+| `com.siemens.polarion.collaborationNotifications.enabled`  | `true`                              | Enables collaboration notifications                                                                      |
+| `com.siemens.polarion.ui.showStackTraces`                  | `true`                              | Shows stack traces in UI error dialogs (hidden by default for security; useful for development)          |
+| `com.siemens.polarion.license.salt.enabled`                | `false`                             | Disables the license salt |
+| `com.siemens.polarion.analytics.enabled`                   | `false`                             | Disables Polarion analytics |
+| `com.polarion.platform.internalPG`                         | `polarion:polarion@localhost:5433`  | Bundled PostgreSQL connection                                                                            |
+| `com.siemens.polarion.platform.locationIndex.enabled`      | `true`                              | Enables the location index |
+| `TomcatService.request.safeListedHosts`                    | from `ALLOWED_HOSTS`                | See [Environment Variables](#environment-variables)                                                      |
+
+These defaults target local development: the wildcard CORS origins and visible stack traces are not meant for an internet-facing instance. To change one, add a script such as `90-custom-setup.sh` (see [Modular Customization](#modular-customization)); it runs after `04-configure-properties.sh` and can rewrite the value.
 
 ### Environment Variables
 
