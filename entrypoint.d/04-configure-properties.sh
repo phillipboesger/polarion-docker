@@ -52,8 +52,9 @@ else
 fi
 
 # Polarion Copilot (Siemens AI add-on) needs this switch plus a Copilot license and an LLM.
-if [[ "${POLARION_COPILOT_ENABLED:-}" == "true" ]]; then
-    PARAMS+=("com.siemens.polarion.copilot.enabled=true")
+# Unset leaves a manually configured value alone.
+if [[ "${POLARION_COPILOT_ENABLED:-}" == "true" || "${POLARION_COPILOT_ENABLED:-}" == "false" ]]; then
+    PARAMS+=("com.siemens.polarion.copilot.enabled=$POLARION_COPILOT_ENABLED")
 fi
 
 # The built-in Mailpit catcher (entrypoint.d/60-mailpit.sh) runs by default, so unless
