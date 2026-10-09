@@ -23,6 +23,9 @@ commit, then `git tag <date> && git push origin <date>` and
 - Default `polarion.properties` now also enable the REST API token header
   (`com.siemens.polarion.rest.security.restApiToken.enabled`), collaboration notifications and UI
   stack traces (#108, thanks @avaKSC). The defaults are now listed in the README.
+- `SALT_LICENSE_SERVER` switches the container to SALT licensing against a Siemens License
+  Server (default stays legacy trial / `polarion.lic` activation), and `POLARION_COPILOT_ENABLED=true`
+  enables Polarion Copilot.
 
 ## [2026-09-02]
 

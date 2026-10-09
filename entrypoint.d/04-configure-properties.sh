@@ -11,7 +11,6 @@ OTHER_PARAMS=(
     "com.siemens.polarion.tomcat.cors.allowedOrigins=*"
     "com.siemens.polarion.tomcat.cors.allowedHeaders=*"
     "com.siemens.polarion.tomcat.cors.allowedMethods=*"
-    "com.siemens.polarion.license.salt.enabled=false"
     "com.siemens.polarion.analytics.enabled=false"
     "com.polarion.platform.internalPG=polarion:polarion@localhost:5433"
     "com.siemens.polarion.platform.locationIndex.enabled=true"
@@ -37,6 +36,25 @@ PARAMS=(
     "$TomcatServiceRequestSafeListedHosts"
     "${OTHER_PARAMS[@]}"
 )
+
+# Licensing: legacy activation (trial or polarion.lic) by default. Setting SALT_LICENSE_SERVER
+# (e.g. 29000@salt.example.com, or a node-locked license file path) switches Polarion to SALT
+# licensing against that server instead. The property is used rather than the env var because
+# `service polarion start` does not pass the container environment through to the JVM.
+if [[ -n "${SALT_LICENSE_SERVER:-}" ]]; then
+    echo "Enabling SALT licensing via $SALT_LICENSE_SERVER"
+    PARAMS+=(
+        "com.siemens.polarion.license.salt.enabled=true"
+        "com.siemens.polarion.license.salt.server=$SALT_LICENSE_SERVER"
+    )
+else
+    PARAMS+=("com.siemens.polarion.license.salt.enabled=false")
+fi
+
+# Polarion Copilot (Siemens AI add-on) needs this switch plus a Copilot license and an LLM.
+if [[ "${POLARION_COPILOT_ENABLED:-}" == "true" ]]; then
+    PARAMS+=("com.siemens.polarion.copilot.enabled=true")
+fi
 
 # The built-in Mailpit catcher (entrypoint.d/60-mailpit.sh) runs by default, so unless
 # it is disabled (MAILPIT_EMBEDDED=false) or Polarion is pointed at a real mail server
