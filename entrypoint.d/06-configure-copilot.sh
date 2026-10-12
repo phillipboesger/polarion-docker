@@ -17,7 +17,7 @@ COPILOT_USERS_FILE="${COPILOT_USERS_FILE:-/opt/polarion/polarion/license/users}"
 POLARION_SVN_REPO="${POLARION_SVN_REPO:-/opt/polarion/data/svn/repo}"
 RUNTIME_PROPERTIES_PATH=".polarion/context.properties"
 
-# Assigns Copilot seats: drops every existing *CopilotUserN line, then appends one per user.
+# Assigns Copilot seats: replaces every existing *CopilotUserN line with one line per valid user.
 configure_copilot_users() {
     local license_type="${POLARION_COPILOT_LICENSE:-concurrent}"
     local user index=0
@@ -32,8 +32,8 @@ configure_copilot_users() {
         return 1
     fi
 
-    sed -i -E '/^(named|concurrent)CopilotUser[0-9]+=/d' "$COPILOT_USERS_FILE"
-    IFS=',' read -r -a users <<< "$POLARION_COPILOT_USERS"
+    local -a seats=()
+    IFS=$',\n' read -r -d '' -a users <<< "$POLARION_COPILOT_USERS" || true
     for user in "${users[@]}"; do
         user="${user//[[:space:]]/}"
         [[ -z "$user" ]] && continue
@@ -43,8 +43,25 @@ configure_copilot_users() {
             continue
         fi
         index=$((index + 1))
-        echo "${license_type}CopilotUser${index}=${user}" >> "$COPILOT_USERS_FILE"
+        seats+=("${license_type}CopilotUser${index}=${user}")
     done
+    # Validate before touching the file, so a typo never wipes the existing seats.
+    if [[ "$index" -eq 0 ]]; then
+        echo "WARNING: POLARION_COPILOT_USERS contains no valid user ID; Copilot seats left unchanged." >&2
+        return 1
+    fi
+
+    # Rewrite via a temp file and `cat >` (keeps the inode, so a bind-mounted file works too);
+    # grep re-terminates a last line that lacks its newline before the seats are appended.
+    local tmp_file
+    tmp_file="$(mktemp)"
+    { grep -v -E '^(named|concurrent)CopilotUser[0-9]+=' "$COPILOT_USERS_FILE"; printf '%s\n' "${seats[@]}"; } > "$tmp_file"
+    if ! cat "$tmp_file" > "$COPILOT_USERS_FILE"; then
+        echo "WARNING: could not write $COPILOT_USERS_FILE." >&2
+        rm -f "$tmp_file"
+        return 1
+    fi
+    rm -f "$tmp_file"
     echo "Assigned $index ${license_type} Polarion Copilot seat(s)."
 }
 

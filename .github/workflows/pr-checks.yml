@@ -508,7 +508,9 @@ jobs:
           ctx() { svnlook cat "$REPO" .polarion/context.properties 2>/dev/null; }
 
           # --- 04: SALT + Copilot switch -------------------------------------------------------------
-          props_reset; ( unset SALT_LICENSE_SERVER POLARION_COPILOT_ENABLED; run04 )
+          # Fixture starts at salt.enabled=true so the check can't pass if 04 never ran.
+          printf 'com.siemens.polarion.license.salt.enabled=true\n# End property file\n' > "$PROPS"
+          ( unset SALT_LICENSE_SERVER POLARION_COPILOT_ENABLED; run04 ) || fail "04-configure-properties.sh failed"
           grep -qx 'com.siemens.polarion.license.salt.enabled=false' "$PROPS" || fail "SALT must stay disabled by default"
           grep -q 'salt.server' "$PROPS" && fail "no SALT server expected by default"
           ok "SALT disabled by default"
@@ -546,6 +548,16 @@ jobs:
           users_reset; ( unset POLARION_COPILOT_USERS; run06 )
           grep -qx 'concurrentCopilotUser1=old' "$USERS" || fail "unset POLARION_COPILOT_USERS must not touch the file"
           ok "unset users variable is a no-op"
+
+          users_reset; ( export POLARION_COPILOT_USERS=' ,bad;id,'; run06 ) && fail "no valid user ID must fail"
+          grep -qx 'concurrentCopilotUser1=old' "$USERS" || fail "no valid user ID must leave existing seats untouched"
+          ok "no valid user ID leaves seats unchanged"
+
+          printf 'concurrentALMUser1=admin' > "$USERS"; ( export POLARION_COPILOT_USERS=$'a\nb'; run06 )
+          grep -qx 'concurrentALMUser1=admin' "$USERS" || fail "last line without newline was corrupted"
+          grep -qx 'concurrentCopilotUser1=a' "$USERS" || fail "seat after unterminated line missing"
+          grep -qx 'concurrentCopilotUser2=b' "$USERS" || fail "newline-separated user ignored"
+          ok "unterminated last line kept, newline-separated users accepted"
 
           # --- 06: runtime properties seeding ---------------------------------------------------------
           rev0="$(svnlook youngest "$REPO")"
