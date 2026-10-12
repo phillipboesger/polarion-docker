@@ -28,6 +28,14 @@ commit, then `git tag <date> && git push origin <date>` and
   `POLARION_DATA_VOLUME` / `POLARION_EXTENSIONS_VOLUME` to keep using them. `polarionctl.sh start`
   prints a hint when it creates a new per-version volume next to an old shared one.
 
+### Fixed
+
+- SVN access with Polarion user credentials on 2410/2506: the entrypoint wrote `admin` / `admin` into
+  `passwd`, which Polarion owns there (system secrets only, users live in `passwd_credentials`) and
+  rewrites when it starts, so `admin` / `admin` worked from the container start until Polarion was up and
+  then failed (HTTP 500). The entrypoint no longer edits `passwd` on these versions, and `/repo-local`
+  now authenticates against `passwd_credentials` there. `/repo` is documented as Polarion-internal.
+
 ### Added
 
 - The container records its Polarion version in the SVN volume (`.polarion-docker-version`) and
