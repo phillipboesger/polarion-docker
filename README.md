@@ -266,10 +266,10 @@ The checked-in Compose files cap the Polarion container at `4g` RAM and default 
 
 Only the SVN repository (`/opt/polarion/data/svn`) and the extensions (`/opt/polarion/polarion/extensions`) live in named volumes and survive `docker rm`. Use **one volume pair per Polarion version** (`polarion_repo_v2506` + `polarion_extensions_v2506`, …) and never mount the same SVN volume into two containers:
 
-- Polarion 2410/2506 check SVN logins against the `passwd` file inside the SVN volume and rewrite it with their own credentials at every start; 2512+ check them against their own PostgreSQL instead. Every container start on a shared volume therefore rewrites the SVN credentials the other containers rely on.
-- A newer Polarion migrates the repository, and extensions are built for one Polarion version (2606 needs Jakarta builds).
+- The images' Apache configuration checks SVN logins against the `passwd` file inside the SVN volume on Polarion 2410/2506, and against each container's own PostgreSQL on 2512+. Polarion 2410/2506 rewrite that file with their own credentials whenever they start, so every container start on a shared volume changes the SVN credentials the other containers rely on.
+- Extensions are built for one Polarion version (2606 needs Jakarta builds).
 
-`scripts/polarionctl.sh start` and the VS Code tasks derive the volume names from the image tag (`…:v2506` and the locally built `polarion:2506` → `_v2506`, `polarion:local` → `_local`); set `POLARION_DATA_VOLUME` / `POLARION_EXTENSIONS_VOLUME` to use other volumes. The container records its Polarion version in the SVN volume and logs a warning when the volume was last used by a different version.
+`scripts/polarionctl.sh start` and the VS Code tasks derive the volume names from the image tag (`…:v2506` and the locally built `polarion:2506` → `_v2506`, `polarion:local` → `_local`); set `POLARION_DATA_VOLUME` / `POLARION_EXTENSIONS_VOLUME` to use other volumes. Floating tags such as `latest`, `main` or `local` map to one fixed volume even after they move to a newer Polarion release, so prefer a pinned `v<NNNN>` image for data you want to keep. The container records its Polarion version in the SVN volume and logs a warning when the volume was last used by a different version.
 
 Volumes created before this change were called `polarion_repo` / `polarion_extensions` and shared by every version. They are left untouched; a new per-version volume starts empty. To keep working with the old data, set `POLARION_DATA_VOLUME=polarion_repo POLARION_EXTENSIONS_VOLUME=polarion_extensions` for that one version.
 
