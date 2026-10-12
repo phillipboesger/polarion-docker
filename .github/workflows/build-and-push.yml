@@ -507,6 +507,28 @@ jobs:
           node polarion-ui-smoke.mjs
           rm -f polarion-ui-smoke.mjs
 
+      - name: Verify external SVN access via /repo-local
+        run: |
+          # External SVN clients log in with a Polarion user via /repo-local; /repo is Polarion's
+          # internal endpoint. On 2410/2506 /repo-local authenticates against passwd_credentials
+          # (Polarion keeps only system secrets in passwd), so this must still work once Polarion
+          # is up, i.e. after it has rewritten passwd.
+          svn_ls() {
+            docker exec polarion-test svn ls --non-interactive --no-auth-cache \
+              --username admin --password "$1" http://localhost/repo-local/
+          }
+          if ! out="$(svn_ls admin 2>&1)" || ! grep -q '^\.polarion/$' <<<"$out"; then
+            echo "$out"
+            echo "❌ /repo-local did not list the repository for admin/admin"
+            docker exec polarion-test sh -c 'grep -o "AuthUserFile.*" /etc/apache2/conf-available/polarionSVN-local.conf; tail -n 20 /var/log/apache2/error.log' || true
+            exit 1
+          fi
+          if svn_ls wrong-password >/dev/null 2>&1; then
+            echo "❌ /repo-local accepted a wrong password"
+            exit 1
+          fi
+          echo "✅ /repo-local: admin/admin lists the repository, a wrong password is rejected"
+
       - name: UI smoke diagnostics on failure
         if: failure()
         run: |
