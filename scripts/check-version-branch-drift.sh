@@ -107,6 +107,12 @@ for branch in "${branches[@]}"; do
                 && [ "$a" = "$b" ] && continue
         fi
         since="$(drift_since "$branch" "$file" "$re")"
+        if ! git cat-file -e "${BASE}:${file}" 2>/dev/null && [ -z "$(git log -1 --format=%H "$BASE" -- "$file")" ]; then
+            stale_count=$((stale_count + 1))
+            echo "::error file=${file}::${file} exists only on ${name}; list it in ${OVERRIDES_FILE} or remove it"
+            rows+=("| \`${file}\` | - | ❌ only on this branch, not in overrides |")
+            continue
+        fi
         if [ "$since" -eq 0 ]; then
             age="?"
             stale=1
@@ -123,7 +129,8 @@ for branch in "${branches[@]}"; do
             echo "::warning file=${file}::${name} is missing main's changes to ${file} (unsynced for ${age} days)"
             rows+=("| \`${file}\` | ${age} | ⚠️ within grace |")
         fi
-    done < <(git diff --name-only "$BASE" "$branch" -- . ":(exclude)${OVERRIDES_FILE}")
+    # quotepath=off: otherwise non-ASCII paths come back quoted and `git show ref:path` misses them.
+    done < <(git -c core.quotepath=off diff --name-only "$BASE" "$branch" -- . ":(exclude)${OVERRIDES_FILE}")
 
     if [ "${#rows[@]}" -eq 0 ]; then
         echo "${name}: in sync with main"

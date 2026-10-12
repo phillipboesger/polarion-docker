@@ -694,7 +694,7 @@ jobs:
           on v9999
           echo mine > branch-only.txt && git add . && commit 1 "branch: own file"
           check 1
-          expect "::error file=branch-only.txt::v9999 is missing main's changes to branch-only.txt (unsynced for ? days)"
+          expect "::error file=branch-only.txt::branch-only.txt exists only on v9999; list it in .github/version-branch-overrides or remove it"
 
           echo "-- whole-file overrides allow it --"
           printf 'branch-only.txt\nshared.txt\n' >> .github/version-branch-overrides
