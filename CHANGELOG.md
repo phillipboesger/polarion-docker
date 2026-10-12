@@ -27,6 +27,9 @@ commit, then `git tag <date> && git push origin <date>` and
   "Data volumes"). Existing `polarion_repo` / `polarion_extensions` volumes are left untouched; set
   `POLARION_DATA_VOLUME` / `POLARION_EXTENSIONS_VOLUME` to keep using them. `polarionctl.sh start`
   prints a hint when it creates a new per-version volume next to an old shared one.
+- `build-and-push.yml` failure diagnostics now include the process list, `java -version`, the
+  `config.sh` JVM options, the Polarion log tail, disk/memory and `dmesg` (previously only on
+  `v2410`), so the branches share one workflow.
 
 ### Fixed
 
@@ -52,6 +55,12 @@ commit, then `git tag <date> && git push origin <date>` and
   `copilot.model.*` LLM configuration) into `/.polarion/context.properties` without overwriting keys
   that already exist. New `entrypoint.d/06-configure-copilot.sh`, covered by a new CI job. README:
   new "Polarion Copilot & SALT Licensing" section.
+- Version Branch Drift workflow (`scripts/check-version-branch-drift.sh`): compares each version
+  branch's content with `main` on every push to `main` and weekly, and fails when a branch misses
+  `main` changes older than 14 days. Allowed per-branch differences are listed in each branch's
+  `.github/version-branch-overrides`. Version branches had silently missed everything since
+  2026-07-28, including the timezone auto-detection (#102), because each branch's CI only tests
+  its own copy of the files.
 
 ## [2026-09-02]
 
