@@ -34,7 +34,8 @@ commit, then `git tag <date> && git push origin <date>` and
   `passwd`, which Polarion owns there (system secrets only, users live in `passwd_credentials`) and
   rewrites when it starts, so `admin` / `admin` worked from the container start until Polarion was up and
   then failed (HTTP 500). The entrypoint no longer edits `passwd` on these versions, and `/repo-local`
-  now authenticates against `passwd_credentials` there. `/repo` is documented as Polarion-internal.
+  now authenticates against `passwd_credentials` there, so it accepts every Polarion user with their
+  own password (paths still restricted by the access file). `/repo` is documented as Polarion-internal.
 
 ### Added
 
