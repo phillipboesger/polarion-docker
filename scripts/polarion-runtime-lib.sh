@@ -345,9 +345,8 @@ polarion_ensure_volume() {
 }
 
 polarion_volume_suffix_for_image() {
-	# Polarion versions must never share an SVN repository or extensions directory (each
-	# version migrates the repository and authenticates SVN its own way, and extensions are
-	# built per version). ghcr.io/...:v2506 and the locally built polarion:2506 both map to
+	# Polarion versions must never share an SVN repository or extensions directory (versions
+	# keep SVN credentials differently and extensions are built per version). ghcr.io/...:v2506 and the locally built polarion:2506 both map to
 	# "v2506"; any other tag (local, latest, main) is used as-is, sanitized for a volume name.
 	local ref="${1%%@*}" name tag
 	name="${ref##*/}"
