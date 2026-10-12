@@ -9,7 +9,7 @@
 # Polarion 2410 runs on JDK 17, not main's JDK 21.
 Dockerfile ^ARG JDK_MAJOR_VERSION=|^# Configure Java alternatives for JDK
 # Apache stale-PID cleanup and restart recovery (Polarion 2410 startup races).
-entrypoint.d/05-configure-apache.sh
-entrypoint.d/99-start-polarion.sh
+entrypoint.d/05-configure-apache.sh stale PID file|apache2\.pid
+entrypoint.d/99-start-polarion.sh ^service apache2 restart \|\| true$|stale PID file|apache2\.pid|^if ! (service apache2 restart|pgrep -x apache2)|Apache restart failed|^    service apache2 start \|\| true$|^# Verify Apache is actually running|Apache is not running|^fi$|^$
 # Strip only the biased-locking flag tokens; deleting the whole line corrupts 2410's config.sh.
-entrypoint.d/06-configure-java.sh
+entrypoint.d/06-configure-java.sh BiasedLocking|biased-locking|^# (Strip|quote or)

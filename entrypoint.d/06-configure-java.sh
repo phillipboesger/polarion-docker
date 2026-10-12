@@ -7,7 +7,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
     return 1
 fi
 
-# Polarion 2506 still ships biased-locking flags that were removed in modern JDKs.
+# Polarion's config.sh ships biased-locking flags that JDK 18+ no longer accepts.
 # Strip just the flag tokens (not the whole line) so the config's closing
 # quote or backslash continuation on the same line survives intact.
 sed -i 's/-XX:+UseBiasedLocking//' "$CONFIG_FILE"
