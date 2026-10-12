@@ -1,0 +1,15 @@
+# Paths on this version branch that are allowed to differ from main.
+# Checked by .github/workflows/version-branch-drift.yml (runs on main); every other
+# difference to main counts as drift, i.e. a main change that was never synced here.
+#
+# Format: <path> [<ERE>]
+#   <path> alone      -> the whole file may differ
+#   <path> <ERE>      -> only lines matching the extended regex may differ
+#
+# Polarion 2410 runs on JDK 17, not main's JDK 21.
+Dockerfile ^ARG JDK_MAJOR_VERSION=|^# Configure Java alternatives for JDK
+# Apache stale-PID cleanup and restart recovery (Polarion 2410 startup races).
+entrypoint.d/05-configure-apache.sh
+entrypoint.d/99-start-polarion.sh
+# Strip only the biased-locking flag tokens; deleting the whole line corrupts 2410's config.sh.
+entrypoint.d/06-configure-java.sh
