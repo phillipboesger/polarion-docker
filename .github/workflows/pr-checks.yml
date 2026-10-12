@@ -601,3 +601,110 @@ jobs:
 
       - name: Verify SALT switch, Copilot seats and runtime property seeding
         run: docker run --rm copilot-test:ci bash /run-tests.sh
+
+  drift-check-tests:
+    name: Version Branch Drift Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify scripts/check-version-branch-drift.sh against a fixture repository
+        run: |
+          # Throwaway repo with a main and a v9999 branch and backdated commits, so drift ages
+          # are deterministic: overrides (whole file / regex), the grace period, oldest-unsynced
+          # age, branch-only files and bad input. No network, no real version branches touched.
+          set -euo pipefail
+          SCRIPT="$PWD/scripts/check-version-branch-drift.sh"
+          repo="$(mktemp -d)"
+          out="$(mktemp)"
+          cd "$repo"
+          git init -q -b main .
+          git config user.email ci@example.invalid
+          git config user.name ci
+          # The fixture is its own "origin", so the script sees refs/remotes/origin/{main,v9999}.
+          git remote add origin "$repo"
+          ago() { date -u -d "-$1 days" +%Y-%m-%dT%H:%M:%SZ; }
+          commit() { GIT_AUTHOR_DATE="$(ago "$1")" GIT_COMMITTER_DATE="$(ago "$1")" git commit -q -m "$2"; }
+          on() { git checkout -q "$1"; }
+          # check <expected exit> [grace days]: runs the script, prints its output on mismatch.
+          check() {
+              local want="$1" rc=0
+              git fetch -q origin
+              bash "$SCRIPT" "${2:-14}" > "$out" 2>&1 || rc=$?
+              if [ "$rc" -ne "$want" ]; then
+                  cat "$out"
+                  echo "FAIL: expected exit ${want}, got ${rc}"
+                  exit 1
+              fi
+          }
+          expect() { grep -qF -- "$1" "$out" || { cat "$out"; echo "FAIL: output lacks '$1'"; exit 1; }; }
+          reject() { if grep -qF -- "$1" "$out"; then cat "$out"; echo "FAIL: output has '$1'"; exit 1; fi; }
+
+          mkdir -p .github
+          printf 'FROM base:1\nARG JDK_MAJOR_VERSION=21\n' > Dockerfile
+          echo one > shared.txt
+          git add . && commit 60 base
+          git branch v9999
+          on v9999
+          sed -i 's/JDK_MAJOR_VERSION=21/JDK_MAJOR_VERSION=17/' Dockerfile
+          printf '# comment\nDockerfile ^ARG JDK_MAJOR_VERSION=\n' > .github/version-branch-overrides
+          git add . && commit 59 "branch: JDK 17"
+
+          echo "-- only the overridden line differs: in sync --"
+          check 0
+          expect "v9999: in sync with main"
+
+          echo "-- main change older than the grace period: fails --"
+          on main
+          echo new > new.sh && git add . && commit 30 "main: new.sh"
+          check 1
+          expect "::error file=new.sh::v9999 is missing main's changes to new.sh (unsynced for 30 days)"
+
+          echo "-- synced again: passes --"
+          on v9999
+          git checkout -q main -- new.sh && commit 29 "branch: sync new.sh"
+          check 0
+
+          echo "-- non-overridden line of an overridden file: still drift --"
+          on main
+          sed -i 's/base:1/base:2/' Dockerfile && git add . && commit 20 "main: new base"
+          check 1
+          expect "::error file=Dockerfile::"
+          on v9999
+          sed -i 's/base:1/base:2/' Dockerfile && git add . && commit 19 "branch: sync base"
+          check 0
+
+          echo "-- fresh main change: warning only, fails once older than grace --"
+          on main
+          echo two > shared.txt && git add . && commit 2 "main: shared"
+          check 0
+          expect "::warning file=shared.txt::v9999 is missing main's changes to shared.txt (unsynced for 2 days)"
+          expect "OK: no drift older than 14 days (1 within grace)"
+          check 1 1
+          expect "::error file=shared.txt::"
+
+          echo "-- age counts from the OLDEST unsynced main commit --"
+          echo three > shared.txt && git add . && commit 1 "main: shared again"
+          check 1 1
+          expect "(unsynced for 2 days)"
+
+          echo "-- branch-only file not in the overrides: stale --"
+          on v9999
+          echo mine > branch-only.txt && git add . && commit 1 "branch: own file"
+          check 1
+          expect "::error file=branch-only.txt::v9999 is missing main's changes to branch-only.txt (unsynced for ? days)"
+
+          echo "-- whole-file overrides allow it --"
+          printf 'branch-only.txt\nshared.txt\n' >> .github/version-branch-overrides
+          git add . && commit 1 "branch: overrides"
+          check 0
+          reject "branch-only.txt"
+          reject "shared.txt"
+          expect "v9999: in sync with main"
+
+          echo "-- invalid grace value is rejected --"
+          check 2 abc
+
+          echo "✅ version-branch drift check behaves as expected"
