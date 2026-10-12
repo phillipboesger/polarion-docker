@@ -601,3 +601,121 @@ jobs:
 
       - name: Verify SALT switch, Copilot seats and runtime property seeding
         run: docker run --rm copilot-test:ci bash /run-tests.sh
+
+  volume-tests:
+    name: Per-Version Volumes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify per-version volume names, polarionctl start and the SVN version marker
+        run: |
+          # polarionctl.sh runs against a mocked docker CLI (never a real start), and
+          # 04-bootstrap-svn.sh is sourced against a scratch SVN dir and a fake plugin dir.
+          cat > /tmp/volume-test.sh <<'SCRIPT'
+          set -euo pipefail
+          LIB="$PWD/scripts/polarion-runtime-lib.sh"
+          CTL="$PWD/scripts/polarionctl.sh"
+
+          echo "-- default volume names per image --"
+          volumes_for() {
+              env -i PATH=/usr/bin:/bin HOME=/tmp POLARION_TZ=UTC POLARION_IMAGE="$1" ${2:+POLARION_DATA_VOLUME="$2"} \
+                  bash -c "source '$LIB'; echo \"\$POLARION_DATA_VOLUME \$POLARION_EXTENSIONS_VOLUME\""
+          }
+          expect_volumes() {
+              local got
+              got="$(volumes_for "$1" "${3:-}")"
+              [ "$got" = "$2" ] || { echo "FAIL: image '$1': expected '$2', got '$got'"; exit 1; }
+              echo "OK: $1 -> $got"
+          }
+          expect_volumes "ghcr.io/phillipboesger/polarion-docker:v2506" "polarion_repo_v2506 polarion_extensions_v2506"
+          expect_volumes "polarion:2506" "polarion_repo_v2506 polarion_extensions_v2506"
+          expect_volumes "polarion:2410.2" "polarion_repo_v2410 polarion_extensions_v2410"
+          expect_volumes "localhost:5000/team/polarion:v2606" "polarion_repo_v2606 polarion_extensions_v2606"
+          expect_volumes "polarion:local" "polarion_repo_local polarion_extensions_local"
+          expect_volumes "ghcr.io/phillipboesger/polarion-docker" "polarion_repo_latest polarion_extensions_latest"
+          expect_volumes "ghcr.io/phillipboesger/polarion-docker:v2512@sha256:abc" "polarion_repo_v2512 polarion_extensions_v2512"
+          expect_volumes "polarion:Feature.1_rc-2" "polarion_repo_Feature.1_rc-2 polarion_extensions_Feature.1_rc-2"
+          expect_volumes "polarion:v2506" "my_repo polarion_extensions_v2506" "my_repo"
+
+          echo "-- polarionctl start with a mocked docker CLI --"
+          mock="$(mktemp -d)"
+          cat > "$mock/docker" <<'EOF'
+          #!/bin/bash
+          echo "docker $*" >> "$MOCK_LOG"
+          case "$1 ${2:-}" in
+              "volume inspect") grep -qxF "$3" "$MOCK_VOLUMES" ;;
+              "volume create") echo "$3" >> "$MOCK_VOLUMES" ;;
+              "run -d") echo mock-container-id ;;
+              *) exit 1 ;;
+          esac
+          EOF
+          chmod +x "$mock/docker"
+          start() {
+              MOCK_LOG="$mock/log"; MOCK_VOLUMES="$mock/volumes"
+              : > "$MOCK_LOG"; printf '%s\n' "$@" > "$MOCK_VOLUMES"
+              env PATH="$mock:/usr/bin:/bin" MOCK_LOG="$MOCK_LOG" MOCK_VOLUMES="$MOCK_VOLUMES" POLARION_TZ=UTC \
+                  POLARION_RUNTIME=docker POLARION_IMAGE=ghcr.io/phillipboesger/polarion-docker:v2506 \
+                  POLARION_START_TIMEOUT=1 POLARION_START_POLL_INTERVAL=1 ${EXTRA_ENV:-} \
+                  bash "$CTL" start > "$mock/out" 2>&1 || true
+          }
+          start polarion_repo polarion_extensions
+          grep -q -- "-v polarion_repo_v2506:/opt/polarion/data/svn" "$mock/log" || { cat "$mock/log"; echo "FAIL: SVN volume not version-scoped"; exit 1; }
+          grep -q -- "-v polarion_extensions_v2506:/opt/polarion/polarion/extensions" "$mock/log" || { cat "$mock/log"; echo "FAIL: extensions volume not version-scoped"; exit 1; }
+          grep -q "NOTE: creating a new, empty polarion_repo_v2506" "$mock/out" || { cat "$mock/out"; echo "FAIL: no hint about the old shared volume"; exit 1; }
+          echo "OK: legacy shared volume present -> new per-version volumes + hint"
+
+          start polarion_repo polarion_repo_v2506
+          if grep -q "NOTE: creating a new" "$mock/out"; then cat "$mock/out"; echo "FAIL: hint repeated although the per-version volume exists"; exit 1; fi
+          echo "OK: per-version volume already exists -> no hint"
+
+          start
+          if grep -q "NOTE: creating a new" "$mock/out"; then cat "$mock/out"; echo "FAIL: hint without an old shared volume"; exit 1; fi
+          echo "OK: fresh host -> no hint"
+
+          EXTRA_ENV="POLARION_DATA_VOLUME=polarion_repo POLARION_EXTENSIONS_VOLUME=polarion_extensions" start polarion_repo polarion_extensions
+          grep -q -- "-v polarion_repo:/opt/polarion/data/svn" "$mock/log" || { cat "$mock/log"; echo "FAIL: explicit POLARION_DATA_VOLUME ignored"; exit 1; }
+          if grep -q "NOTE: creating a new" "$mock/out"; then cat "$mock/out"; echo "FAIL: hint despite explicit volume"; exit 1; fi
+          echo "OK: explicit POLARION_DATA_VOLUME keeps the old shared volume"
+
+          echo "-- entrypoint records the Polarion version and warns on a foreign volume --"
+          command -v htpasswd >/dev/null || { apt-get -qq update >/dev/null && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y apache2-utils >/dev/null 2>&1; }
+          id polarion >/dev/null 2>&1 || useradd -M polarion
+          boot() {
+              # boot <svn dir> <platform plugin version>: one container start's 04-bootstrap-svn.sh
+              local plugins
+              plugins="$(mktemp -d)"
+              mkdir -p "$plugins/com.polarion.platform_$2"
+              SVN_DATA_DIR="$1" SVN_BOOTSTRAP_DIR=/nonexistent POLARION_PLUGINS_DIR="$plugins" \
+                  bash -c 'source "$0"' "$PWD/entrypoint.d/04-bootstrap-svn.sh" > "$1.out" 2>&1
+          }
+          svn_dir="$(mktemp -d)/svn"
+          boot "$svn_dir" 3.25.6
+          [ "$(cat "$svn_dir/.polarion-docker-version")" = "2506" ] || { echo "FAIL: marker not 2506"; exit 1; }
+          if grep -q WARNING "$svn_dir.out"; then cat "$svn_dir.out"; echo "FAIL: warning on a fresh volume"; exit 1; fi
+          echo "OK: fresh volume -> marker 2506, no warning"
+          boot "$svn_dir" 3.25.6
+          if grep -q WARNING "$svn_dir.out"; then cat "$svn_dir.out"; echo "FAIL: warning on the same version"; exit 1; fi
+          echo "OK: same version again -> no warning"
+          boot "$svn_dir" 3.26.6
+          grep -q "last used by Polarion 2506, this container runs Polarion 2606" "$svn_dir.out" || { cat "$svn_dir.out"; echo "FAIL: no warning for 2506 -> 2606"; exit 1; }
+          [ "$(cat "$svn_dir/.polarion-docker-version")" = "2606" ] || { echo "FAIL: marker not updated to 2606"; exit 1; }
+          echo "OK: other version -> warning, marker updated"
+          boot "$svn_dir" 3.24.10
+          grep -q "last used by Polarion 2606, this container runs Polarion 2410" "$svn_dir.out" || { cat "$svn_dir.out"; echo "FAIL: 2-digit month (10) parsed wrong"; exit 1; }
+          boot "$svn_dir" 3.25.08
+          [ "$(cat "$svn_dir/.polarion-docker-version")" = "2508" ] || { echo "FAIL: leading-zero month treated as octal"; exit 1; }
+          echo "OK: months 10 and 08 parsed"
+          plugins_empty="$(mktemp -d)"
+          other_dir="$(mktemp -d)/svn"
+          SVN_DATA_DIR="$other_dir" SVN_BOOTSTRAP_DIR=/nonexistent POLARION_PLUGINS_DIR="$plugins_empty" \
+              bash -c 'source "$0"' "$PWD/entrypoint.d/04-bootstrap-svn.sh" > "$other_dir.out" 2>&1
+          [ ! -e "$other_dir/.polarion-docker-version" ] || { echo "FAIL: marker written without a detectable version"; exit 1; }
+          echo "OK: no platform plugin -> no marker, no failure"
+
+          echo "✅ per-version volume selection behaves as expected"
+          SCRIPT
+          docker run --rm -v "$(pwd)/scripts:/repo/scripts:ro" -v "$(pwd)/entrypoint.d:/repo/entrypoint.d:ro" \
+            -v /tmp/volume-test.sh:/volume-test.sh:ro -w /repo ubuntu:24.04 bash /volume-test.sh
