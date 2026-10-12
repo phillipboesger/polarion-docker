@@ -18,8 +18,20 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ## [Unreleased]
 
+### Changed
+
+- **One SVN/extensions volume pair per Polarion version.** `scripts/polarionctl.sh` and the VS Code
+  tasks now default to `polarion_repo_<version>` / `polarion_extensions_<version>` (derived from the
+  image tag, e.g. `_v2506`) instead of the shared `polarion_repo` / `polarion_extensions`, and the
+  README examples follow suit. Different Polarion versions must not share a repository (see README
+  "Data volumes"). Existing `polarion_repo` / `polarion_extensions` volumes are left untouched; set
+  `POLARION_DATA_VOLUME` / `POLARION_EXTENSIONS_VOLUME` to keep using them. `polarionctl.sh start`
+  prints a hint when it creates a new per-version volume next to an old shared one.
+
 ### Added
 
+- The container records its Polarion version in the SVN volume (`.polarion-docker-version`) and
+  logs a warning when the volume was last used by a different Polarion version.
 - Default `polarion.properties` now also enable the REST API token header
   (`com.siemens.polarion.rest.security.restApiToken.enabled`), collaboration notifications and UI
   stack traces (#108, thanks @avaKSC). The defaults are now listed in the README.
