@@ -71,16 +71,6 @@ sed -i 's|^base.url=.*|base.url=http://localhost|' /opt/polarion/etc/polarion.pr
 sed -i 's|^repo=.*|repo=http://localhost/repo|' /opt/polarion/etc/polarion.properties
 sed -i 's|^controlHostname=.*|controlHostname=localhost|' /opt/polarion/etc/polarion.properties
 
-# Keep local basic-auth account available for repo-local usage.
-SVN_PASSWD_FILE="/srv/polarion/svn/passwd"
-if [ -f "$SVN_PASSWD_FILE" ]; then
-	htpasswd -bm "$SVN_PASSWD_FILE" admin admin >/dev/null
-else
-	htpasswd -cbm "$SVN_PASSWD_FILE" admin admin >/dev/null
-fi
-chown polarion:www-data "$SVN_PASSWD_FILE" || true
-chmod 0664 "$SVN_PASSWD_FILE" || true
-
 # Ensure Apache (www-data) can write SVN repo lock/index files during commits.
 normalize_repo_permissions
 
