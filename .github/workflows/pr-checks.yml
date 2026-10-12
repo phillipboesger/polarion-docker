@@ -718,8 +718,11 @@ jobs:
 
           echo "-- SVN credentials: Polarion-owned passwd on file-auth versions --"
           conf_dir="$(mktemp -d)"
-          printf '<Location /repo>\nDAV svn\nAuthUserFile "/srv/polarion/svn/passwd"\n\tAuthBasicProvider file ldap\n</Location>\n<Location /installrepo>\nAuthUserFile x\n</Location>\n' > "$conf_dir/file.conf"
-          printf '<Location /repo>\nDAV svn\n    AuthBasicProvider dbd\n    AuthDBDUserPWQuery "SELECT 1"\n</Location>\n<Location /installrepo>\nAuthUserFile "/srv/polarion/svn/passwd"\n</Location>\n' > "$conf_dir/dbd.conf"
+          # Shaped like the images' polarionSVN.conf: file auth (2410/2506) vs DB auth (2512+).
+          printf '%s\n' '<Location /repo>' 'DAV svn' 'AuthUserFile "/srv/polarion/svn/passwd"' \
+              '	AuthBasicProvider file ldap' '</Location>' '<Location /installrepo>' 'AuthUserFile x' '</Location>' > "$conf_dir/file.conf"
+          printf '%s\n' '<Location /repo>' 'DAV svn' '    AuthBasicProvider dbd' '    AuthDBDUserPWQuery "SELECT 1"' '</Location>' \
+              '<Location /installrepo>' 'AuthUserFile "/srv/polarion/svn/passwd"' '</Location>' > "$conf_dir/dbd.conf"
           cred_boot() { # cred_boot <svn dir> <apache conf>
               SVN_DATA_DIR="$1" SVN_BOOTSTRAP_DIR=/nonexistent POLARION_PLUGINS_DIR=/nonexistent POLARION_APACHE_SVN_CONF="$2" \
                   bash -c 'source "$0"' "$PWD/entrypoint.d/04-bootstrap-svn.sh" >/dev/null 2>&1
@@ -739,7 +742,9 @@ jobs:
 
           command -v apache2ctl >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get -qq install -y apache2 >/dev/null 2>&1
           for variant in file:/srv/polarion/svn/passwd_credentials dbd:/srv/polarion/svn/passwd; do
-              POLARION_APACHE_SVN_CONF="$conf_dir/${variant%%:*}.conf" bash -c 'source "$0"' "$PWD/entrypoint.d/05-configure-apache.sh" >/dev/null 2>&1
+              # Only the generated config is checked; 05 also (re)starts Apache, which may fail on a rerun.
+              service apache2 stop >/dev/null 2>&1 || true
+              POLARION_APACHE_SVN_CONF="$conf_dir/${variant%%:*}.conf" bash -c 'source "$0"' "$PWD/entrypoint.d/05-configure-apache.sh" >/dev/null 2>&1 || true
               got="$(sed -n 's/^AuthUserFile "\(.*\)"$/\1/p' /etc/apache2/conf-available/polarionSVN-local.conf)"
               [ "$got" = "${variant#*:}" ] || { cat /etc/apache2/conf-available/polarionSVN-local.conf; echo "FAIL: ${variant%%:*}-auth /repo -> /repo-local uses '$got'"; exit 1; }
               echo "OK: ${variant%%:*}-auth /repo -> /repo-local authenticates against $got"
