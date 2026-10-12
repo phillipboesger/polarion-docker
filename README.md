@@ -411,12 +411,12 @@ Notes:
 
 ### External SVN Endpoints
 
-After startup, Apache serves the bundled Subversion repository through both of these authenticated endpoints:
+After startup, Apache serves the bundled Subversion repository through two authenticated endpoints:
 
-- `http://<host>/repo`
-- `http://<host>/repo-local`
+- `http://<host>/repo-local`: for SVN clients, scripts and plugins that log in with a Polarion user (default `admin` / `admin`).
+- `http://<host>/repo`: Polarion's own internal endpoint. Don't point external clients at it.
 
-The startup scripts also normalize the bundled SVN password file so the default bootstrap user remains `admin` / `admin`. On Polarion 2410/2506, Polarion rewrites that file with its own credentials when it starts, so `admin` / `admin` only applies there until then.
+On Polarion 2410/2506, `/repo` authenticates against the `passwd` file, which [since 21 R1](https://blogs.sw.siemens.com/polarion/polarion-alm-21-r1-whats-new-and-noteworthy/) only holds Polarion's system secrets: user passwords live in `passwd_credentials`, and Polarion overwrites any edit to `passwd`. A user login against `/repo` is therefore rejected there: Apache answers 500 because it falls through to the unconfigured LDAP provider, and `svn` fails with `E175002: Unexpected server error 500`. `/repo-local` authenticates against `passwd_credentials` on these versions and against `passwd` on 2512+.
 
 ## Development & Debugging
 

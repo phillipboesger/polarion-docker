@@ -603,17 +603,18 @@ jobs:
         run: docker run --rm copilot-test:ci bash /run-tests.sh
 
   volume-tests:
-    name: Per-Version Volumes
+    name: Per-Version Volumes & SVN Credentials
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify per-version volume names, polarionctl start and the SVN version marker
+      - name: Verify per-version volumes, the SVN version marker and SVN credential handling
         run: |
-          # polarionctl.sh runs against a mocked docker CLI (never a real start), and
-          # 04-bootstrap-svn.sh is sourced against a scratch SVN dir and a fake plugin dir.
+          # polarionctl.sh runs against a mocked docker CLI (never a real start); 04-bootstrap-svn.sh
+          # and 05-configure-apache.sh are sourced against scratch dirs and fake Polarion Apache
+          # configs (file auth = 2410/2506, DB auth = 2512+).
           cat > /tmp/volume-test.sh <<'SCRIPT'
           set -euo pipefail
           LIB="$PWD/scripts/polarion-runtime-lib.sh"
@@ -715,7 +716,38 @@ jobs:
           [ ! -e "$other_dir/.polarion-docker-version" ] || { echo "FAIL: marker written without a detectable version"; exit 1; }
           echo "OK: no platform plugin -> no marker, no failure"
 
-          echo "✅ per-version volume selection behaves as expected"
+          echo "-- SVN credentials: Polarion-owned passwd on file-auth versions --"
+          conf_dir="$(mktemp -d)"
+          printf '<Location /repo>\nDAV svn\nAuthUserFile "/srv/polarion/svn/passwd"\n\tAuthBasicProvider file ldap\n</Location>\n<Location /installrepo>\nAuthUserFile x\n</Location>\n' > "$conf_dir/file.conf"
+          printf '<Location /repo>\nDAV svn\n    AuthBasicProvider dbd\n    AuthDBDUserPWQuery "SELECT 1"\n</Location>\n<Location /installrepo>\nAuthUserFile "/srv/polarion/svn/passwd"\n</Location>\n' > "$conf_dir/dbd.conf"
+          cred_boot() { # cred_boot <svn dir> <apache conf>
+              SVN_DATA_DIR="$1" SVN_BOOTSTRAP_DIR=/nonexistent POLARION_PLUGINS_DIR=/nonexistent POLARION_APACHE_SVN_CONF="$2" \
+                  bash -c 'source "$0"' "$PWD/entrypoint.d/04-bootstrap-svn.sh" >/dev/null 2>&1
+          }
+          d="$(mktemp -d)/svn"; mkdir -p "$d"; printf 'polarion:$apr1$systemsecret\n' > "$d/passwd"
+          cred_boot "$d" "$conf_dir/file.conf"
+          [ "$(cat "$d/passwd")" = 'polarion:$apr1$systemsecret' ] || { cat "$d/passwd"; echo "FAIL: passwd edited on a file-auth version"; exit 1; }
+          echo "OK: file-auth /repo -> Polarion's passwd left untouched"
+          d="$(mktemp -d)/svn"; mkdir -p "$d"; printf 'polarion:$apr1$x\n' > "$d/passwd"
+          cred_boot "$d" "$conf_dir/dbd.conf"
+          htpasswd -vb "$d/passwd" admin admin >/dev/null 2>&1 || { echo "FAIL: admin/admin not ensured on a DB-auth version"; exit 1; }
+          echo "OK: DB-auth /repo (AuthUserFile only in another Location) -> admin/admin ensured in passwd"
+          d="$(mktemp -d)/svn"; mkdir -p "$d"; printf 'polarion:$apr1$x\n' > "$d/passwd"
+          cred_boot "$d" "$conf_dir/missing.conf"
+          htpasswd -vb "$d/passwd" admin admin >/dev/null 2>&1 || { echo "FAIL: missing Apache config must fall back to the old behaviour"; exit 1; }
+          echo "OK: no Polarion Apache config -> admin/admin ensured (previous behaviour)"
+
+          command -v apache2ctl >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get -qq install -y apache2 >/dev/null 2>&1
+          for variant in file:/srv/polarion/svn/passwd_credentials dbd:/srv/polarion/svn/passwd; do
+              POLARION_APACHE_SVN_CONF="$conf_dir/${variant%%:*}.conf" bash -c 'source "$0"' "$PWD/entrypoint.d/05-configure-apache.sh" >/dev/null 2>&1
+              got="$(sed -n 's/^AuthUserFile "\(.*\)"$/\1/p' /etc/apache2/conf-available/polarionSVN-local.conf)"
+              [ "$got" = "${variant#*:}" ] || { cat /etc/apache2/conf-available/polarionSVN-local.conf; echo "FAIL: ${variant%%:*}-auth /repo -> /repo-local uses '$got'"; exit 1; }
+              echo "OK: ${variant%%:*}-auth /repo -> /repo-local authenticates against $got"
+          done
+          apache2ctl -t >/dev/null 2>&1 || { apache2ctl -t; echo "FAIL: generated Apache config invalid"; exit 1; }
+          echo "OK: generated Apache config is valid"
+
+          echo "✅ per-version volumes and SVN credential handling behave as expected"
           SCRIPT
           docker run --rm -v "$(pwd)/scripts:/repo/scripts:ro" -v "$(pwd)/entrypoint.d:/repo/entrypoint.d:ro" \
             -v /tmp/volume-test.sh:/volume-test.sh:ro -w /repo ubuntu:24.04 bash /volume-test.sh
