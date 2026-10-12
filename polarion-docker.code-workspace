@@ -32,9 +32,7 @@
 				"POLARION_CONTAINER_MEMORY": "4g",
 				"POLARION_BUILDER_CPUS": "8",
 				"POLARION_BUILDER_MEMORY": "8g",
-				"POLARION_REDEPLOY_SEARCH_DEPTH": "1",
-				"POLARION_DATA_VOLUME": "polarion_repo",
-				"POLARION_EXTENSIONS_VOLUME": "polarion_extensions"
+				"POLARION_REDEPLOY_SEARCH_DEPTH": "1"
 			},
 			"cwd": "${workspaceFolder}"
 		},
