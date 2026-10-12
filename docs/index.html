@@ -1065,6 +1065,9 @@
       <button class="demo-tab" onclick="switchDemo('mail', this)">
         <span class="tab-icon">📬</span> Mail Catcher
       </button>
+      <button class="demo-tab" onclick="switchDemo('copilot', this)">
+        <span class="tab-icon">✨</span> Copilot &amp; SALT
+      </button>
     </div>
 
     <div class="demo-wrap">
@@ -1173,6 +1176,31 @@
         </div>
       </div>
 
+
+      <div class="demo-panel" id="demo-copilot">
+        <div class="terminal" style="margin:0;border:none;border-radius:var(--radius-lg);">
+          <div class="terminal-bar">
+            <div class="dot dot-r"></div>
+            <div class="dot dot-y"></div>
+            <div class="dot dot-g"></div>
+            <span class="terminal-title">polarion-docker · Polarion Copilot with SALT licensing</span>
+          </div>
+          <div class="terminal-body">
+            <div><span class="t-comment"># License via a Siemens License Server, Copilot on, one seat, LLM config seeded once</span></div>
+            <div style="margin-top:10px"><span class="t-prompt">$</span> <span class="t-cmd">docker run -d -p 80:80 \</span></div>
+            <div><span class="t-cmd">    -e SALT_LICENSE_SERVER=29000@salt.example.com \</span></div>
+            <div><span class="t-cmd">    -e POLARION_COPILOT_ENABLED=true -e POLARION_COPILOT_USERS=admin \</span></div>
+            <div><span class="t-cmd">    -e POLARION_RUNTIME_PROPERTIES="copilot.model.gpt.provider=azure;copilot.default.model=gpt;…" \</span></div>
+            <div><span class="t-cmd">    ghcr.io/phillipboesger/polarion-docker:v2606</span></div>
+            <div style="margin-top:6px"><span class="t-out">  Enabling SALT licensing via <span class="t-val">29000@salt.example.com</span></span></div>
+            <div><span class="t-out">  Assigned <span class="t-val">1 concurrent</span> Polarion Copilot seat(s).</span></div>
+            <div><span class="t-out">  Seeded <span class="t-val">4 runtime properties</span> into /.polarion/context.properties.</span></div>
+            <div style="margin-top:10px"><span class="t-comment"># Then store the API key once in Administration › User Account Vault</span></div>
+            <div><span class="t-out">  PolarionLicensing  <span class="t-val">STATS:concurrentCopilotUser … limit:61</span></span></div>
+            <div><span class="t-out">  LlmRegistry        <span class="t-val">available models: [gpt]</span></span></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -1190,7 +1218,7 @@
       <div class="feature-card">
         <div class="feature-icon">🏗️</div>
         <div class="feature-title">Fully Pre-Configured</div>
-        <p class="feature-desc">PostgreSQL, WebSocket proxy, SVN aliases, memory tuning, and dev-friendly Polarion defaults (REST API + Swagger UI, REST tokens, CORS, stack traces) handled automatically. Drop in your Polarion ZIP, build, and start — nothing else to configure.</p>
+        <p class="feature-desc">PostgreSQL, WebSocket proxy, SVN aliases, memory tuning, and dev-friendly Polarion defaults (REST API + Swagger UI, REST tokens, CORS, stack traces) handled automatically, with opt-in SALT licensing and Polarion Copilot via environment variables. Drop in your Polarion ZIP, build, and start — nothing else to configure.</p>
         <span class="feature-tag">zero-config</span>
       </div>
 

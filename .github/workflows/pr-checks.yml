@@ -476,3 +476,128 @@ jobs:
           echo "$out" | grep -q "!!! FAILED (1): /opt/polarion/entrypoint.d/01-fail.sh" || { echo "FAIL: the simulated entrypoint failure was not reported"; exit 1; }
           echo "$out" | grep -q "step(s) failed" || { echo "FAIL: the final startup message doesn't reflect the failed step"; exit 1; }
           echo "OK: a failed entrypoint.d script is reported in the startup log instead of being silently ignored"
+
+  copilot-tests:
+    name: Copilot & SALT Configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build isolated Copilot config test image
+        run: |
+          # No licensed Polarion ZIP needed: sources the REAL 04-configure-properties.sh and
+          # 06-configure-copilot.sh against a throwaway SVN repository, a license "users"
+          # fixture and a minimal polarion.properties.
+          mkdir -p /tmp/copilot-test-ctx/entrypoint.d
+          cp entrypoint.d/04-configure-properties.sh entrypoint.d/06-configure-copilot.sh /tmp/copilot-test-ctx/entrypoint.d/
+
+          cat > /tmp/copilot-test-ctx/run-tests.sh <<'EOF'
+          #!/bin/bash
+          # Runs inside the copilot-config-test image. Sources the REAL entrypoint scripts against fixtures.
+          fail() { echo "FAIL: $*"; exit 1; }
+          ok() { echo "OK: $*"; }
+          PROPS=/opt/polarion/etc/polarion.properties
+          USERS=/opt/polarion/polarion/license/users
+          REPO=/opt/polarion/data/svn/repo
+          props_reset() { printf 'com.siemens.polarion.license.salt.enabled=false\n# End property file\n' > "$PROPS"; }
+          users_reset() { printf '# header\nconcurrentALMUser1=admin\nconcurrentCopilotUser1=old\n' > "$USERS"; }
+          run04() { ( MAILPIT_EMBEDDED=false; export MAILPIT_EMBEDDED; . /opt/polarion/entrypoint.d/04-configure-properties.sh >/dev/null ); }
+          run06() { ( . /opt/polarion/entrypoint.d/06-configure-copilot.sh ); }
+          ctx() { svnlook cat "$REPO" .polarion/context.properties 2>/dev/null; }
+
+          # --- 04: SALT + Copilot switch -------------------------------------------------------------
+          # Fixture starts at salt.enabled=true so the check can't pass if 04 never ran.
+          printf 'com.siemens.polarion.license.salt.enabled=true\n# End property file\n' > "$PROPS"
+          ( unset SALT_LICENSE_SERVER POLARION_COPILOT_ENABLED; run04 ) || fail "04-configure-properties.sh failed"
+          grep -qx 'com.siemens.polarion.license.salt.enabled=false' "$PROPS" || fail "SALT must stay disabled by default"
+          grep -q 'salt.server' "$PROPS" && fail "no SALT server expected by default"
+          ok "SALT disabled by default"
+
+          props_reset; ( export SALT_LICENSE_SERVER=29000@salt.example.com POLARION_COPILOT_ENABLED=true; run04 )
+          grep -qx 'com.siemens.polarion.license.salt.enabled=true' "$PROPS" || fail "SALT not enabled"
+          grep -qx 'com.siemens.polarion.license.salt.server=29000@salt.example.com' "$PROPS" || fail "SALT server not written"
+          grep -qx 'com.siemens.polarion.copilot.enabled=true' "$PROPS" || fail "Copilot not enabled"
+          [ "$(grep -c '^com.siemens.polarion.license.salt.enabled=' "$PROPS")" = 1 ] || fail "duplicate salt.enabled lines"
+          ok "SALT server + Copilot switch"
+
+          ( export SALT_LICENSE_SERVER= POLARION_COPILOT_ENABLED=false; run04 )
+          grep -qx 'com.siemens.polarion.license.salt.enabled=false' "$PROPS" || fail "empty SALT_LICENSE_SERVER must disable SALT"
+          grep -qx 'com.siemens.polarion.copilot.enabled=false' "$PROPS" || fail "Copilot not switched off"
+          ok "empty server disables SALT, Copilot switched off"
+
+          # --- 06: Copilot seats ----------------------------------------------------------------------
+          users_reset; ( export POLARION_COPILOT_USERS=' admin, jdoe@corp.example ,bad;id,' ; run06 ) || true
+          grep -qx 'concurrentCopilotUser1=admin' "$USERS" || fail "admin seat missing"
+          grep -qx 'concurrentCopilotUser2=jdoe@corp.example' "$USERS" || fail "second seat missing"
+          grep -q 'old' "$USERS" && fail "stale Copilot seat not removed"
+          grep -q 'bad' "$USERS" && fail "invalid user ID was written"
+          grep -qx 'concurrentALMUser1=admin' "$USERS" || fail "unrelated license lines must stay"
+          ok "concurrent seats replace old ones, invalid IDs rejected"
+
+          users_reset; ( export POLARION_COPILOT_USERS=admin POLARION_COPILOT_LICENSE=named; run06 )
+          grep -qx 'namedCopilotUser1=admin' "$USERS" || fail "named seat missing"
+          grep -q '^concurrentCopilotUser' "$USERS" && fail "concurrent seat left over"
+          ok "named seat type"
+
+          users_reset; ( export POLARION_COPILOT_USERS=admin POLARION_COPILOT_LICENSE=floating; run06 ) && fail "invalid license type must fail"
+          grep -qx 'concurrentCopilotUser1=old' "$USERS" || fail "invalid license type must leave the file untouched"
+          ok "invalid license type rejected without changes"
+
+          users_reset; ( unset POLARION_COPILOT_USERS; run06 )
+          grep -qx 'concurrentCopilotUser1=old' "$USERS" || fail "unset POLARION_COPILOT_USERS must not touch the file"
+          ok "unset users variable is a no-op"
+
+          users_reset; ( export POLARION_COPILOT_USERS=' ,bad;id,'; run06 ) && fail "no valid user ID must fail"
+          grep -qx 'concurrentCopilotUser1=old' "$USERS" || fail "no valid user ID must leave existing seats untouched"
+          ok "no valid user ID leaves seats unchanged"
+
+          printf 'concurrentALMUser1=admin' > "$USERS"; ( export POLARION_COPILOT_USERS=$'a\nb'; run06 )
+          grep -qx 'concurrentALMUser1=admin' "$USERS" || fail "last line without newline was corrupted"
+          grep -qx 'concurrentCopilotUser1=a' "$USERS" || fail "seat after unterminated line missing"
+          grep -qx 'concurrentCopilotUser2=b' "$USERS" || fail "newline-separated user ignored"
+          ok "unterminated last line kept, newline-separated users accepted"
+
+          # --- 06: runtime properties seeding ---------------------------------------------------------
+          rev0="$(svnlook youngest "$REPO")"
+          ( export POLARION_RUNTIME_PROPERTIES=$'copilot.model.gpt.provider=openai\ncopilot.model.gpt.model=gpt-4.1;copilot.default.model=gpt\n# comment\nbroken line\n'; run06 ) || true
+          [ "$(svnlook youngest "$REPO")" = $((rev0 + 1)) ] || fail "expected exactly one commit"
+          ctx | grep -qx 'copilot.model.gpt.provider=openai' || fail "provider not seeded"
+          ctx | grep -qx 'copilot.default.model=gpt' || fail "';' separated entry not seeded"
+          ctx | grep -q 'broken' && fail "malformed entry was written"
+          [ "$(svnlook author "$REPO")" = polarion ] || fail "commit author should be polarion"
+          ok "seeded into fresh /.polarion/context.properties"
+
+          ( export POLARION_RUNTIME_PROPERTIES=$'copilot.model.gpt.model=gpt-5\nscriptInjection.mainHead=<script src="/x.js"></script>'; run06 )
+          ctx | grep -qx 'copilot.model.gpt.model=gpt-4.1' || fail "existing key must not be overwritten"
+          ctx | grep -qx 'scriptInjection.mainHead=<script src="/x.js"></script>' || fail "new key with '=' in value not appended"
+          ctx | grep -qx 'copilot.model.gpt.provider=openai' || fail "existing content lost"
+          ok "existing keys kept, new keys appended"
+
+          rev1="$(svnlook youngest "$REPO")"
+          ( export POLARION_RUNTIME_PROPERTIES='copilot.default.model=other'; run06 )
+          [ "$(svnlook youngest "$REPO")" = "$rev1" ] || fail "no-op run must not commit"
+          ok "idempotent: nothing to seed, no commit"
+
+          ( export POLARION_RUNTIME_PROPERTIES='copilot.default.model=x' POLARION_SVN_REPO=/nonexistent; run06 ) && fail "missing repository must fail"
+          ok "missing repository reported"
+          echo "ALL COPILOT CONFIG TESTS PASSED"
+          EOF
+
+          cat > /tmp/copilot-test-ctx/Dockerfile <<'EOF'
+          FROM ubuntu:24.04
+          RUN apt-get -y update && \
+            apt-get -y install --no-install-recommends subversion && \
+            apt-get clean && rm -rf /var/lib/apt/lists/*
+          RUN mkdir -p /opt/polarion/entrypoint.d /opt/polarion/etc /opt/polarion/polarion/license /opt/polarion/data/svn && \
+            svnadmin create /opt/polarion/data/svn/repo
+          COPY entrypoint.d/ /opt/polarion/entrypoint.d/
+          COPY run-tests.sh /run-tests.sh
+          EOF
+
+          docker build -q -t copilot-test:ci /tmp/copilot-test-ctx
+          echo "✅ Copilot config test image built"
+
+      - name: Verify SALT switch, Copilot seats and runtime property seeding
+        run: docker run --rm copilot-test:ci bash /run-tests.sh
