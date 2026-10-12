@@ -32,7 +32,7 @@ if image_version="$(polarion_image_version)"; then
 	last_version="$(cat "$SVN_VERSION_MARKER" 2>/dev/null || true)"
 	if [ -n "$last_version" ] && [ "$last_version" != "$image_version" ]; then
 		echo "WARNING: this SVN volume was last used by Polarion $last_version, this container runs Polarion $image_version." >&2
-		echo "WARNING: Polarion versions must not share an SVN volume: they keep SVN credentials differently and a newer version migrates the repository." >&2
+		echo "WARNING: Polarion versions must not share an SVN volume: they keep SVN credentials differently and extensions are built per version." >&2
 		echo "WARNING: Use one SVN/extensions volume pair per Polarion version (README: \"Data volumes\")." >&2
 	fi
 	echo "$image_version" > "$SVN_VERSION_MARKER"
