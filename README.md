@@ -43,6 +43,7 @@ Polarion's installer is proprietary and manual to set up — PostgreSQL, Apache 
     - [Modular Customization](#modular-customization)
     - [Default Polarion Properties](#default-polarion-properties)
     - [Environment Variables](#environment-variables)
+    - [Polarion Copilot \& SALT Licensing](#polarion-copilot--salt-licensing)
     - [External SVN Endpoints](#external-svn-endpoints)
   - [Development \& Debugging](#development--debugging)
     - [Remote Debugging (JDWP)](#remote-debugging-jdwp)
@@ -66,6 +67,7 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 - **SVN HTTP Aliases**: Exposes the bundled Subversion repository externally under both `/repo` and `/repo-local`.
 - **PostgreSQL Auto-Config**: Sets up `listen_addresses` and `pg_hba.conf` to allow external connections (essential for container networking).
 - **URL Correction**: Automatically fixes `localhost` references in configuration files to `127.0.0.1` for proper container behavior.
+- **Polarion Copilot \& SALT (opt-in)**: Environment variables switch on SALT licensing against a Siemens License Server, enable Polarion Copilot, assign Copilot seats, and seed the Copilot model configuration (see [Polarion Copilot & SALT Licensing](#polarion-copilot--salt-licensing)).
 - **Remote Debugging (JDWP)**: One-click remote debugging support on port 5005.
 - **Memory Management**: Easy configuration of JVM memory via `JAVA_OPTS`.
 - **Automatic Timezone Detection**: The container clock matches the host's real timezone with no configuration (Docker/Podman/Compose via a bind-mounted `/etc/localtime`, `polarionctl.sh`/Apple `container` by detecting and passing it); set `TZ=Region/City` to force a different zone instead.
@@ -335,7 +337,9 @@ To add your own configuration:
 | `com.siemens.polarion.tomcat.cors.allowedOrigins` / `allowedHeaders` / `allowedMethods` | `*`     | CORS for Polarion's Tomcat                                                                               |
 | `com.siemens.polarion.collaborationNotifications.enabled`  | `true`                              | Enables collaboration notifications                                                                      |
 | `com.siemens.polarion.ui.showStackTraces`                  | `true`                              | Shows stack traces in UI error dialogs (hidden by default for security; useful for development)          |
-| `com.siemens.polarion.license.salt.enabled`                | `false`                             | Disables the license salt |
+| `com.siemens.polarion.license.salt.enabled`                | `false` (`true` with `SALT_LICENSE_SERVER`) | Legacy activation (trial / `polarion.lic`) by default; SALT licensing when `SALT_LICENSE_SERVER` is set |
+| `com.siemens.polarion.license.salt.server`                 | from `SALT_LICENSE_SERVER`          | Only written when `SALT_LICENSE_SERVER` is set |
+| `com.siemens.polarion.copilot.enabled`                     | from `POLARION_COPILOT_ENABLED` (`true`/`false`) | Enables Polarion Copilot (needs a Copilot license and a configured LLM); left untouched when unset |
 | `com.siemens.polarion.analytics.enabled`                   | `false`                             | Disables Polarion analytics |
 | `com.polarion.platform.internalPG`                         | `polarion:polarion@localhost:5433`  | Bundled PostgreSQL connection                                                                            |
 | `com.siemens.polarion.platform.locationIndex.enabled`      | `true`                              | Enables the location index |
@@ -353,7 +357,45 @@ These defaults target local development: the wildcard CORS origins and visible s
 | `SMTP_HOST`        | Route mail to a **real** SMTP server instead of the built-in catcher. When set, the entrypoint points Polarion's `announcer.smtp.host` at it and the catcher steps aside.                                                                                                                                                               | _(unset → built-in catcher)_  |
 | `SMTP_PORT`        | SMTP port used together with `SMTP_HOST`                                                                                                                                                                                                                                                                                                | `25`                          |
 | `MAILPIT_EMBEDDED` | Built-in Mailpit catcher (SMTP `:25`, web UI `:8025`). **On by default** — captures Polarion's outgoing mail so no real mailbox is needed. Set `false` to disable.                                                                                                                                                                      | `true`                        |
+| `SALT_LICENSE_SERVER` | Use **SALT licensing** against a Siemens License Server instead of the trial / `polarion.lic` activation, e.g. `29000@salt.example.com` (or a node-locked SALT license file path). The server's lmgrd port (default `29000`) and saltd vendor-daemon port (default `29001`) must be reachable from the container. | _(unset → legacy activation)_ |
+| `POLARION_COPILOT_ENABLED` | `true`/`false` switches Polarion Copilot (`com.siemens.polarion.copilot.enabled`). Licensing and LLM setup still happen in Polarion's administration. | _(unset → untouched)_ |
+| `POLARION_COPILOT_USERS` | Comma-separated user IDs that get a Polarion Copilot add-on seat in the license `users` file (existing Copilot seats are replaced). | _(unset → untouched)_ |
+| `POLARION_COPILOT_LICENSE` | Seat type used for `POLARION_COPILOT_USERS`: `concurrent` or `named`. | `concurrent` |
+| `POLARION_RUNTIME_PROPERTIES` | Global **Configuration Properties** (runtime properties, e.g. `copilot.model.*`), separated by newlines or `;`. Each key is committed to the repository's `/.polarion/context.properties` **only if it is not defined there yet**, so later changes in the UI win. Values must not contain `;`. Never put secrets here. | _(unset → untouched)_ |
 | `TZ`               | Container clock timezone (IANA name, e.g. `Europe/Berlin`). **Auto-detected by default** — Compose and the `docker`/`podman run` examples bind-mount `/etc/localtime`; `polarionctl.sh` and the Apple `container` example detect and pass it explicitly instead. Set `TZ`/`POLARION_TZ` only to force a different zone than the host's. | _(auto-detected)_             |
+
+### Polarion Copilot & SALT Licensing
+
+[Polarion Copilot](https://docs.sw.siemens.com/en-US/doc/230235217/PL20251205943446859.polarion_help_sc.xid1465510/vzl6388042200012) (Content Validation, Similarity Analysis, Consistency Check and the Copilot API, Polarion 2512+) needs a Copilot add-on license, a Copilot seat per user, a connected LLM, and the feature switch. Everything except the LLM secret can be set from the container environment:
+
+```yaml
+services:
+  polarion:
+    image: ghcr.io/phillipboesger/polarion-docker:v2606
+    environment:
+      SALT_LICENSE_SERVER: "29000@salt.example.com"   # Siemens License Server with pln_copilot_c|n
+      POLARION_COPILOT_ENABLED: "true"                 # com.siemens.polarion.copilot.enabled
+      POLARION_COPILOT_USERS: "admin"                  # concurrentCopilotUser1=admin in license/users
+      POLARION_RUNTIME_PROPERTIES: |                   # seeded into /.polarion/context.properties once
+        copilot.model.gpt.provider=azure
+        copilot.model.gpt.azureServiceUrl=https://<resource>.openai.azure.com/openai/deployments/gpt-4o
+        copilot.model.gpt.azureApiKey=azureSecret
+        copilot.default.model=gpt
+```
+
+Then, once, in Polarion (global scope):
+
+1. **Store the API key** in *Administration → User Management → User Account Vault*: key `copilot.<provider>.<name>` (here `copilot.azure.azureSecret`), any user name, the API key as password. The vault is encrypted, so the image never handles the secret.
+2. **Grant permissions**: *Polarion Copilot: Permission to USE* (and *USE API* for the REST/Java API) in *User Management → Permissions Management*. Global administrators already have them.
+3. **Use it**: the sparkle icon in the top header opens the Copilot sidebars in the Work Item editor, Table view and Documents.
+
+Notes:
+
+- **LLM providers.** Azure is Polarion's only built-in provider. Other providers (OpenAI, Anthropic, local models) need a custom `ILlmProvider` OSGi bundle (see `com.siemens.polarion.example.llmprovider` in the Polarion SDK); mount it into `/opt/polarion/polarion/extensions/<name>/eclipse/plugins/` like any other [plugin](#plugin-development).
+- **SALT ports.** Both the license manager port (default `29000`) and the `saltd` vendor-daemon port (default `29001`) must be reachable from the container. If the vendor port is not fixed with `VENDOR saltd saltd PORT=29001` in the server's license file, it changes on every server restart.
+- **License version.** The SALT license must cover the Polarion version you run (e.g. feature version `2026.06` for 2606); otherwise every module is reported as "not present" and Polarion starts unactivated.
+- **Shared license servers.** The image's default `license/users` file also assigns `admin` to named seats. On a SALT server shared with other Polarion installations, remove those lines (or prefer concurrent seats) so the container does not occupy named licenses other users depend on.
+- **Check the result** in `/opt/polarion/data/logs/main/log4j-*.log` (`STATS:concurrentCopilotUser … limit:N`, `Reconfigured LLM registry with available models: [...]`). Every LLM request and response, with token counts, is logged to `log4j-ai-*.log`.
 
 ### External SVN Endpoints
 
@@ -453,7 +495,7 @@ POLARION_IMAGE=polarion:2512 bash scripts/polarionctl.sh start
 
 ### Automated Tests (CI)
 
-Every PR runs [`.github/workflows/pr-checks.yml`](./.github/workflows/pr-checks.yml): hadolint/shellcheck/yamllint, `docker compose config` validation, and a dedicated **Timezone Auto-Detection** job that builds a small standalone test image (no licensed Polarion ZIP needed) and exercises `entrypoint.d/00-configure-timezone.sh` / `entrypoint.d/01-configure-postgres.sh` end-to-end — auto-detect, explicit override, malformed/hostile `TZ` input, PostgreSQL's `timezone`/`log_timezone` GUCs staying in sync (including on reverting to a previously-used zone), and `scripts/polarion-runtime-lib.sh`'s host-side detection fallback chain (symlink → `timedatectl` → `/etc/timezone`) — checking both glibc (`date`) and the JVM, since the two resolve timezone differently and have silently disagreed with each other before.
+Every PR runs [`.github/workflows/pr-checks.yml`](./.github/workflows/pr-checks.yml): hadolint/shellcheck/yamllint, `docker compose config` validation, and a dedicated **Timezone Auto-Detection** job that builds a small standalone test image (no licensed Polarion ZIP needed) and exercises `entrypoint.d/00-configure-timezone.sh` / `entrypoint.d/01-configure-postgres.sh` end-to-end — auto-detect, explicit override, malformed/hostile `TZ` input, PostgreSQL's `timezone`/`log_timezone` GUCs staying in sync (including on reverting to a previously-used zone), and `scripts/polarion-runtime-lib.sh`'s host-side detection fallback chain (symlink → `timedatectl` → `/etc/timezone`) — checking both glibc (`date`) and the JVM, since the two resolve timezone differently and have silently disagreed with each other before. A **Copilot & SALT Configuration** job sources the real `04-configure-properties.sh` and `06-configure-copilot.sh` against a throwaway SVN repository and license fixtures: SALT on/off, the Copilot switch, concurrent/named seats, rejected user IDs, and idempotent seeding of runtime properties that never overwrites existing keys.
 
 Every push to `main`/a version branch additionally runs [`.github/workflows/build-and-push.yml`](./.github/workflows/build-and-push.yml) against the real built image: JVM startup, PostgreSQL/Apache/JDWP reachability, the Polarion startup sequence, built-in Mailpit end-to-end, a Playwright UI smoke test, SMTP mail configuration, and the same timezone auto-detection/override checks re-run against the actual bundled JDK and the real PostgreSQL cluster — before anything is pushed to GHCR.
 
