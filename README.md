@@ -37,6 +37,7 @@ Polarion's installer is proprietary and manual to set up — PostgreSQL, Apache 
     - [Option A: Local Build (Recommended)](#option-a-local-build-recommended)
     - [Option B: Pre-built Images](#option-b-pre-built-images)
     - [Via Docker Compose](#via-docker-compose)
+    - [Data volumes](#data-volumes)
     - [Image tags and versions](#image-tags-and-versions)
     - [Supported versions](#supported-versions)
   - [Configuration \& Customization](#configuration--customization)
@@ -146,8 +147,8 @@ Since Polarion requires a license and the installation media is proprietary, you
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
       -v /etc/localtime:/etc/host-localtime:ro \
-      --volume polarion_repo:/opt/polarion/data/svn \
-      --volume polarion_extensions:/opt/polarion/polarion/extensions \
+      --volume polarion_repo_local:/opt/polarion/data/svn \
+      --volume polarion_extensions_local:/opt/polarion/polarion/extensions \
       polarion:local
     # With Podman
     podman run -d \
@@ -160,8 +161,8 @@ Since Polarion requires a license and the installation media is proprietary, you
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
       -v /etc/localtime:/etc/host-localtime:ro \
-      --volume polarion_repo:/opt/polarion/data/svn \
-      --volume polarion_extensions:/opt/polarion/polarion/extensions \
+      --volume polarion_repo_local:/opt/polarion/data/svn \
+      --volume polarion_extensions_local:/opt/polarion/polarion/extensions \
       polarion:local
     # With Apple container (single-file bind mounts aren't verified for this runtime, so pass
     # the host's zone by name instead of mounting /etc/localtime)
@@ -177,8 +178,8 @@ Since Polarion requires a license and the installation media is proprietary, you
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
       -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
-      -v polarion_repo:/opt/polarion/data/svn \
-      -v polarion_extensions:/opt/polarion/polarion/extensions \
+      -v polarion_repo_local:/opt/polarion/data/svn \
+      -v polarion_extensions_local:/opt/polarion/polarion/extensions \
       polarion:local
     ```
 
@@ -215,8 +216,8 @@ If you have access:
     -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
     -v /etc/localtime:/etc/host-localtime:ro \
-    --volume polarion_repo:/opt/polarion/data/svn \
-    --volume polarion_extensions:/opt/polarion/polarion/extensions \
+    --volume polarion_repo_latest:/opt/polarion/data/svn \
+    --volume polarion_extensions_latest:/opt/polarion/polarion/extensions \
     ghcr.io/phillipboesger/polarion-docker:latest
     ```
     _(Replace `polarion:latest` with the appropriate image name depending on how you built or pulled it)_
@@ -237,8 +238,8 @@ container run -d \
     -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
     -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
-    -v polarion_repo:/opt/polarion/data/svn \
-    -v polarion_extensions:/opt/polarion/polarion/extensions \
+    -v polarion_repo_latest:/opt/polarion/data/svn \
+    -v polarion_extensions_latest:/opt/polarion/polarion/extensions \
     ghcr.io/phillipboesger/polarion-docker:latest
 ```
 
@@ -260,6 +261,17 @@ Note: Docker Compose files in this repository are Docker-only. Apple `container`
     ```
 
 The checked-in Compose files cap the Polarion container at `4g` RAM and default the JVM to `-Xmx3g -Xms3g`.
+
+### Data volumes
+
+Only the SVN repository (`/opt/polarion/data/svn`) and the extensions (`/opt/polarion/polarion/extensions`) live in named volumes and survive `docker rm`. Use **one volume pair per Polarion version** (`polarion_repo_v2506` + `polarion_extensions_v2506`, …) and never mount the same SVN volume into two containers:
+
+- Polarion 2410/2506 check SVN logins against the `passwd` file inside the SVN volume and rewrite it with their own credentials at every start; 2512+ check them against their own PostgreSQL instead. Every container start on a shared volume therefore rewrites the SVN credentials the other containers rely on.
+- A newer Polarion migrates the repository, and extensions are built for one Polarion version (2606 needs Jakarta builds).
+
+`scripts/polarionctl.sh start` and the VS Code tasks derive the volume names from the image tag (`…:v2506` and the locally built `polarion:2506` → `_v2506`, `polarion:local` → `_local`); set `POLARION_DATA_VOLUME` / `POLARION_EXTENSIONS_VOLUME` to use other volumes. The container records its Polarion version in the SVN volume and logs a warning when the volume was last used by a different version.
+
+Volumes created before this change were called `polarion_repo` / `polarion_extensions` and shared by every version. They are left untouched; a new per-version volume starts empty. To keep working with the old data, set `POLARION_DATA_VOLUME=polarion_repo POLARION_EXTENSIONS_VOLUME=polarion_extensions` for that one version.
 
 ### Image tags and versions
 
@@ -404,7 +416,7 @@ After startup, Apache serves the bundled Subversion repository through both of t
 - `http://<host>/repo`
 - `http://<host>/repo-local`
 
-The startup scripts also normalize the bundled SVN password file so the default bootstrap user remains `admin` / `admin`.
+The startup scripts also normalize the bundled SVN password file so the default bootstrap user remains `admin` / `admin`. On Polarion 2410/2506, Polarion rewrites that file with its own credentials when it starts, so `admin` / `admin` only applies there until then.
 
 ## Development & Debugging
 
