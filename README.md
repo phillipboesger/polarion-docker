@@ -65,7 +65,7 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 - **Modular Entrypoint System**: Startup logic is split into lightweight scripts in `/opt/polarion/entrypoint.d/` for easy extensibility.
 - **Sensible Polarion Defaults**: REST API with Swagger UI and REST API tokens, permissive CORS, collaboration notifications, and UI stack traces are pre-enabled in `polarion.properties` on every start (see [Default Polarion Properties](#default-polarion-properties)).
 - **WebSocket Support**: Automatically configures Apache `ProxyPassMatch` to enable Polarion LiveDoc collaboration and other real-time features.
-- **SVN HTTP Aliases**: Exposes the bundled Subversion repository externally under both `/repo` and `/repo-local`.
+- **External SVN Access**: Exposes the bundled Subversion repository to SVN clients under `/repo-local` with Polarion user credentials on every supported version (`/repo` stays Polarion-internal, see [External SVN Endpoints](#external-svn-endpoints)).
 - **PostgreSQL Auto-Config**: Sets up `listen_addresses` and `pg_hba.conf` to allow external connections (essential for container networking).
 - **URL Correction**: Automatically fixes `localhost` references in configuration files to `127.0.0.1` for proper container behavior.
 - **Polarion Copilot \& SALT (opt-in)**: Environment variables switch on SALT licensing against a Siemens License Server, enable Polarion Copilot, assign Copilot seats, and seed the Copilot model configuration (see [Polarion Copilot & SALT Licensing](#polarion-copilot--salt-licensing)).
