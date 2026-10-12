@@ -1,0 +1,9 @@
+# Paths on this version branch that are allowed to differ from main.
+# Checked by .github/workflows/version-branch-drift.yml (runs on main); every other
+# difference to main counts as drift, i.e. a main change that was never synced here.
+#
+# Format: <path> [<ERE>]
+#   <path> alone      -> the whole file may differ
+#   <path> <ERE>      -> only lines matching the extended regex may differ
+#
+# No overrides: this branch is identical to main (JDK 21 is main's default).

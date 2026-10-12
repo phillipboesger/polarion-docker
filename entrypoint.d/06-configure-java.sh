@@ -2,6 +2,11 @@
 # Configure JDWP debugging by modifying config.sh before service start
 CONFIG_FILE="/opt/polarion/etc/config.sh"
 
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "WARNING: $CONFIG_FILE not found; skipping Java/JDWP configuration." >&2
+    return 1
+fi
+
 # Polarion 2506 still ships biased-locking flags that were removed in modern JDKs.
 # Strip them from the installed config so the service can start on Temurin 21.
 sed -i '/UseBiasedLocking/d' "$CONFIG_FILE"
