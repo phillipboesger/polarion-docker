@@ -110,13 +110,6 @@ case "${action}" in
 	start)
 		echo "Starting Polarion from image ${POLARION_IMAGE} (runtime: ${POLARION_RUNTIME})"
 		echo "Volumes: ${POLARION_DATA_VOLUME} (SVN), ${POLARION_EXTENSIONS_VOLUME} (extensions)"
-		# polarion_repo was the volume every Polarion version shared before volumes were per version.
-		if [ -z "${REQUESTED_POLARION_DATA_VOLUME}" ] && ! polarion_volume_exists "${POLARION_DATA_VOLUME}" \
-			&& polarion_volume_exists polarion_repo; then
-			echo "NOTE: creating a new, empty ${POLARION_DATA_VOLUME} for this Polarion version." >&2
-			echo "      Existing data stays in the old shared volume polarion_repo, which every Polarion version used to share;" >&2
-			echo "      to keep using it, set POLARION_DATA_VOLUME=polarion_repo (and POLARION_EXTENSIONS_VOLUME=polarion_extensions)." >&2
-		fi
 		polarion_ensure_volume "${POLARION_DATA_VOLUME}"
 		polarion_ensure_volume "${POLARION_EXTENSIONS_VOLUME}"
 		polarion_remove_container

@@ -68,8 +68,8 @@ container run -d \
   -e JAVA_OPTS="-Xmx3g -Xms3g" \
   -e JDWP_ENABLED=true \
   -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
-  -v polarion_repo_local:/opt/polarion/data/svn \
-  -v polarion_extensions_local:/opt/polarion/polarion/extensions \
+  -v polarion_repo:/opt/polarion/data/svn \
+  -v polarion_extensions:/opt/polarion/polarion/extensions \
   polarion:local
 ```
 
