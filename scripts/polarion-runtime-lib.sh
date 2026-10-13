@@ -26,12 +26,8 @@ POLARION_CONTAINER_CPUS="${POLARION_CONTAINER_CPUS:-8}"
 POLARION_CONTAINER_MEMORY="${POLARION_CONTAINER_MEMORY:-4g}"
 POLARION_BUILDER_CPUS="${POLARION_BUILDER_CPUS:-8}"
 POLARION_BUILDER_MEMORY="${POLARION_BUILDER_MEMORY:-8g}"
-# SVN repository and extensions volumes. Default: one pair per Polarion version, derived from
-# POLARION_IMAGE by polarion_resolve_volumes below; set these to pin specific volumes.
-REQUESTED_POLARION_DATA_VOLUME="${POLARION_DATA_VOLUME-}"
-REQUESTED_POLARION_EXTENSIONS_VOLUME="${POLARION_EXTENSIONS_VOLUME-}"
-POLARION_DATA_VOLUME="${POLARION_DATA_VOLUME:-}"
-POLARION_EXTENSIONS_VOLUME="${POLARION_EXTENSIONS_VOLUME:-}"
+POLARION_DATA_VOLUME="${POLARION_DATA_VOLUME:-polarion_repo}"
+POLARION_EXTENSIONS_VOLUME="${POLARION_EXTENSIONS_VOLUME:-polarion_extensions}"
 POLARION_DATA_DIR="${POLARION_DATA_DIR:-${REPO_ROOT}/data}"
 POLARION_FILES_DIR="${POLARION_FILES_DIR:-${REPO_ROOT}/files}"
 POLARION_DOCKERFILE="${POLARION_DOCKERFILE:-${REPO_ROOT}/Dockerfile}"
@@ -323,48 +319,20 @@ polarion_sync_repo_license() {
 		'chown polarion:www-data /opt/polarion/polarion/license/polarion.lic && chmod 0644 /opt/polarion/polarion/license/polarion.lic'
 }
 
-polarion_volume_exists() {
-	polarion_require_selected_runtime_command
-
-	if polarion_is_apple_container_runtime; then
-		container volume inspect "$1" >/dev/null 2>&1
-	else
-		docker volume inspect "$1" >/dev/null 2>&1
-	fi
-}
-
 polarion_ensure_volume() {
 	local volume_name="$1"
 
-	polarion_volume_exists "${volume_name}" && return 0
+	polarion_require_selected_runtime_command
+
 	if polarion_is_apple_container_runtime; then
-		container volume create "${volume_name}" >/dev/null
+		if ! container volume inspect "${volume_name}" >/dev/null 2>&1; then
+			container volume create "${volume_name}" >/dev/null
+		fi
 	else
-		docker volume create "${volume_name}" >/dev/null
+		if ! docker volume inspect "${volume_name}" >/dev/null 2>&1; then
+			docker volume create "${volume_name}" >/dev/null
+		fi
 	fi
-}
-
-polarion_volume_suffix_for_image() {
-	# Polarion versions must never share an SVN repository or extensions directory (versions
-	# keep SVN credentials differently and extensions are built per version). ghcr.io/...:v2506 and the locally built polarion:2506 both map to
-	# "v2506"; any other tag (local, latest, main) is used as-is, sanitized for a volume name.
-	local ref="${1%%@*}" name tag
-	name="${ref##*/}"
-	tag="latest"
-	[[ "${name}" == *:* ]] && tag="${name##*:}"
-	if [[ "${tag}" =~ ^v?([0-9]{4})([._-].*)?$ ]]; then
-		printf 'v%s\n' "${BASH_REMATCH[1]}"
-	else
-		printf '%s' "${tag}" | tr -c 'A-Za-z0-9_.-' '_'
-		printf '\n'
-	fi
-}
-
-polarion_resolve_volumes() {
-	local suffix
-	suffix="$(polarion_volume_suffix_for_image "${POLARION_IMAGE}")"
-	[ -n "${REQUESTED_POLARION_DATA_VOLUME}" ] || POLARION_DATA_VOLUME="polarion_repo_${suffix}"
-	[ -n "${REQUESTED_POLARION_EXTENSIONS_VOLUME}" ] || POLARION_EXTENSIONS_VOLUME="polarion_extensions_${suffix}"
 }
 
 polarion_remove_container() {
@@ -494,4 +462,3 @@ fi
 
 polarion_select_runtime
 polarion_autodetect_container_name
-polarion_resolve_volumes
