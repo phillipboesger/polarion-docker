@@ -75,6 +75,10 @@ else
         # directly-started child (mailpit, exec shells) reading /etc/localtime like
         # everything started via "service" does, instead of inheriting a bad zone.
         unset TZ
+    elif [ "${TZ+set}" = set ]; then
+        # Empty TZ (e.g. -e TZ="$(readlink ...)" on a host where that printed nothing): glibc
+        # and the JVM read an empty TZ as UTC, so drop it and fall back like an unset one.
+        unset TZ
     fi
 
     detected_zone=""
@@ -82,11 +86,15 @@ else
         detected_zone="$(resolve_zone_name /etc/host-localtime)"
         if [ -z "$detected_zone" ]; then
             echo "WARNING: the host's timezone data has no byte-identical match in this image's tzdata; falling back to Etc/UTC to keep the system clock and Polarion consistent." >&2
+        elif cmp -s /etc/host-localtime /usr/share/zoneinfo/Etc/UTC; then
+            # Docker Desktop (macOS/Windows) serves this mount from its Linux VM, whose
+            # /etc/localtime is UTC, not from the host; only a name passed via TZ gets through.
+            echo "NOTE: the mounted host timezone is UTC. If your host is not on UTC, your runtime (e.g. Docker Desktop on macOS/Windows) mounts its VM's /etc/localtime: pass -e TZ=Region/City instead (scripts/polarionctl.sh does this automatically)." >&2
         fi
     else
         # A plain "docker run" can't see the host's zone on its own; without this the log
         # claimed a "detected" zone while silently running on UTC.
-        echo "WARNING: no host timezone available (neither TZ nor /etc/host-localtime); using Etc/UTC. Add -v /etc/localtime:/etc/host-localtime:ro or -e TZ=Region/City to docker run." >&2
+        echo "WARNING: no host timezone available (neither TZ nor /etc/host-localtime); using Etc/UTC. Pass -e TZ=Region/City (works on every runtime) or mount -v /etc/localtime:/etc/host-localtime:ro." >&2
     fi
     if apply_zone "${detected_zone:-Etc/UTC}"; then
         if [ -n "$detected_zone" ]; then
