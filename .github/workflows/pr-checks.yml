@@ -151,7 +151,21 @@ jobs:
           out=$(docker run --rm -v /usr/share/zoneinfo/Etc/GMT-5:/etc/host-localtime:ro tz-test:ci /tz-test-runner.sh 2>&1)
           if echo "$out" | grep -q "WARNING: no host timezone available"; then echo "FAIL: no-mount warning printed although the host zone was mounted"; echo "$out"; exit 1; fi
           echo "$out" | grep -q "Using host timezone Etc/GMT-5" || { echo "FAIL: detected zone not logged"; echo "$out"; exit 1; }
+          if echo "$out" | grep -q "NOTE: the mounted host timezone is UTC"; then echo "FAIL: UTC note printed for a non-UTC mount"; echo "$out"; exit 1; fi
           assert_tz_scenario "auto-detect" "Etc/GMT-5" "+0500" "Etc/GMT-5" "$out"
+
+          echo "🔍 Empty TZ (host-side readlink printed nothing) + host mounted -> treated as unset, mount wins, no empty TZ leaks"
+          out=$(docker run --rm -v /usr/share/zoneinfo/Etc/GMT-5:/etc/host-localtime:ro -e TZ= tz-test:ci /tz-test-runner.sh 2>&1)
+          assert_tz_scenario "empty TZ" "Etc/GMT-5" "+0500" "Etc/GMT-5" "$out"
+
+          echo "🔍 Mounted file is UTC (what Docker Desktop's VM serves on macOS/Windows) -> note pointing at -e TZ"
+          out=$(docker run --rm -v /usr/share/zoneinfo/Etc/UTC:/etc/host-localtime:ro tz-test:ci /tz-test-runner.sh 2>&1)
+          echo "$out" | grep -q "NOTE: the mounted host timezone is UTC" || { echo "FAIL: expected UTC-mount note not printed"; echo "$out"; exit 1; }
+          # Which UTC alias (Etc/UTC, UTC, Zulu, ...) the reverse lookup finds first depends on
+          # find order, so only the offsets are asserted here.
+          for f in OFFSET ENVI_OFFSET; do
+              printf '%s\n' "$out" | grep -qx "${f}=+0000" || { echo "FAIL: UTC mount: $f not +0000"; echo "$out"; exit 1; }
+          done
 
           echo "🔍 Host mounted (Etc/GMT-5) + explicit TZ=Etc/GMT-8 -> override wins"
           out=$(docker run --rm -v /usr/share/zoneinfo/Etc/GMT-5:/etc/host-localtime:ro -e TZ=Etc/GMT-8 tz-test:ci /tz-test-runner.sh)
