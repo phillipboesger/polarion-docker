@@ -89,6 +89,10 @@ else
         echo "WARNING: no host timezone available (neither TZ nor /etc/host-localtime); using Etc/UTC. Add -v /etc/localtime:/etc/host-localtime:ro or -e TZ=Region/City to docker run." >&2
     fi
     if apply_zone "${detected_zone:-Etc/UTC}"; then
-        echo "Using detected container timezone (current time: $(date))"
+        if [ -n "$detected_zone" ]; then
+            echo "Using host timezone $detected_zone (current time: $(date))"
+        else
+            echo "Using Etc/UTC (current time: $(date))"
+        fi
     fi
 fi
