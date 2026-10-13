@@ -18,8 +18,12 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ## [Unreleased]
 
+## [2026-10-13]
+
 ### Changed
 
+- Container shell alias `plnrestart` now waits up to 120s for Polarion to actually stop (new
+  `polstop` helper) before clearing the workspace cache and restarting (#107).
 - `build-and-push.yml` failure diagnostics now include the process list, `java -version`, the
   `config.sh` JVM options, the Polarion log tail, disk/memory and `dmesg` (previously only on
   `v2410`), so the branches share one workflow.
