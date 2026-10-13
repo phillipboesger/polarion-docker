@@ -83,8 +83,16 @@ else
         if [ -z "$detected_zone" ]; then
             echo "WARNING: the host's timezone data has no byte-identical match in this image's tzdata; falling back to Etc/UTC to keep the system clock and Polarion consistent." >&2
         fi
+    else
+        # A plain "docker run" can't see the host's zone on its own; without this the log
+        # claimed a "detected" zone while silently running on UTC.
+        echo "WARNING: no host timezone available (neither TZ nor /etc/host-localtime); using Etc/UTC. Add -v /etc/localtime:/etc/host-localtime:ro or -e TZ=Region/City to docker run." >&2
     fi
     if apply_zone "${detected_zone:-Etc/UTC}"; then
-        echo "Using detected container timezone (current time: $(date))"
+        if [ -n "$detected_zone" ]; then
+            echo "Using host timezone $detected_zone (current time: $(date))"
+        else
+            echo "Using Etc/UTC (current time: $(date))"
+        fi
     fi
 fi
