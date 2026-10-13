@@ -260,7 +260,7 @@ Note: Docker Compose files in this repository are Docker-only. Apple `container`
     DOCKER_BUILDKIT=1 docker build --platform linux/amd64 -t polarion:local -f Dockerfile .
     ```
     Use `POLARION_IMAGE=ghcr.io/phillipboesger/polarion-docker:latest` only if you explicitly want to run the registry image.
-3.  Start the container, passing the host's timezone by name (Docker Desktop on macOS/Windows can't read it through the compose file's `/etc/localtime` mount; on Windows write it directly, e.g. `TZ=Europe/Berlin`):
+3.  Start the container, passing the host's timezone by name (Docker Desktop on macOS/Windows can't read it through the compose file's `/etc/localtime` mount; on Windows PowerShell set it directly: `$env:TZ="Europe/Berlin"; docker compose up -d`):
     ```bash
     TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" docker compose up -d
     ```
