@@ -142,11 +142,15 @@ jobs:
           . /tmp/assert-tz-scenario.sh
 
           echo "🔍 No mount, no TZ -> image default Etc/UTC"
-          out=$(docker run --rm tz-test:ci /tz-test-runner.sh)
+          out=$(docker run --rm tz-test:ci /tz-test-runner.sh 2>&1)
+          echo "$out" | grep -q "WARNING: no host timezone available" || { echo "FAIL: expected no-mount warning not printed"; echo "$out"; exit 1; }
+          if echo "$out" | grep -qi "detected\|host timezone Etc"; then echo "FAIL: log claims a detected zone without a mount"; echo "$out"; exit 1; fi
           assert_tz_scenario "no mount / no TZ" "Etc/UTC" "+0000" "UTC" "$out"
 
           echo "🔍 Host timezone mounted (Etc/GMT-5), no TZ -> auto-detected"
-          out=$(docker run --rm -v /usr/share/zoneinfo/Etc/GMT-5:/etc/host-localtime:ro tz-test:ci /tz-test-runner.sh)
+          out=$(docker run --rm -v /usr/share/zoneinfo/Etc/GMT-5:/etc/host-localtime:ro tz-test:ci /tz-test-runner.sh 2>&1)
+          if echo "$out" | grep -q "WARNING: no host timezone available"; then echo "FAIL: no-mount warning printed although the host zone was mounted"; echo "$out"; exit 1; fi
+          echo "$out" | grep -q "Using host timezone Etc/GMT-5" || { echo "FAIL: detected zone not logged"; echo "$out"; exit 1; }
           assert_tz_scenario "auto-detect" "Etc/GMT-5" "+0500" "Etc/GMT-5" "$out"
 
           echo "🔍 Host mounted (Etc/GMT-5) + explicit TZ=Etc/GMT-8 -> override wins"
