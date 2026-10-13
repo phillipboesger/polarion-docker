@@ -520,7 +520,7 @@ jobs:
           if ! out="$(svn_ls admin 2>&1)" || ! grep -q '^\.polarion/$' <<<"$out"; then
             echo "$out"
             echo "❌ /repo-local did not list the repository for admin/admin"
-            docker exec polarion-test sh -c 'grep -o "AuthUserFile.*" /etc/apache2/conf-available/polarionSVN-local.conf; tail -n 20 /var/log/apache2/error.log' || true
+            docker exec polarion-test sh -c 'grep -E "Auth(UserFile|DBDUserPWQuery|BasicProvider)" /etc/apache2/conf-available/polarionSVN-local.conf; tail -n 20 /var/log/apache2/error.log' || true
             exit 1
           fi
           if svn_ls wrong-password >/dev/null 2>&1; then
