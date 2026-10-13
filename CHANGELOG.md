@@ -18,8 +18,18 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ## [Unreleased]
 
+### Fixed
+
+- A container started without `-v /etc/localtime:/etc/host-localtime:ro` or `-e TZ=...` now
+  logs a warning that it runs on `Etc/UTC` instead of claiming a "detected" timezone. A plain
+  `docker run` cannot see the host's zone by itself.
+
+## [2026-10-13]
+
 ### Changed
 
+- Container shell alias `plnrestart` now waits up to 120s for Polarion to actually stop (new
+  `polstop` helper) before clearing the workspace cache and restarting (#107).
 - `build-and-push.yml` failure diagnostics now include the process list, `java -version`, the
   `config.sh` JVM options, the Polarion log tail, disk/memory and `dmesg` (previously only on
   `v2410`), so the branches share one workflow.
