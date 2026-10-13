@@ -20,30 +20,26 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ### Changed
 
-- **One SVN/extensions volume pair per Polarion version.** `scripts/polarionctl.sh` and the VS Code
-  tasks now default to `polarion_repo_<version>` / `polarion_extensions_<version>` (derived from the
-  image tag, e.g. `_v2506`) instead of the shared `polarion_repo` / `polarion_extensions`, and the
-  README examples follow suit. Different Polarion versions must not share a repository (see README
-  "Data volumes"). Existing `polarion_repo` / `polarion_extensions` volumes are left untouched; set
-  `POLARION_DATA_VOLUME` / `POLARION_EXTENSIONS_VOLUME` to keep using them. `polarionctl.sh start`
-  prints a hint when it creates a new per-version volume next to an old shared one.
 - `build-and-push.yml` failure diagnostics now include the process list, `java -version`, the
   `config.sh` JVM options, the Polarion log tail, disk/memory and `dmesg` (previously only on
   `v2410`), so the branches share one workflow.
 
 ### Fixed
 
-- SVN access with Polarion user credentials on 2410/2506: the entrypoint wrote `admin` / `admin` into
-  `passwd`, which Polarion owns there (system secrets only, users live in `passwd_credentials`) and
-  rewrites when it starts, so `admin` / `admin` worked from the container start until Polarion was up and
-  then failed (HTTP 500). The entrypoint no longer edits `passwd` on these versions, and `/repo-local`
-  now authenticates against `passwd_credentials` there, so it accepts every Polarion user with their
-  own password (paths still restricted by the access file). `/repo` is documented as Polarion-internal.
+- SVN access with Polarion user credentials ("no more credentials"): `/repo` and `/repo-local` both
+  checked logins against `passwd`, which only holds Polarion's system user. Real user passwords live in
+  `passwd_credentials` (2410/2506) or the `polarion_internal.userauthn` table (2512+). The entrypoint
+  also wrote `admin` / `admin` into `passwd` at every start, so access worked or failed depending on
+  when Polarion last rewrote the file. `/repo-local` now authenticates against Polarion's real user
+  store on every version (every Polarion user with their current password, paths still restricted by
+  the access file), the entrypoint no longer edits `passwd`, and `/repo` is documented as
+  Polarion-internal.
+- `scripts/polarionctl.sh start` prints the SVN and extensions volumes it mounts.
 
 ### Added
 
 - The container records its Polarion version in the SVN volume (`.polarion-docker-version`) and
-  logs a warning when the volume was last used by a different Polarion version.
+  logs a note when the volume was last used by a different Polarion version.
 - Default `polarion.properties` now also enable the REST API token header
   (`com.siemens.polarion.rest.security.restApiToken.enabled`), collaboration notifications and UI
   stack traces (#108, thanks @avaKSC). The defaults are now listed in the README.

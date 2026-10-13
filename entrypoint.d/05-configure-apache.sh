@@ -51,13 +51,22 @@ EOF
 fi
 
 # Add /repo-local for external SVN clients that log in with Polarion user credentials. /repo
-# stays untouched: it is Polarion's internal endpoint. On 2410/2506 (/repo authenticates against
-# passwd) Polarion keeps user passwords in passwd_credentials and only system secrets in passwd,
-# so /repo-local must use passwd_credentials there (Siemens' "/repo-access" setup).
+# stays untouched: it is Polarion's internal endpoint and only knows the system user (passwd on
+# 2410/2506, the svnauthn table on 2512+). /repo-local authenticates against the store Polarion
+# keeps the real user passwords in, detected from Polarion's own /repo block:
+#   2410/2506 (file auth): passwd_credentials, as in Siemens' "/repo-access" setup
+#   2512+ (DB auth):       the userauthn table, over the DBD connection /repo already uses
 POLARION_APACHE_SVN_CONF="${POLARION_APACHE_SVN_CONF:-/etc/apache2/conf-available/polarionSVN.conf}"
-REPO_LOCAL_USER_FILE="/srv/polarion/svn/passwd"
-if sed -n '/<Location \/repo>/,/<\/Location>/p' "$POLARION_APACHE_SVN_CONF" 2>/dev/null | grep -q '^[[:space:]]*AuthUserFile'; then
-	REPO_LOCAL_USER_FILE="/srv/polarion/svn/passwd_credentials"
+POLARION_REPO_BLOCK="$(sed -n '/<Location \/repo>/,/<\/Location>/p' "$POLARION_APACHE_SVN_CONF" 2>/dev/null)"
+if grep -q '^[[:space:]]*AuthUserFile' <<<"$POLARION_REPO_BLOCK"; then
+	REPO_LOCAL_AUTH='AuthBasicProvider file
+AuthUserFile "/srv/polarion/svn/passwd_credentials"'
+elif grep -q 'AuthDBDUserPWQuery' <<<"$POLARION_REPO_BLOCK"; then
+	REPO_LOCAL_AUTH='AuthBasicProvider dbd
+AuthDBDUserPWQuery "SELECT password FROM polarion_internal.userauthn WHERE username = %s"'
+else
+	REPO_LOCAL_AUTH='AuthBasicProvider file
+AuthUserFile "/srv/polarion/svn/passwd"'
 fi
 cat >/etc/apache2/conf-available/polarionSVN-local.conf << EOF
 <IfModule mod_dav_svn.c>
@@ -70,8 +79,7 @@ SVNPathAuthz short_circuit
 Require valid-user
 AuthType Basic
 AuthName "Subversion repository (local)"
-AuthUserFile "$REPO_LOCAL_USER_FILE"
-AuthBasicProvider file
+$REPO_LOCAL_AUTH
 </Location>
 </IfModule>
 EOF
