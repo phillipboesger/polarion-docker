@@ -24,11 +24,11 @@ services:
       - JAVA_OPTS=-Xmx3g -Xms3g
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
       - JDWP_ENABLED=true
-      # Container clock timezone. The bind mount below auto-detects it from the host, so TZ
-      # is normally left unset here (bare "TZ" passes the host shell's value through only if
-      # exported there — "TZ=${TZ:-}" would set it to an empty string, which glibc/the JVM
-      # both treat as UTC). Export TZ=Region/City before "docker compose up" to force a
-      # different zone than the host's.
+      # Container clock timezone. Bare "TZ" passes the host shell's value through only if
+      # set there ("TZ=${TZ:-}" would set an empty string, which glibc/the JVM treat as UTC).
+      # Start with TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" docker compose up -d:
+      # the bind mount below alone fails on Docker Desktop (macOS/Windows), which serves
+      # /etc/localtime from its Linux VM (UTC). The mount stays as the fallback elsewhere.
       - TZ
       # The built-in Mailpit catcher runs by default and captures Polarion's outgoing
       # notification mail (open http://localhost:8025). To route mail to a real server
