@@ -1,0 +1,36 @@
+name: Version Branch Drift
+
+# Flags main changes that never reached the Polarion version branches (vNNNN). Each branch's
+# CI only tests that branch's own copy of the files, so a feature missing from a branch is
+# invisible to its pipelines; this compares the branches' content with main instead.
+# Allowed per-branch differences live in .github/version-branch-overrides on each branch.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC; a failed run notifies by mail
+  workflow_dispatch:
+    inputs:
+      grace_days:
+        description: "Days a main change may stay unsynced before the check fails"
+        required: false
+        default: "14"
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: Version branches in sync with main
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # all branches + history: drift age is read from main's log
+
+      - name: Compare version branches with main
+        env:
+          DRIFT_GRACE_DAYS: ${{ inputs.grace_days || '14' }}
+        run: bash scripts/check-version-branch-drift.sh
