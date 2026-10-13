@@ -71,7 +71,7 @@ The Docker image and its entrypoint scripts (`polarion_starter.sh` & `entrypoint
 - **Polarion Copilot \& SALT (opt-in)**: Environment variables switch on SALT licensing against a Siemens License Server, enable Polarion Copilot, assign Copilot seats, and seed the Copilot model configuration (see [Polarion Copilot & SALT Licensing](#polarion-copilot--salt-licensing)).
 - **Remote Debugging (JDWP)**: One-click remote debugging support on port 5005.
 - **Memory Management**: Easy configuration of JVM memory via `JAVA_OPTS`.
-- **Automatic Timezone Detection**: The container clock matches the host's real timezone with no configuration (Docker/Podman/Compose via a bind-mounted `/etc/localtime`, `polarionctl.sh`/Apple `container` by detecting and passing it); set `TZ=Region/City` to force a different zone instead.
+- **Automatic Timezone Detection**: The container clock matches the host's real timezone with no configuration (`polarionctl.sh` detects and passes it; the `docker run`/Compose examples pass it via `TZ` with a bind-mounted `/etc/localtime` as fallback); set `TZ=Region/City` to force a different zone instead.
 - **Always-Current JDK**: The build fetches the latest Eclipse Temurin GA release for the configured major version (`--build-arg JDK_MAJOR_VERSION=21` by default) from the Adoptium API on every build, so images always ship the newest patch/security updates instead of a pinned build.
 - **Automatic Workspace Cleanup**: On every container start, stale Eclipse workspace metadata (`.config` and `.metadata`) is removed from `/opt/polarion/data/workspace/` before Polarion launches, preventing stale data caused by changed plugins in the `/opt/polarion/polarion/extensions/` directory.
 
@@ -134,8 +134,10 @@ Since Polarion requires a license and the installation media is proprietary, you
 5.  **Run** the container using the locally built image:
 
     ```bash
-    # With Docker (-v /etc/localtime auto-matches the container clock to your host's
-    # timezone; add -e TZ=Region/City instead only if you want a different zone)
+    # With Docker. -e TZ passes the host's timezone by name, which works on every runtime
+    # (Docker Desktop on macOS/Windows serves an /etc/localtime mount from its Linux VM, i.e.
+    # UTC). The mount is the fallback for hosts where readlink prints nothing. On Windows,
+    # write the zone directly: -e TZ=Europe/Berlin
     docker run -d \
       --name polarion \
       --platform linux/amd64 \
@@ -146,6 +148,7 @@ Since Polarion requires a license and the installation media is proprietary, you
       -p 5005:5005 \
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
+      -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
       -v /etc/localtime:/etc/host-localtime:ro \
       --volume polarion_repo:/opt/polarion/data/svn \
       --volume polarion_extensions:/opt/polarion/polarion/extensions \
@@ -160,6 +163,7 @@ Since Polarion requires a license and the installation media is proprietary, you
       -p 5005:5005 \
       -e JAVA_OPTS="-Xmx3g -Xms3g" \
       -e JDWP_ENABLED=true \
+      -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
       -v /etc/localtime:/etc/host-localtime:ro \
       --volume polarion_repo:/opt/polarion/data/svn \
       --volume polarion_extensions:/opt/polarion/polarion/extensions \
@@ -215,6 +219,7 @@ If you have access:
     -p 5005:5005 \
     -e JAVA_OPTS="-Xmx3g -Xms3g" \
     -e JDWP_ENABLED=true \
+    -e TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" \
     -v /etc/localtime:/etc/host-localtime:ro \
     --volume polarion_repo:/opt/polarion/data/svn \
     --volume polarion_extensions:/opt/polarion/polarion/extensions \
@@ -255,9 +260,9 @@ Note: Docker Compose files in this repository are Docker-only. Apple `container`
     DOCKER_BUILDKIT=1 docker build --platform linux/amd64 -t polarion:local -f Dockerfile .
     ```
     Use `POLARION_IMAGE=ghcr.io/phillipboesger/polarion-docker:latest` only if you explicitly want to run the registry image.
-3.  Start the container:
+3.  Start the container, passing the host's timezone by name (Docker Desktop on macOS/Windows can't read it through the compose file's `/etc/localtime` mount; on Windows PowerShell set it directly: `$env:TZ="Europe/Berlin"; docker compose up -d`):
     ```bash
-    docker-compose up -d
+    TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')" docker compose up -d
     ```
 
 The checked-in Compose files cap the Polarion container at `4g` RAM and default the JVM to `-Xmx3g -Xms3g`.
@@ -371,7 +376,7 @@ These defaults target local development: the wildcard CORS origins and visible s
 | `POLARION_COPILOT_USERS` | Comma-separated user IDs that get a Polarion Copilot add-on seat in the license `users` file (existing Copilot seats are replaced). | _(unset → untouched)_ |
 | `POLARION_COPILOT_LICENSE` | Seat type used for `POLARION_COPILOT_USERS`: `concurrent` or `named`. | `concurrent` |
 | `POLARION_RUNTIME_PROPERTIES` | Global **Configuration Properties** (runtime properties, e.g. `copilot.model.*`), separated by newlines or `;`. Each key is committed to the repository's `/.polarion/context.properties` **only if it is not defined there yet**, so later changes in the UI win. Values must not contain `;`. Never put secrets here. | _(unset → untouched)_ |
-| `TZ`               | Container clock timezone (IANA name, e.g. `Europe/Berlin`). **Auto-detected by default** — Compose and the `docker`/`podman run` examples bind-mount `/etc/localtime`; `polarionctl.sh` and the Apple `container` example detect and pass it explicitly instead. Set `TZ`/`POLARION_TZ` only to force a different zone than the host's. A plain `docker run` without the mount or `TZ` stays on UTC and logs a warning; version-branch images built before 2026-10-13 don't auto-detect at all (re-pull). | _(auto-detected)_             |
+| `TZ`               | Container clock timezone (IANA name, e.g. `Europe/Berlin`). **Auto-detected by default** — `polarionctl.sh` detects and passes it; the `docker run`/Compose examples pass it as `TZ` and also bind-mount `/etc/localtime` as a fallback. The mount alone is not enough on Docker Desktop (macOS/Windows), which serves it from its Linux VM (UTC); the container then logs a NOTE. A `docker run` without `TZ` or the mount stays on UTC and logs a warning. Set `TZ`/`POLARION_TZ` to force a different zone. Version-branch images built before 2026-10-13 don't auto-detect at all (re-pull). | _(auto-detected)_             |
 
 ### Polarion Copilot & SALT Licensing
 

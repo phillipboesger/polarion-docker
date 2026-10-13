@@ -23,6 +23,11 @@ commit, then `git tag <date> && git push origin <date>` and
 - A container started without `-v /etc/localtime:/etc/host-localtime:ro` or `-e TZ=...` now
   logs a warning that it runs on `Etc/UTC` instead of claiming a "detected" timezone. A plain
   `docker run` cannot see the host's zone by itself.
+- Timezone auto-detection on Docker Desktop (macOS/Windows): the `/etc/localtime` bind mount is
+  served from Docker's Linux VM there (UTC), so the container silently stayed on UTC. The
+  `docker run` and Compose instructions now pass the host's zone by name
+  (`TZ="$(readlink /etc/localtime | sed 's#.*zoneinfo/##')"`), keeping the mount as a fallback;
+  an empty `TZ` is treated as unset, and a UTC mount logs a NOTE pointing at `-e TZ`.
 
 ## [2026-10-13]
 
