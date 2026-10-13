@@ -371,7 +371,7 @@ These defaults target local development: the wildcard CORS origins and visible s
 | `POLARION_COPILOT_USERS` | Comma-separated user IDs that get a Polarion Copilot add-on seat in the license `users` file (existing Copilot seats are replaced). | _(unset → untouched)_ |
 | `POLARION_COPILOT_LICENSE` | Seat type used for `POLARION_COPILOT_USERS`: `concurrent` or `named`. | `concurrent` |
 | `POLARION_RUNTIME_PROPERTIES` | Global **Configuration Properties** (runtime properties, e.g. `copilot.model.*`), separated by newlines or `;`. Each key is committed to the repository's `/.polarion/context.properties` **only if it is not defined there yet**, so later changes in the UI win. Values must not contain `;`. Never put secrets here. | _(unset → untouched)_ |
-| `TZ`               | Container clock timezone (IANA name, e.g. `Europe/Berlin`). **Auto-detected by default** — Compose and the `docker`/`podman run` examples bind-mount `/etc/localtime`; `polarionctl.sh` and the Apple `container` example detect and pass it explicitly instead. Set `TZ`/`POLARION_TZ` only to force a different zone than the host's. | _(auto-detected)_             |
+| `TZ`               | Container clock timezone (IANA name, e.g. `Europe/Berlin`). **Auto-detected by default** — Compose and the `docker`/`podman run` examples bind-mount `/etc/localtime`; `polarionctl.sh` and the Apple `container` example detect and pass it explicitly instead. Set `TZ`/`POLARION_TZ` only to force a different zone than the host's. A plain `docker run` without the mount or `TZ` stays on UTC and logs a warning; version-branch images built before 2026-10-13 don't auto-detect at all (re-pull). | _(auto-detected)_             |
 
 ### Polarion Copilot & SALT Licensing
 
