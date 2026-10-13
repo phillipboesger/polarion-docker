@@ -741,7 +741,7 @@ jobs:
           expect_volumes "ghcr.io/phillipboesger/polarion-docker:v2506" "polarion_repo polarion_extensions"
           expect_volumes "ghcr.io/phillipboesger/polarion-docker:v2606" "polarion_repo polarion_extensions"
           expect_volumes "polarion:local" "polarion_repo polarion_extensions"
-          expect_volumes "polarion:v2506" "polarion_repo_v2506 polarion_extensions_v2506" "polarion_repo_v2506" "polarion_extensions_v2506"
+          expect_volumes "ghcr.io/phillipboesger/polarion-docker:v2606" "polarion_repo_v2506 polarion_extensions_v2506" "polarion_repo_v2506" "polarion_extensions_v2506"
           expect_volumes "polarion:v2606" "my_repo polarion_extensions" "my_repo"
 
           echo "-- polarionctl start passes the selected volumes (mocked docker CLI) --"
