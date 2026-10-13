@@ -410,7 +410,7 @@ Notes:
 
 After startup, Apache serves the bundled Subversion repository through two authenticated endpoints:
 
-- `http://<host>/repo-local`: for SVN clients, scripts and plugins that log in with a Polarion user and that user's current Polarion password (default `admin` / `admin`); which paths a user may read or write is still governed by the repository's access file.
+- `http://<host>/repo-local`: for SVN clients, scripts and plugins that log in with a Polarion user and that user's current Polarion password (`admin` / `admin` as long as the Polarion default is unchanged); which paths a user may read or write is still governed by the repository's access file. On 2512+ it answers once Polarion is up, because the user table is Polarion's.
 - `http://<host>/repo`: Polarion's own internal endpoint. Don't point external clients at it.
 
 `/repo` only knows Polarion's system user on every version: on 2410/2506 it checks the `passwd` file, which [since 21 R1](https://blogs.sw.siemens.com/polarion/polarion-alm-21-r1-whats-new-and-noteworthy/) only holds system secrets, on 2512+ the `polarion_internal.svnauthn` table. A user login there is rejected (Apache answers 500, `svn` reports errors such as `E175002`, or `E215004` *"no more credentials"*). `/repo-local` instead authenticates against the store Polarion's own login uses for user passwords:
