@@ -20,8 +20,8 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ### Added
 
-- `docs/FAQ.md` with answers to recurring questions (timezone shows UTC, stale demo dates,
-  persisted state, mail, `--platform`), linked from the README's Troubleshooting section.
+- `docs/FAQ.md` with answers to recurring questions (build and pull, start and access,
+  data and shutdown, timezone), linked from the README's Troubleshooting section.
 
 ### Fixed
 
