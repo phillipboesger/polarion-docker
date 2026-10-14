@@ -18,6 +18,11 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ## [Unreleased]
 
+### Added
+
+- `docs/FAQ.md` with answers to recurring questions (build and pull, start and access,
+  data and shutdown, timezone), linked from the README's Troubleshooting section.
+
 ### Fixed
 
 - A container started without `-v /etc/localtime:/etc/host-localtime:ro` or `-e TZ=...` now
