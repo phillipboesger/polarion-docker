@@ -527,6 +527,7 @@ Every push to `main`/a version branch additionally runs [`.github/workflows/buil
 
 ## Troubleshooting
 
+- **Common questions:** see the [FAQ](./docs/FAQ.md) (build and pull, start and access, data and shutdown, timezone).
 - **Port Conflicts:** Ensure ports 80, 5005, and 5433 are free. The built-in Mailpit web UI is published on host port **8025**; SMTP is handled inside the container, so port 25 is not published unless you explicitly add `-p 25:25`.
 - **Memory:** This repo defaults Polarion to `4g` container RAM and a `3g` JVM heap so the process still has native headroom. Increase only if a specific workload requires it.
 - **Apple `container` builder:** `bash scripts/polarionctl.sh build-image` starts the builder on demand with an `8g` cap and stops it again after the image build finishes.
