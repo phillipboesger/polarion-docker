@@ -980,6 +980,20 @@
 @keyframes blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ed-code .caret { animation: none; } }
 
+  
+/* ─── SITE BAR: the same top navigation as boesger.com ─── */
+html { scroll-padding-top: 110px; }
+.sitebar { position: fixed; top: 0; left: 0; right: 0; z-index: 101; height: 34px; background: rgba(11,42,76,0.97); border-bottom: 1px solid var(--border); }
+.sitebar-in { max-width: none; height: 100%; margin: 0 auto; padding: 0 48px; display: flex; align-items: center; gap: 22px; font-size: 12.5px; }
+.sitebar a { color: var(--text-sub); text-decoration: none; transition: color .2s; }
+.sitebar a:hover { color: #fff; }
+.sitebar .sb-home { font-family: var(--mono); font-weight: 600; color: var(--accent); margin-right: 6px; }
+.sitebar .sb-links { display: flex; gap: 20px; flex: 1; }
+.sitebar .sb-cta { color: var(--accent); font-weight: 600; }
+nav { top: 34px; }
+.hero h1 { font-size: clamp(32px, 7vw, 86px); }
+.hero { padding-top: 154px; }
+@media (max-width: 768px) { .sitebar-in { padding: 0 16px; gap: 14px; } .sitebar .sb-links { gap: 14px; } .sitebar .sb-cta { display: none; } }
   </style>
 </head>
 <body>
@@ -987,6 +1001,18 @@
 <canvas id="particles"></canvas>
 
 <!-- ─── NAV ─── -->
+<div class="sitebar">
+  <div class="sitebar-in">
+    <a href="https://boesger.com" class="sb-home">boesger.com</a>
+    <span class="sb-links">
+      <a href="https://boesger.com/">Home</a>
+      <a href="https://boesger.com/profile">Profile</a>
+      <a href="https://boesger.com/work">Projects</a>
+      <a href="https://polarion.boesger.com" target="_blank" rel="noopener">Blog</a>
+    </span>
+    <a href="https://boesger.com/contact" class="sb-cta">Get in touch</a>
+  </div>
+</div>
 <nav>
   <a href="https://boesger.com" class="nav-brand">
     <div class="nav-brand-logo">
