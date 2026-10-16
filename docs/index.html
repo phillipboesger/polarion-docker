@@ -438,6 +438,7 @@
     /* ─── DEMO TABS ─── */
     .demo-tabs {
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
       gap: 8px;
       margin-bottom: 20px;
@@ -944,6 +945,41 @@
       .about-links { justify-content: center; }
       footer { flex-direction: column; text-align: center; }
     }
+  
+/* ─── VISUAL EXPLAINER ─── */
+.viz-hero { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.hero > *:not(.viz-hero):not(.hero-scroll) { position: relative; z-index: 1; }
+.hero::after { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse 46% 44% at 50% 50%, rgba(18,56,95,0.82), rgba(18,56,95,0) 100%); }
+.viz-section .section-heading { text-wrap: balance; }
+.viz-section { position: relative; z-index: 1; padding: 96px 24px 24px; }
+.viz-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+.viz-frame { position: relative; aspect-ratio: 16 / 10; border-radius: 26px; border: 1px solid rgba(255,255,255,0.14); background: linear-gradient(165deg, rgba(98,214,255,0.08), rgba(11,42,76,0.7) 60%); box-shadow: 0 18px 50px rgba(7,28,52,0.35), inset 0 1px 0 rgba(255,255,255,0.12); overflow: hidden; }
+.viz-frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+@media (max-width: 820px) { .viz-inner { grid-template-columns: 1fr; } .viz-frame { aspect-ratio: 4 / 3.4; } .hero::after { background: radial-gradient(ellipse 80% 50% at 50% 50%, rgba(18,56,95,0.8), rgba(18,56,95,0) 100%); } }
+
+.editor-demo { position: absolute; inset: 0; display: flex; flex-direction: column; font-family: var(--mono); font-size: 13px; background: #0b2a4c; }
+.ed-bar { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.04); }
+.ed-bar .dots { display: flex; gap: 6px; }
+.ed-bar .dots i { width: 10px; height: 10px; border-radius: 50%; background: #ff5f57; }
+.ed-bar .dots i:nth-child(2) { background: #febc2e; }
+.ed-bar .dots i:nth-child(3) { background: #28c840; }
+.ed-tabs { display: flex; gap: 4px; flex: 1; min-width: 0; overflow: hidden; }
+.ed-tabs b { font-weight: 500; font-size: 11.5px; padding: 4px 10px; border-radius: 6px 6px 0 0; color: var(--text-dim); white-space: nowrap; }
+.ed-tabs b.on { color: #fff; background: rgba(98,214,255,0.14); box-shadow: inset 0 -2px 0 var(--accent); }
+.ed-status { font-size: 11px; color: var(--text-dim); transition: color .2s; }
+.is-saved .ed-status { color: #7be0b0; }
+.ed-body { display: grid; grid-template-columns: 34% 1fr; flex: 1; min-height: 0; }
+.ed-tree { border-right: 1px solid var(--border); padding: 12px 12px; font-size: 11.5px; color: var(--text-sub); }
+.ed-tree p { font-size: 10px; letter-spacing: 0.12em; color: var(--text-dim); margin-bottom: 8px; }
+.ed-tree li { list-style: none; padding: 3px 0 3px 12px; }
+.ed-tree li.on { color: #fff; background: rgba(98,214,255,0.12); border-radius: 4px; }
+.ed-tree li.dir { padding-left: 0; color: #fff; }
+.ed-code { margin: 0; padding: 14px 16px; overflow: hidden; color: #e6e9ff; line-height: 1.75; white-space: pre; }
+.ed-code .kw { color: #ff8fa3; } .ed-code .fn { color: #62d6ff; } .ed-code .vr { color: #ffc266; } .ed-code .tg { color: #7be0b0; } .ed-code .pn { color: #bdeeff; } .ed-code .cm { color: #9db8d3; }
+.ed-code .caret { display: inline-block; width: 7px; height: 1.1em; vertical-align: text-bottom; background: var(--accent); margin-left: 1px; animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .ed-code .caret { animation: none; } }
+
   </style>
 </head>
 <body>
@@ -973,6 +1009,7 @@
 
 <!-- ─── HERO ─── -->
 <section class="hero">
+  <canvas id="viz-hero" class="viz-hero" aria-hidden="true"></canvas>
   <div class="hero-badge">Open Source · MIT License</div>
 
   <h1>polarion<span>-docker</span></h1>
@@ -994,7 +1031,7 @@
     <div class="hero-meta-sep"></div>
     <div class="hero-meta-item">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Polarion ALM 2406+
+      Polarion ALM 2410+
     </div>
   </div>
 
@@ -1044,6 +1081,18 @@
     </div>
   </div>
 </div>
+
+<!-- ─── VISUAL ─── -->
+<section class="viz-section">
+  <div class="viz-inner">
+    <div>
+      <p class="section-label">How it builds</p>
+      <h2 class="section-heading">Layers in, Polarion up</h2>
+      <p class="section-sub">The image stacks OS, database, Java and Polarion into one container. Then three ports come up: Polarion, the Mailpit mail catcher and the debugger.</p>
+    </div>
+    <div class="viz-frame"><canvas id="viz-flow" role="img" aria-label="Image layers drop into a container, then Polarion, Mailpit and the debugger come online"></canvas></div>
+  </div>
+</section>
 
 <!-- ─── DEMO ─── -->
 <section class="demo-section">
@@ -1595,5 +1644,6 @@
   }
 </script>
 
+<script src="viz.js?v=20261016b"></script>
 </body>
 </html>
