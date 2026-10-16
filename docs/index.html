@@ -5,40 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>polarion-docker · Polarion on your laptop, ready in minutes</title>
   <meta name="description" content="Open-source Docker image for running Polarion ALM locally. Supports Docker, OrbStack, and Apple Container. VS Code tasks, integrated debugger, and built-in mail catcher included. Built by Phillip Bösger." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="icon" href="https://digital.boesger.com/favicon.png" />
+  <link rel="preload" href="https://boesger.com/assets/fonts/geist-var.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" href="https://boesger.com/assets/images/brand-icon-cyan.png" />
   <style>
+    @font-face { font-family: 'Geist'; src: url('https://boesger.com/assets/fonts/geist-var.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+    @font-face { font-family: 'Geist Mono'; src: url('https://boesger.com/assets/fonts/geist-mono-var.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:         #0b0f1a;
-      --bg-card:    #111827;
-      --bg-card-2:  #0f1520;
-      --accent:     #3BA8F1;
-      --accent-dim: rgba(59,168,241,0.15);
-      --accent-glow:rgba(59,168,241,0.35);
+      --bg:         #12385f;
+      --bg-card:    #174470;
+      --bg-card-2:  #134069;
+      --accent:     #62d6ff;
+      --accent-dim: rgba(98,214,255,0.14);
+      --accent-glow:rgba(98,214,255,0.35);
       --text:       #ffffff;
-      --text-sub:   rgba(255,255,255,0.6);
-      --text-dim:   rgba(255,255,255,0.35);
-      --border:     rgba(255,255,255,0.07);
-      --border-acc: rgba(59,168,241,0.25);
+      --text-sub:   rgba(255,255,255,0.74);
+      --text-dim:   rgba(255,255,255,0.5);
+      --border:     rgba(255,255,255,0.12);
+      --border-acc: rgba(98,214,255,0.3);
+      --warm:       #ffc266;
       --radius:     12px;
       --radius-lg:  20px;
-      --font:       'Inter', -apple-system, sans-serif;
-      --mono:       'JetBrains Mono', 'Menlo', monospace;
+      --font:       'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --mono:       'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
     }
 
     html { scroll-behavior: smooth; }
 
     body {
-      background-color: #050c1c;
+      background-color: #12385f;
       background-image:
-        linear-gradient(rgba(5,12,28,0.80), rgba(5,12,28,0.90)),
-        url('https://digital.boesger.com/images/background.png');
-      background-size: cover;
-      background-position: center top;
+        radial-gradient(ellipse 70% 60% at 18% 0%, rgba(140,210,255,0.28) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 50% at 84% 100%, rgba(98,214,255,0.16) 0%, transparent 70%),
+        linear-gradient(180deg, #174470 0%, #12385f 55%, #0f3050 100%);
       background-attachment: fixed;
       color: var(--text);
       font-family: var(--font);
@@ -67,7 +68,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 18px 48px;
-      background: rgba(11,15,26,0.96);
+      background: rgba(18,56,95,0.92);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
@@ -155,7 +156,7 @@
       transform: translateX(-50%);
       width: 800px;
       height: 800px;
-      background: radial-gradient(ellipse at center, rgba(59,168,241,0.18) 0%, transparent 65%);
+      background: radial-gradient(ellipse at center, rgba(98,214,255,0.18) 0%, transparent 65%);
       pointer-events: none;
     }
 
@@ -190,7 +191,7 @@
       letter-spacing: -0.04em;
       line-height: 1;
       color: #fff;
-      text-shadow: 0 0 80px rgba(59,168,241,0.3);
+      text-shadow: 0 0 80px rgba(98,214,255,0.3);
       margin-bottom: 10px;
     }
 
@@ -247,9 +248,9 @@
       border: none;
       cursor: pointer;
       transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
-      box-shadow: 0 4px 20px rgba(59,168,241,0.35);
+      box-shadow: 0 4px 20px rgba(98,214,255,0.35);
     }
-    .btn-primary:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59,168,241,0.4); }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 8px 30px rgba(98,214,255,0.4); }
 
     .btn-ghost {
       display: inline-flex; align-items: center; gap: 8px;
@@ -340,7 +341,7 @@
     /* ─── STATS BAR ─── */
     .stats-bar {
       position: relative; z-index: 1;
-      background: rgba(59,168,241,0.06);
+      background: rgba(98,214,255,0.06);
       border-top: 1px solid var(--border-acc);
       border-bottom: 1px solid var(--border-acc);
       padding: 28px 24px;
@@ -457,7 +458,7 @@
     .demo-tab .tab-icon { font-size: 15px; }
     .demo-tab:hover { border-color: var(--border-acc); color: var(--text); }
     .demo-tab.active {
-      background: rgba(59,168,241,0.12);
+      background: rgba(98,214,255,0.12);
       border-color: var(--accent);
       color: var(--accent);
     }
@@ -467,19 +468,19 @@
       border-radius: var(--radius-lg);
       overflow: hidden;
       border: 1px solid var(--border-acc);
-      box-shadow: 0 0 80px rgba(59,168,241,0.12), 0 32px 64px rgba(0,0,0,0.5);
-      background: #0a0d14;
+      box-shadow: 0 0 80px rgba(98,214,255,0.12), 0 32px 64px rgba(0,0,0,0.5);
+      background: #0b2a4c;
       max-width: 900px;
       margin: 0 auto;
     }
     .demo-panel { display: none; width: 100%; }
     .demo-panel.active { display: block; }
-    .demo-panel--terminal { padding: 0; background: #0a0d14; }
+    .demo-panel--terminal { padding: 0; background: #0b2a4c; }
     .demo-panel--terminal .terminal { margin: 0; border: none; border-radius: var(--radius-lg); }
 
     /* ─── TERMINAL MOCK ─── */
     .terminal {
-      background: #0a0d14;
+      background: #0b2a4c;
       border: 1px solid var(--border);
       border-radius: var(--radius);
       overflow: hidden;
@@ -544,7 +545,7 @@
     .feature-card:hover {
       border-color: var(--border-acc);
       transform: translateY(-4px);
-      box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 40px rgba(59,168,241,0.06);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 40px rgba(98,214,255,0.06);
     }
 
     .feature-icon {
@@ -805,7 +806,7 @@
       background: var(--bg-card);
       border: 2px solid var(--border-acc);
       overflow: hidden;
-      box-shadow: 0 0 30px rgba(59,168,241,0.2);
+      box-shadow: 0 0 30px rgba(98,214,255,0.2);
     }
 
     .about-avatar img {
@@ -850,7 +851,7 @@
       font-size: 13px;
       transition: all 0.2s;
     }
-    .about-link:hover { border-color: var(--border-acc); color: var(--text); background: rgba(59,168,241,0.08); }
+    .about-link:hover { border-color: var(--border-acc); color: var(--text); background: rgba(98,214,255,0.08); }
 
     /* ─── CTA BANNER ─── */
     .cta-section {
@@ -951,9 +952,9 @@
 
 <!-- ─── NAV ─── -->
 <nav>
-  <a href="https://digital.boesger.com" class="nav-brand">
+  <a href="https://boesger.com" class="nav-brand">
     <div class="nav-brand-logo">
-      <img src="https://digital.boesger.com/favicon.png" alt="Bösger Digital" />
+      <img src="https://boesger.com/assets/images/brand-icon-cyan.png" alt="Bösger Digital" />
     </div>
     <span><strong>Bösger</strong> Digital</span>
   </a>
@@ -1470,7 +1471,7 @@
 <section class="about-section">
   <div class="about-inner">
     <div class="about-avatar">
-      <img src="https://digital.boesger.com/images/photo.webp" alt="Phillip Bösger" onerror="this.style.display='none'" />
+      <img src="https://boesger.com/assets/images/about-image.webp" alt="Phillip Bösger" onerror="this.style.display='none'" />
     </div>
     <div class="about-text">
       <h3>Built by Phillip Bösger</h3>
@@ -1516,9 +1517,9 @@
 
 <!-- ─── FOOTER ─── -->
 <footer>
-  <a href="https://digital.boesger.com" class="footer-brand">
+  <a href="https://boesger.com" class="footer-brand">
     <div class="footer-brand-logo">
-      <img src="https://digital.boesger.com/favicon.png" alt="Bösger Digital" />
+      <img src="https://boesger.com/assets/images/brand-icon-cyan.png" alt="Bösger Digital" />
     </div>
     Bösger Digital · Phillip Bösger
   </a>
@@ -1563,7 +1564,7 @@
       const alpha = 0.3 + 0.5 * Math.sin(t * s.speed + s.phase);
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(59,168,241,${alpha})`;
+      ctx.fillStyle = `rgba(98,214,255,${alpha})`;
       ctx.fill();
     });
     requestAnimationFrame(loop);
