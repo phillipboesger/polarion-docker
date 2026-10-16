@@ -996,6 +996,17 @@ html { scroll-padding-top: 90px; }
   .nav-cta .cta-text { display: none; }
 }
 
+
+/* ─── DEMO PLAYBACK (demo.js) ─── */
+.pl-hide { opacity: 0; transform: translateY(6px); }
+[data-play-lines] > * { transition: opacity .3s ease, transform .3s ease; }
+.pl-caret::after { content: ''; display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px; background: var(--accent); animation: plblink 1s steps(2) infinite; }
+@keyframes plblink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pl-caret::after { animation: none; } }
+
+.mk-feed > * { flex-shrink: 0; }
+.mk-bar span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+@media (max-width: 760px) { .demo-tabs { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; scrollbar-width: none; padding-bottom: 4px; } .demo-tabs::-webkit-scrollbar { display: none; } .demo-tab { white-space: nowrap; flex-shrink: 0; } }
 /* ─── AUDIT FIXES ─── */
 .cta-inner h2 { line-height: 1.08; text-wrap: balance; }
   </style>
@@ -1153,7 +1164,7 @@ html { scroll-padding-top: 90px; }
             <div class="dot dot-g"></div>
             <span class="terminal-title">polarion-docker · build &amp; start</span>
           </div>
-          <div class="terminal-body">
+          <div class="terminal-body" data-play-lines>
             <div><span class="t-comment"># 1. Clone the repo and drop your Polarion ZIP into data/</span></div>
             <div><span class="t-prompt">$</span> <span class="t-cmd">git clone https://github.com/phillipboesger/polarion-docker</span></div>
             <div><span class="t-prompt">$</span> <span class="t-cmd">cp ~/Downloads/PolarionALM_2506.zip data/</span></div>
@@ -1182,7 +1193,7 @@ html { scroll-padding-top: 90px; }
             <div class="dot dot-g"></div>
             <span class="terminal-title">polarion-docker · VS Code workspace tasks</span>
           </div>
-          <div class="terminal-body">
+          <div class="terminal-body" data-play-lines>
             <div><span class="t-comment">// Run any of these from VS Code  ⌘⇧P → "Tasks: Run Task"</span></div>
             <div style="margin-top:12px">
               <span class="t-key">Container: Start</span>
@@ -1232,7 +1243,7 @@ html { scroll-padding-top: 90px; }
             <div class="dot dot-g"></div>
             <span class="terminal-title">polarion-docker · Mailpit embedded mail catcher</span>
           </div>
-          <div class="terminal-body">
+          <div class="terminal-body" data-play-lines>
             <div><span class="t-comment"># Mailpit starts automatically with the container</span></div>
             <div><span class="t-comment"># All Polarion notification emails are caught — nothing reaches real mailboxes</span></div>
             <div style="margin-top:10px"><span class="t-prompt">$</span> <span class="t-cmd">./polarionctl.sh start</span></div>
@@ -1257,7 +1268,7 @@ html { scroll-padding-top: 90px; }
             <div class="dot dot-g"></div>
             <span class="terminal-title">polarion-docker · Polarion Copilot with SALT licensing</span>
           </div>
-          <div class="terminal-body">
+          <div class="terminal-body" data-play-lines>
             <div><span class="t-comment"># License via a Siemens License Server, Copilot on, one seat, LLM config seeded once</span></div>
             <div style="margin-top:10px"><span class="t-prompt">$</span> <span class="t-cmd">docker run -d -p 80:80 \</span></div>
             <div><span class="t-cmd">    -e SALT_LICENSE_SERVER=29000@salt.example.com \</span></div>
@@ -1666,6 +1677,7 @@ html { scroll-padding-top: 90px; }
   }
 </script>
 
+<script src="demo.js?v=20261016a"></script>
 <script src="viz.js?v=20261016b"></script>
 </body>
 </html>
