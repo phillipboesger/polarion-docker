@@ -99,8 +99,8 @@
 
   /* Block: image layers drop into a container, then the services come up. */
   function buildDocker(canvas) {
-    var names = [["AlmaLinux", C.blue], ["PostgreSQL + SVN", C.mint], ["Java 17/21", C.warm], ["Polarion", C.cyan]];
-    var ports = [["Polarion", ":80", C.cyan], ["Mailpit", ":8025", C.warm], ["Debugger", ":8000", C.coral]];
+    var names = [["AlmaLinux", C.blue], ["PostgreSQL + SVN", C.mint], ["Java 21", C.warm], ["Polarion", C.cyan]];
+    var ports = [["Polarion", ":80", C.cyan], ["Mailpit", ":8025", C.warm], ["Debugger", ":5005", C.coral]];
     var T = 11;
     return stage(canvas, function () { return {}; }, function (ctx, w, h, t, dt, s, still) {
       var u = still ? 9 : (t % T);

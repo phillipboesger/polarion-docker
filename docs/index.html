@@ -995,6 +995,9 @@ html { scroll-padding-top: 90px; }
   .nav-cta { padding: 8px 10px; margin-left: 6px; }
   .nav-cta .cta-text { display: none; }
 }
+
+/* ─── AUDIT FIXES ─── */
+.cta-inner h2 { line-height: 1.08; text-wrap: balance; }
   </style>
 </head>
 <body>
@@ -1157,7 +1160,7 @@ html { scroll-padding-top: 90px; }
             <div style="margin-top:10px"><span class="t-comment"># 2. Build the image (BuildKit handles the ZIP automatically)</span></div>
             <div><span class="t-prompt">$</span> <span class="t-cmd">docker build -t polarion:local .</span></div>
             <div style="margin-top:6px"><span class="t-out">  [1/6] FROM docker.io/library/almalinux:9</span></div>
-            <div><span class="t-out">  [3/6] RUN install PostgreSQL, SVN, Java 17 ...</span></div>
+            <div><span class="t-out">  [3/6] RUN install PostgreSQL, SVN, Java 21 ...</span></div>
             <div><span class="t-out">  [6/6] COPY polarionctl.sh, entrypoint.sh ...</span></div>
             <div><span class="t-val">  ✓ Built polarion:local  (3.2 GB)</span></div>
             <div style="margin-top:10px"><span class="t-comment"># 3. Start Polarion</span></div>
@@ -1199,7 +1202,7 @@ html { scroll-padding-top: 90px; }
             </div>
             <div>
               <span class="t-key">Debugger: Attach</span>
-              <span class="t-out"> ·  connect VS Code Java debugger on port 8000</span>
+              <span class="t-out"> ·  connect VS Code Java debugger on port 5005</span>
             </div>
             <div>
               <span class="t-key">Plugin: Redeploy</span>
@@ -1210,7 +1213,7 @@ html { scroll-padding-top: 90px; }
             </div>
             <div>
               <span class="t-out">  Debugger attached on </span>
-              <span class="t-val">localhost:8000 (JDWP)</span>
+              <span class="t-val">localhost:5005 (JDWP)</span>
             </div>
             <div>
               <span class="t-out">  Thread suspended at </span>
@@ -1302,7 +1305,7 @@ html { scroll-padding-top: 90px; }
         <div class="feature-icon">🐛</div>
         <div class="feature-title">Integrated Debugger</div>
         <p class="feature-desc">JDWP debug port exposed out of the box. Attach VS Code's Java debugger and set breakpoints inside any Polarion class or your own plugin — live, while Polarion runs.</p>
-        <span class="feature-tag">jdwp · port 8000</span>
+        <span class="feature-tag">jdwp · port 5005</span>
       </div>
 
       <div class="feature-card">
@@ -1545,7 +1548,7 @@ html { scroll-padding-top: 90px; }
       <h3>Built by Phillip Bösger</h3>
       <p class="about-role">Polarion & AI Freelancer · Bösger Digital</p>
       <p class="about-bio">
-        Nearly a decade of Polarion experience. I built polarion-docker because setting up a local Polarion instance was taking half a day — and I needed to do it every time I started with a new client or version. Now it's two commands.
+        8 years of Polarion, from Siemens enterprise to startup. I built polarion-docker because setting up a local Polarion instance was taking half a day — and I needed to do it every time I started with a new client or version. Now it's two commands.
       </p>
       <div class="about-links">
         <a href="https://polarion.boesger.com" class="about-link" target="_blank">
