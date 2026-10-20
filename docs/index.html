@@ -1009,6 +1009,66 @@ html { scroll-padding-top: 90px; }
 @media (max-width: 760px) { .demo-tabs { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; scrollbar-width: none; padding-bottom: 4px; } .demo-tabs::-webkit-scrollbar { display: none; } .demo-tab { white-space: nowrap; flex-shrink: 0; } }
 /* ─── AUDIT FIXES ─── */
 .cta-inner h2 { line-height: 1.08; text-wrap: balance; }
+
+    /* Mobile section menu */
+    .nav-toggle {
+      display: none;
+      width: 42px;
+      height: 42px;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      border: 1px solid var(--border-acc);
+      border-radius: 10px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .nav-toggle:hover { background: var(--accent-glow); border-color: var(--accent); }
+    .nav-toggle svg { width: 20px; height: 20px; }
+    .nav-toggle:focus-visible, .nav-links a:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 3px;
+    }
+    @media (max-width: 900px) {
+      nav { position: fixed; }
+      .nav-toggle { display: inline-flex; }
+      .nav-links, .nav-links.is-open {
+        display: none;
+        position: absolute;
+        top: calc(100% + 1px);
+        left: 12px;
+        right: 12px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        padding: 12px;
+        border: 1px solid var(--border-acc);
+        border-radius: 12px;
+        background: var(--bg-card);
+        box-shadow: 0 16px 40px rgba(0,0,0,0.32);
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+      }
+      .nav-links.is-open { display: flex; }
+      .nav-links .nav-cta .cta-text { display: inline; }
+      .nav-links .nav-link, .nav-links .nav-cta {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        margin: 0;
+        padding: 10px 12px;
+        border-radius: 8px;
+      }
+      .nav-links .nav-local, .nav-links .nav-sep { display: none; }
+      .nav-links.is-open .nav-local { display: flex; }
+      .nav-links .nav-sep { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .nav-toggle { transition: none; }
+    }
   </style>
 </head>
 <body>
@@ -1023,7 +1083,12 @@ html { scroll-padding-top: 90px; }
     </div>
     <span><strong>Bösger</strong> Digital</span>
   </a>
-  <div class="nav-links">
+  <button class="nav-toggle" type="button" aria-label="Open section menu" aria-expanded="false" aria-controls="section-menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <path class="menu-icon-open" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </button>
+  <div class="nav-links" id="section-menu">
     <a href="https://boesger.com/" class="nav-link nav-site">Home</a>
     <a href="https://boesger.com/profile" class="nav-link nav-site">Profile</a>
     <a href="https://boesger.com/work" class="nav-link nav-site">Projects</a>
@@ -1679,5 +1744,33 @@ html { scroll-padding-top: 90px; }
 
 <script src="demo.js?v=20261016a"></script>
 <script src="viz.js?v=20261016b"></script>
+
+<script>
+  (function () {
+    var toggle = document.querySelector('.nav-toggle');
+    var menu = document.getElementById('section-menu');
+    if (!toggle || !menu) return;
+    function setOpen(open) {
+      menu.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', open ? 'Close section menu' : 'Open section menu');
+    }
+    toggle.addEventListener('click', function () {
+      setOpen(toggle.getAttribute('aria-expanded') !== 'true');
+    });
+    menu.querySelectorAll('a').forEach(function (link) {
+      link.addEventListener('click', function () { setOpen(false); });
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
+    window.addEventListener('resize', function () {
+      if (window.innerWidth > 900) setOpen(false);
+    });
+  })();
+</script>
 </body>
 </html>
