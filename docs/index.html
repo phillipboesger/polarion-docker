@@ -1048,8 +1048,11 @@ html { scroll-padding-top: 90px; }
         border-radius: 12px;
         background: var(--bg-card);
         box-shadow: 0 16px 40px rgba(0,0,0,0.32);
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
       }
       .nav-links.is-open { display: flex; }
+      .nav-links .nav-cta .cta-text { display: inline; }
       .nav-links .nav-link, .nav-links .nav-cta {
         display: flex;
         align-items: center;
