@@ -2,14 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>polarion-docker · Polarion on your laptop, ready in minutes</title>
   <meta name="description" content="Open-source Docker image for running Polarion ALM locally. Supports Docker, OrbStack, and Apple Container. VS Code tasks, integrated debugger, and built-in mail catcher included. Built by Phillip Bösger." />
-  <link rel="preload" href="https://boesger.com/assets/fonts/geist-var.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="icon" href="https://boesger.com/assets/images/brand-icon-cyan.png" />
+  <link rel="preload" href="fonts/geist-var.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" href="images/brand-icon-cyan.png" />
   <style>
-    @font-face { font-family: 'Geist'; src: url('https://boesger.com/assets/fonts/geist-var.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
-    @font-face { font-family: 'Geist Mono'; src: url('https://boesger.com/assets/fonts/geist-mono-var.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+    @font-face { font-family: 'Geist'; src: url('fonts/geist-var.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+    @font-face { font-family: 'Geist Mono'; src: url('fonts/geist-mono-var.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1079,7 +1081,7 @@ html { scroll-padding-top: 90px; }
 <nav>
   <a href="https://boesger.com" class="nav-brand">
     <div class="nav-brand-logo">
-      <img src="https://boesger.com/assets/images/brand-icon-cyan.png" alt="Bösger Digital" />
+      <img src="images/brand-icon-cyan.png" alt="Bösger Digital" />
     </div>
     <span><strong>Bösger</strong> Digital</span>
   </a>
@@ -1618,7 +1620,7 @@ html { scroll-padding-top: 90px; }
 <section class="about-section">
   <div class="about-inner">
     <div class="about-avatar">
-      <img src="https://boesger.com/assets/images/about-image.webp" alt="Phillip Bösger" onerror="this.style.display='none'" />
+      <img src="images/about-image.webp" alt="Phillip Bösger" onerror="this.style.display='none'" />
     </div>
     <div class="about-text">
       <h3>Built by Phillip Bösger</h3>
@@ -1666,11 +1668,11 @@ html { scroll-padding-top: 90px; }
 <footer>
   <a href="https://boesger.com" class="footer-brand">
     <div class="footer-brand-logo">
-      <img src="https://boesger.com/assets/images/brand-icon-cyan.png" alt="Bösger Digital" />
+      <img src="images/brand-icon-cyan.png" alt="Bösger Digital" />
     </div>
     Bösger Digital · Phillip Bösger
   </a>
-  <div class="footer-links">
+  <div class="footer-links"><a href="https://boesger.com/imprint.html" class="footer-link">Impressum</a><a href="https://boesger.com/privacy.html" class="footer-link">Datenschutz / Privacy</a>
     <a href="https://polarion.boesger.com" class="footer-link" target="_blank">Blog</a>
     <a href="https://github.com/phillipboesger/polarion-docker" class="footer-link" target="_blank">GitHub</a>
     <a href="https://linkedin.com/in/phillip-boesger-90691215a" class="footer-link" target="_blank">LinkedIn</a>
