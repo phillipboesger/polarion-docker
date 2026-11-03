@@ -1,176 +1,39 @@
-# Agents — repository guide
+# polarion-docker
 
-This repository contains a reproducible Polarion Docker image and helper scripts used for developing and running automation agents (Playwright-based UI captures, headless screenshots, MCP tests, and other scripted integrations). This document collects recommended workflows, conventions, and troubleshooting tips so contributors can get started quickly and consistently.
+Self-configuring Docker image around the proprietary Siemens Polarion ALM installer (BYO installer ZIP + license). No application code: the "source" is the `Dockerfile`, the shell scripts run at container start (`entrypoint.d/`), and CI.
 
-## Quickstart — build & run
-
-- Build (recommended with BuildKit):
+## Commands
 
 ```bash
-# from repo root
-DOCKER_BUILDKIT=1 docker build --progress=plain -t "${POLARION_IMAGE:-polarion:local}" -f Dockerfile .
+# Build (BuildKit required; Polarion ZIP in data/, gitignored). Always --platform linux/amd64 (Polarion ships amd64 only, host is often arm64)
+DOCKER_BUILDKIT=1 docker build --platform linux/amd64 --progress=plain \
+  --build-arg POLARION_ZIP=PolarionALM_2512.zip -t polarion:local -f Dockerfile .
+# Build/run/stop via the runtime-agnostic wrapper (Docker or Apple `container`)
+bash scripts/polarionctl.sh {list-zips|build-image|list-images|start|stop|logs|errors}
+# Lint, same tools and flags as CI (.github/workflows/pr-checks.yml)
+docker run --rm -i hadolint/hadolint hadolint --failure-threshold error --ignore DL3008 --ignore DL3009 --ignore DL3015 - < Dockerfile
+shellcheck --shell=bash --exclude=SC1091,SC2039 -S error entrypoint.d/*.sh scripts/*.sh polarion_starter.sh
+yamllint -d "{extends: relaxed, rules: {line-length: {max: 200}}}" .github/workflows/ docker-compose.yml docker-compose.dev.yml
+python3 -m py_compile scripts/download_polarion_zip.py
+docker compose -f docker-compose.yml config --quiet   # and docker-compose.dev.yml
 ```
 
-- Run example (mount `data/`, expose host port 8080):
+## Tests
 
-```bash
-docker run --rm -it \
-  -p 8080:80 \
-  -v "$PWD/data":/data:ro \
-  -e JDWP_ENABLED=false \
-  --name polarion-dev \
-  "${POLARION_IMAGE:-polarion:local}"
-```
+- No local test runner. Tests are inline shell steps in CI jobs (`timezone-tests`, `shutdown-tests` in `pr-checks.yml`; real-image smoke tests in `build-and-push.yml`). They build small standalone images with only the layers under test, so no licensed ZIP is needed. To run one locally, copy that step's `run:` block.
+- New behaviour needs an automated CI test plus doc updates (README, CHANGELOG), not just manual verification.
+- Never run `polarionctl.sh start/stop/build-image` for real from tests; mock the container CLI.
 
-- Access UI at `http://localhost:8080/` after startup completes.
+## Hard constraints
 
-## Branches, versions and image tags
+- The image intentionally runs as root (Apache/SVN/service permissions depend on it).
+- `base.url` must stay `http://localhost` by default (maintainer decision); any base-URL fix is an opt-in override, not a changed default.
+- Working branches must not start with `v` (a `v*` branch triggers the heavy build and pushes to GHCR); use `feat/`, `fix/`, `sync/`.
+- Never commit credentials or license files; use a gitignored `.env` or runtime mounts.
+- Keep `JDWP_ENABLED=false` for shared/dev images unless interactive debugging is needed.
 
-Which Polarion version you get is decided entirely by the branch you build from. There is one branch per supported Polarion version, named exactly `v` + four digits:
+## Docs
 
-| Branch | Installer archive it builds from | Published image tags |
-| :--- | :--- | :--- |
-| `v2512` | `PolarionALM_2512.zip` | `v2512`, `polarion-v2512` |
-| `main` | newest `PolarionALM_*.zip` in the Drive folder | `main`, `latest` |
-
-Points worth knowing before you script against this:
-
-- **Only `v[0-9][0-9][0-9][0-9]` branches build.** A working branch like `v2410-sync` starts no run; the trigger used to be a broad `v*`, which silently built the newest installer and published an image tagged after the branch. Name working branches `sync/…` or `feat/…`.
-- **A manual run can override the version.** Actions → Run workflow takes an optional `version` input; left empty it uses the branch/tag it was dispatched from.
-- **`v<NNNN>` floats.** It re-points to the newest build of that version, like `latest`. Use `--pull=always` if you need the newest at start.
-- **Provenance is on the image** — `polarion.version`, `polarion.build` (which exact build is behind the floating tag), `polarion.zip` (the Siemens archive consumed), plus `org.opencontainers.image.revision` / `.created`. Read them with `docker ps --format '{{.Label "polarion.build"}}'`.
-
-Local builds are tagged `polarion:<NNNN>` (no `v` prefix) plus `polarion:local`, which always points at your most recent local build. The examples in this document write the image as `${POLARION_IMAGE:-polarion:local}`, so they default to that most recent build but honour `POLARION_IMAGE` when you set it — the same variable `docker-compose.yml` and `scripts/polarionctl.sh start` read.
-
-See the "Image tags and versions" section of [README.md](./README.md) for the user-facing version.
-
-## Playwright & automation guidance
-
-- Use the CLI wrapper (`PWCLI`) when available. Set it once:
-
-```bash
-export PWCLI="${PWCLI:-./scripts/playwright_cli.sh}"
-```
-
-- Always login before running capture scripts. Example pattern:
-
-```bash
-# 1) ensure Polarion is up and reachable
-# 2) run login script (creates session cookie)
-node login.js
-# 3) run capture pages
-node capture-pages.js
-```
-
-- Snapshot frequently when using the CLI to keep element refs stable. Save artifacts under `output/playwright/`.
-
-- Prefer CLI-first workflows (wrapper commands) for quick iteration; use `playwright-interactive` only when session persistence is required.
-
-## Docker / BuildKit notes
-
-- This repository's `Dockerfile` uses `RUN --mount=type=bind` for efficient builds — BuildKit is required for that form. If your environment lacks BuildKit, either:
-  - enable BuildKit with `DOCKER_BUILDKIT=1`, or
-  - edit the Dockerfile to `COPY` the ZIP and `unzip` during build (less efficient).
-
-- Verify large downloads / JDK archives with SHA256 checksums. Prefer using `ARG` for checksum values and validate with `sha256sum -c` in the Dockerfile.
-
-- Keep `JDWP_ENABLED=false` for shared/dev images unless explicit interactive debug is needed.
-
-## Recommended development flow
-
-1. Build the image locally (see Quickstart).
-2. Start Polarion container with `-v "$PWD/data":/data:ro` and appropriate env vars.
-3. Wait for the HTTP endpoint to be available (`curl -sS http://localhost:8080/`).
-4. Run `node login.js` (or equivalent) to create a valid session for captures.
-5. Run capture/test scripts. If running agent in a second container, create a Docker network:
-
-```bash
-docker network create polarion-net
-docker run -d --network polarion-net --name polarion-dev -p 8080:80 -v "$PWD/data":/data:ro "${POLARION_IMAGE:-polarion:local}"
-docker run --rm --network polarion-net my-agent-image:latest node run-capture.js --host http://polarion-dev
-```
-
-## Logs & debugging
-
-- Tail the most recent Polarion log inside a running container:
-
-```bash
-docker exec -it polarion-dev sh -c "tail -f $(ls -t /opt/polarion/data/logs/main/*.log | head -n1)"
-```
-
-- Or use `docker logs -f polarion-dev` for container stdout/stderr.
-- The repository includes VS Code tasks for live logs (see the workspace tasks list).
-
-## Security & secrets
-
-- Never commit credentials or license files. Use a gitignored `.env` for local env vars, or mount secrets at runtime.
-- Validate third-party downloads (JDK, archives) via checksums; avoid `--no-check-certificate` in production builds.
-
-## Conventions & repository layout
-
-- `Dockerfile` — image build (see root Dockerfile).
-- `data/` — place Polarion ZIP(s) here (mounted read-only into container at runtime).
-- `scripts/` — helper scripts (playwright wrappers, downloaders, redeploy helpers).
-- `output/playwright/` — recommended path for Playwright artifacts (screenshots, traces, PDFs).
-
-Suggested agent folder layout (optional):
-
-```
-agents/
-  playwright/
-    login.js
-    capture-pages.js
-    Dockerfile (if containerized)
-
-scripts/
-  playwright_cli.sh
-```
-
-## CI / reproducibility tips
-
-- Provide an alternative Dockerfile path or build argument for CI systems that do not support BuildKit.
-- Pin base images and validate checksums to make builds deterministic.
-
-## Troubleshooting checklist
-
-- Build fails on `RUN --mount` — enable BuildKit (`DOCKER_BUILDKIT=1`).
-- Missing Polarion ZIP — ensure `data/` contains the expected `PolarionALM_*.zip`.
-- Service not starting — inspect logs as shown above; check memory/disk.
-- Playwright captures missing assets or failing — ensure login step runs and session cookie is valid.
-
-## Examples & useful commands
-
-- Build with BuildKit:
-
-```bash
-DOCKER_BUILDKIT=1 docker build -t "${POLARION_IMAGE:-polarion:local}" -f Dockerfile .
-```
-
-- Run Polarion locally:
-
-```bash
-docker run --rm -it -p 8080:80 -v "$PWD/data":/data:ro --name polarion-dev "${POLARION_IMAGE:-polarion:local}"
-```
-
-- Create a dev network and run agent container on same network:
-
-```bash
-docker network create polarion-net
-docker run -d --network polarion-net --name polarion-dev -p 8080:80 -v "$PWD/data":/data:ro "${POLARION_IMAGE:-polarion:local}"
-docker run --rm --network polarion-net my-agent-image node run-capture.js --host http://polarion-dev
-```
-
-## Where to look next
-
-- `Dockerfile` (root) — image build details.
-- `scripts/` — helper scripts; add a `playwright_cli.sh` if not present.
-- `.github/skills/polarion-docker-agents/SKILL.md` — operational guidance used to build this document.
-
-If you'd like, I can also:
-
-- Add a `scripts/playwright_cli.sh` wrapper and `agents/playwright` example folder,
-- Add a `docker-compose.agent.yml` example for multi-container local testing.
-
----
-
-Generated with guidance from repository skills and Playwright CLI best practices.
+- User docs: `README.md`, `CHANGELOG.md`, `PLUGIN-DEVELOPMENT.md`, `docs/apple-container.md`, `docs/FAQ.md`.
+- Automation agents (Playwright captures, dev flow, logs, troubleshooting): `docs/agent-automation.md`; skill `.github/skills/polarion-docker-agents/SKILL.md`.
+- Path-scoped rules in `.claude/rules/`: `startup-chain.md` (entrypoint.d, polarion_starter.sh), `version-branches.md` (branch/tag model, CI), `dockerfile.md` (Dockerfile, scripts, compose).
