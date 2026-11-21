@@ -694,6 +694,7 @@ jobs:
           printf 'var u="http://localhost/polarion/a";' > /var/www/mock/x.js
           for _ in $(seq 1 30000); do printf '{"u":"http://localhost/polarion/a"}\n'; done > /var/www/mock/big.json
           printf '{"u":"http://localhost/polarion/a"}' | gzip > /var/www/mock/z.json.gz
+          printf '{"u":"http://localhost/polarion/a","t":"http://loc' > /var/www/mock/tail.json
           printf 'AddType application/json .json\nAddEncoding gzip .gz\nAlias /polarion /var/www/mock\n<Directory /var/www/mock>\nRequire all granted\n</Directory>\n' > /etc/apache2/conf-available/mock.conf
           a2enmod lua >/dev/null
           a2enconf polarion-baseurl mock >/dev/null
@@ -737,6 +738,13 @@ jobs:
           [ "$(get localhost:8080 z.json.gz | gunzip -c)" = '{"u":"http://localhost/polarion/a"}' ] \
             || fail "content-encoded answer must pass through untouched"
           ok "gzip-encoded answer passes through"
+          [ "$(get localhost:8080 tail.json)" = '{"u":"http://localhost:8080/polarion/a","t":"http://loc' ] \
+            || fail "partial needle at end of body must be flushed"
+          ok "partial needle at EOF flushed"
+          for bad in 'a"b' 'a<b' 'a b'; do
+            ! get "$bad" x.json | grep -q 'http://a' || fail "unsafe Host '$bad' must not be injected"
+          done
+          ok "quote, angle bracket and space Hosts ignored"
           docker stop baseurl-test >/dev/null
           echo "ALL BASE URL TESTS PASSED"
 
