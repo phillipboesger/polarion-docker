@@ -21,12 +21,15 @@ reset_admin_password() {
 	[ -n "$stored" ] || return 2 # row not created yet
 	[ "$stored" = "$(openssl passwd -apr1 -salt "$(cut -d'$' -f3 <<<"$stored")" admin)" ] && return 0
 	secret="$(cd "$SECRETS_CLI_DIR" && java -jar secrets-cli.jar get --key polarion.admin.user.password.key --non-interactive 2>/dev/null | tail -n 1)"
-	[ -n "$secret" ] || return 0
+	[ -n "$secret" ] || return 2 # secrets-cli not ready yet, retry
 	salt="$(cut -d'$' -f3 <<<"$stored")"
-	[ "$stored" = "$(openssl passwd -apr1 -salt "$salt" "$secret")" ] || return 0
-	PGPASSWORD="$pg_pass" "${psql_cmd[@]}" \
-		-c "update polarion_internal.userauthn set password='$(openssl passwd -apr1 admin)' where username='admin'" >/dev/null &&
+	[ "$stored" = "$(printf '%s' "$secret" | openssl passwd -apr1 -salt "$salt" -stdin)" ] || return 0
+	if PGPASSWORD="$pg_pass" "${psql_cmd[@]}" \
+		-c "update polarion_internal.userauthn set password='$(openssl passwd -apr1 admin)' where username='admin'" >/dev/null; then
 		echo "Reset the generated admin password to the documented default (admin)."
+	else
+		return 2 # transient DB error, retry
+	fi
 }
 
 # Poll for up to 15 minutes; the watcher ends once the row exists (whether or not it needed a reset).
