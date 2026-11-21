@@ -20,6 +20,11 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ### Added
 
+- Per-request base URL: an Apache `mod_lua` output filter (`config/baseurl.lua`) rewrites Polarion's fixed
+  `http://localhost/` in JSON/HTML answers to the host:port of the request, so any published host port
+  works without extra parameters (REST links, Polarion Apps, core plugins). `base.url` stays
+  `http://localhost`; `BASE_URL_REWRITE=false` disables it.
+- Opt-in `BASE_URL=https://polarion.example.com` for production: sets `base.url` (also for emails and background jobs) and replaces the Host-based filter.
 - Polarion 2612 EA support: new `v2612` version branch (`PolarionALM_2612.zip`) and default-on
   `com.siemens.polarion.mcp.enabled` (MCP server) and `polarionapp.enabled` (Polarion Applications).
   Polarion 2612 generates a random admin password into its Secrets Manager; `entrypoint.d/08-reset-admin-password.sh`
