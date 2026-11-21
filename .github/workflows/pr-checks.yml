@@ -748,6 +748,30 @@ jobs:
           docker stop baseurl-test >/dev/null
           echo "ALL BASE URL TESTS PASSED"
 
+      - name: Verify BASE_URL override validation and base.url write
+        run: |
+          # Runs the real validation block of 05-configure-apache.sh and the real base.url edit of 99-start-polarion.sh.
+          fail() { echo "FAIL: $*"; exit 1; }
+          block="$(awk '/^POLARION_BASE_URL_OVERRIDE=""/{f=1} f{print} f&&/^fi$/{exit}' entrypoint.d/05-configure-apache.sh)"
+          [ -n "$block" ] || fail "validation block not found"
+          check() { BASE_URL="$1" bash -c "$block"'; printf %s "$POLARION_BASE_URL_OVERRIDE"' 2>/dev/null; }
+          [ "$(check https://polarion.example.com/)" = "https://polarion.example.com" ] || fail "trailing slash not normalised"
+          [ "$(check http://host.local:8080)" = "http://host.local:8080" ] || fail "host:port rejected"
+          for bad in 'ftp://x.com' 'https://x.com/path' 'https://a"b.com' 'polarion.example.com' 'https://x.com;rm' 'https://a|b.com'; do
+            [ -z "$(check "$bad")" ] || fail "invalid BASE_URL accepted: $bad"
+          done
+          [ -z "$(BASE_URL= bash -c "$block"'; printf %s "$POLARION_BASE_URL_OVERRIDE"')" ] || fail "empty BASE_URL must stay unset"
+          echo "OK: BASE_URL validation"
+          printf 'base.url=http://localhost\nrepo=http://localhost/repo\n' > /tmp/p.props
+          snippet="$(awk '/^if \[ -n "\$\{POLARION_BASE_URL_OVERRIDE/{f=1} f{print} f&&/^fi$/{exit}' entrypoint.d/99-start-polarion.sh | sed 's#/opt/polarion/etc/polarion.properties#/tmp/p.props#g')"
+          POLARION_BASE_URL_OVERRIDE=https://polarion.example.com bash -c "$snippet" >/dev/null
+          grep -qx 'base.url=https://polarion.example.com' /tmp/p.props || fail "base.url not written"
+          grep -qx 'repo=http://localhost/repo' /tmp/p.props || fail "repo must stay localhost"
+          POLARION_BASE_URL_OVERRIDE= bash -c "$snippet" >/dev/null
+          grep -qx 'base.url=http://localhost' /tmp/p.props || fail "default must reset to localhost"
+          echo "OK: base.url write and default reset"
+
+
   drift-check-tests:
     name: Version Branch Drift Check
     runs-on: ubuntu-latest

@@ -36,7 +36,18 @@ enable_apache_module_if_available authz_svn
 # Per-request base URL: Polarion bakes base.url=http://localhost (no port) into REST links and
 # Apps/Core-Plugin URLs, which breaks on any host port other than 80. This filter swaps in the
 # Host header the client used. base.url itself stays localhost. BASE_URL_REWRITE=false disables.
-if [ "$(printf %s "${BASE_URL_REWRITE:-true}" | tr A-Z a-z)" != "false" ] && [ -f /etc/apache2/lua/baseurl.lua ] \
+# BASE_URL (production behind a domain/proxy, e.g. https://polarion.example.com) is written into
+# base.url by 99-start-polarion.sh and replaces the Host-based filter; invalid values are ignored.
+POLARION_BASE_URL_OVERRIDE=""
+if [ -n "${BASE_URL:-}" ]; then
+    _base_url="${BASE_URL%/}"
+    if [[ "$_base_url" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]; then
+        POLARION_BASE_URL_OVERRIDE="$_base_url"
+    else
+        echo "WARNING: BASE_URL='${BASE_URL}' is not scheme://host[:port]; ignoring it." >&2
+    fi
+fi
+if [ -z "$POLARION_BASE_URL_OVERRIDE" ] && [ "$(printf %s "${BASE_URL_REWRITE:-true}" | tr A-Z a-z)" != "false" ] && [ -f /etc/apache2/lua/baseurl.lua ] \
     && [ -f /etc/apache2/conf-available/polarion-baseurl.conf ] \
     && [ -f /etc/apache2/mods-available/lua.load ]; then
     enable_apache_module_if_available lua
