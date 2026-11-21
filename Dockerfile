@@ -11,7 +11,7 @@ ARG POLARION_ZIP=
 
 # Temurin JDK major version to install; the build always fetches the latest GA release for
 # this major version via the Adoptium API instead of pinning an exact build.
-ARG JDK_MAJOR_VERSION=21
+ARG JDK_MAJOR_VERSION=17
 
 # Mailpit version for the built-in mail catcher (runs by default at runtime; disable
 # with MAILPIT_EMBEDDED=false). Defaults to "latest" so each image build picks up the
@@ -84,7 +84,7 @@ RUN set -eux; \
   tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
   rm jdk.tar.gz
 
-# Configure Java alternatives for JDK 21.
+# Configure Java alternatives for JDK 17.
 # Same deterministic-resolution reasoning as the postgres symlink above: only one JDK is
 # ever installed by this build, but resolving by highest version rather than an unbounded
 # glob avoids the same directory-instead-of-symlink failure mode if that ever changes.
