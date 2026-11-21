@@ -48,12 +48,12 @@ if [ -n "${BASE_URL:-}" ]; then
     fi
 fi
 if [ -z "$POLARION_BASE_URL_OVERRIDE" ] && [ "$(printf %s "${BASE_URL_REWRITE:-true}" | tr A-Z a-z)" != "false" ] && [ -f /etc/apache2/lua/baseurl.lua ] \
-    && [ -f /etc/apache2/conf-available/polarion-baseurl.conf ] \
+    && [ -f /etc/apache2/conf-available/zz-polarion-baseurl.conf ] \
     && [ -f /etc/apache2/mods-available/lua.load ]; then
     enable_apache_module_if_available lua
-    a2enconf polarion-baseurl >/dev/null 2>&1 || true
+    a2enconf zz-polarion-baseurl >/dev/null 2>&1 || true
 else
-    a2disconf polarion-baseurl >/dev/null 2>&1 || true
+    a2disconf zz-polarion-baseurl >/dev/null 2>&1 || true
 fi
 
 if ! validate_apache_config; then

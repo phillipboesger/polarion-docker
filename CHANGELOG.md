@@ -18,6 +18,14 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ## [Unreleased]
 
+### Fixed
+
+- Per-request base URL did not rewrite proxied Polarion answers (REST `links`): `polarion.conf`'s DEFLATE
+  `<Location>` replaced the filter, and Polarion gzips REST JSON. The filter now loads as
+  `zz-polarion-baseurl.conf`, chains in front of DEFLATE and stops the backend from gzipping.
+
+## [2026-11-21]
+
 ### Added
 
 - Per-request base URL: an Apache `mod_lua` output filter (`config/baseurl.lua`) rewrites Polarion's fixed
