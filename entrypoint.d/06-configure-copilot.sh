@@ -120,6 +120,15 @@ seed_runtime_properties() {
     rm -f "$content_file"
 }
 
+# Polarion 2612+: the Applications topic in Global Administration is switched on by the global
+# configuration property polarionapp.enabled, which lives in context.properties (not in
+# polarion.properties). Seeded like any runtime property, so a value changed in the UI wins.
+# POLARION_APPS_ENABLED=false skips it.
+if [[ "${POLARION_APPS_ENABLED:-true}" != "false" ]] && declare -F polarion_image_version >/dev/null \
+    && image_version_for_apps="$(polarion_image_version)" && [[ "$((10#$image_version_for_apps))" -ge 2612 ]]; then
+    POLARION_RUNTIME_PROPERTIES="polarionapp.enabled=true"$'\n'"${POLARION_RUNTIME_PROPERTIES:-}"
+fi
+
 copilot_status=0
 if [[ -n "${POLARION_COPILOT_USERS:-}" ]]; then
     configure_copilot_users || copilot_status=1
