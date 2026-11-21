@@ -19,7 +19,7 @@ saves a full round trip.
 
 ## Polarion version / branch
 
-<!-- Which branch did you build from (main, v2410, v2506, v2512, v2606), or which
+<!-- Which branch did you build from (main, v2410, v2506, v2512, v2606, v2612), or which
      published image tag are you running? For a local build, also name the
      PolarionALM_*.zip in data/. -->
 

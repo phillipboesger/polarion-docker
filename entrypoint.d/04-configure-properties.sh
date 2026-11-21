@@ -16,6 +16,9 @@ OTHER_PARAMS=(
     "com.siemens.polarion.platform.locationIndex.enabled=true"
     "com.siemens.polarion.collaborationNotifications.enabled=true"
     "com.siemens.polarion.ui.showStackTraces=true"
+    # Polarion 2612+: official MCP server (/polarion/mcp/, needs the REST API with token auth
+    # above). Older versions ignore it. Polarion Applications are enabled in 06-configure-copilot.sh.
+    "com.siemens.polarion.mcp.enabled=true"
 )
 
 # Configure allowed hosts for Tomcat service

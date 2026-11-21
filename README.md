@@ -23,7 +23,7 @@ Polarion's installer is proprietary and manual to set up — PostgreSQL, Apache 
 | :---------------------- | :-------------------------------------------------------- |
 | **Runtimes**            | Docker (primary) · Podman · Apple `container`             |
 | **Platforms**           | macOS (Apple Silicon & Intel) · Windows (WSL2) · Linux    |
-| **Maintained versions** | [`v2606`, `v2512`, `v2506`, `v2410`](#supported-versions) |
+| **Maintained versions** | [`v2612` (EA), `v2606`, `v2512`, `v2506`, `v2410`](#supported-versions) |
 | **License**             | [MIT](./LICENSE)                                          |
 
 ### Table of Contents
@@ -279,6 +279,7 @@ Each Polarion version lives on its own branch, and that branch name drives every
 
 | Branch  | Installer archive          | Published image tags      |
 | :------ | :------------------------- | :------------------------ |
+| `v2612` | `PolarionALM_2612.zip`     | `v2612`, `polarion-v2612` |
 | `v2512` | `PolarionALM_2512.zip`     | `v2512`, `polarion-v2512` |
 | `main`  | newest `PolarionALM_*.zip` | `main`, `latest`          |
 
@@ -311,6 +312,7 @@ This repository tracks roughly the same ~2-year window Siemens supports, one bra
 
 | Branch  | Status                    |
 | :------ | :------------------------ |
+| `v2612` | early access (EA)         |
 | `v2606` | maintained                |
 | `v2512` | maintained                |
 | `v2506` | maintained                |
@@ -533,3 +535,17 @@ Every push to `main`/a version branch additionally runs [`.github/workflows/buil
 - **Apple `container` builder:** `bash scripts/polarionctl.sh build-image` starts the builder on demand with an `8g` cap and stops it again after the image build finishes.
 - **Apple `container` first start:** A cold `linux/amd64` start on Apple silicon can spend multiple minutes in image unpacking before the container becomes visible or HTTP responds.
 - **Access Denied:** If pulling `ghcr.io/...` fails, ensure you have requested and been granted access by the owner, or build locally (Option A).
+
+## Polarion 2612 EA: MCP server and Applications
+
+The image enables the new 2612 features by default. `com.siemens.polarion.mcp.enabled` is set on every branch by `entrypoint.d/04-configure-properties.sh` at each start (older Polarion versions ignore it); `polarionapp.enabled` is seeded once on 2612+ only if it is not yet defined in `context.properties`, so a value changed later persists:
+
+| Property | Purpose |
+| :--- | :--- |
+| `com.siemens.polarion.mcp.enabled=true` | Official MCP server at `http://localhost/polarion/mcp/` (authenticate as a Polarion user with a token) |
+| `polarionapp.enabled=true` (global configuration property, seeded into `context.properties`; `POLARION_APPS_ENABLED=false` skips it) | Polarion Applications (navigation topic, sidebar, Work Item form panel); upload ZIPs in Global Administration → Applications |
+| `com.siemens.polarion.rest.enabled=true` + `...restApiToken.enabled=true` | Already default; both features require REST with token authentication |
+
+Polarion 2612 generates a random admin password at install time. `entrypoint.d/08-reset-admin-password.sh` resets it to the documented default `admin` at first start, only while the stored password still equals the generated one; a password changed in Polarion is never touched.
+
+2612 is an Early Access build for testing only, not for production use.
