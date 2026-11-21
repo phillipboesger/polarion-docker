@@ -67,7 +67,12 @@ if [ "$SVN_READY" != "true" ]; then
 fi
 
 echo "Applying default-local repository settings to polarion.properties"
-sed -i 's|^base.url=.*|base.url=http://localhost|' /opt/polarion/etc/polarion.properties
+if [ -n "${POLARION_BASE_URL_OVERRIDE:-}" ]; then
+	echo "Using BASE_URL override for base.url: ${POLARION_BASE_URL_OVERRIDE}"
+	sed -i "s|^base.url=.*|base.url=${POLARION_BASE_URL_OVERRIDE}|" /opt/polarion/etc/polarion.properties
+else
+	sed -i 's|^base.url=.*|base.url=http://localhost|' /opt/polarion/etc/polarion.properties
+fi
 sed -i 's|^repo=.*|repo=http://localhost/repo|' /opt/polarion/etc/polarion.properties
 sed -i 's|^controlHostname=.*|controlHostname=localhost|' /opt/polarion/etc/polarion.properties
 
