@@ -11,7 +11,7 @@ ARG POLARION_ZIP=
 
 # Temurin JDK major version to install; the build always fetches the latest GA release for
 # this major version via the Adoptium API instead of pinning an exact build.
-ARG JDK_MAJOR_VERSION=17
+ARG JDK_MAJOR_VERSION=21
 
 # Mailpit version for the built-in mail catcher (runs by default at runtime; disable
 # with MAILPIT_EMBEDDED=false). Defaults to "latest" so each image build picks up the
@@ -84,7 +84,7 @@ RUN set -eux; \
   tar -zxf jdk.tar.gz -C /usr/lib/jvm; \
   rm jdk.tar.gz
 
-# Configure Java alternatives for JDK 17.
+# Configure Java alternatives for JDK 21.
 # Same deterministic-resolution reasoning as the postgres symlink above: only one JDK is
 # ever installed by this build, but resolving by highest version rather than an unbounded
 # glob avoids the same directory-instead-of-symlink failure mode if that ever changes.
@@ -187,8 +187,8 @@ RUN sed -i 's/\r//' /root/.bash_aliases && \
 # Apache output filter that rewrites base.url (http://localhost/) to the host:port the client
 # used, so any published host port works without extra parameters (see config/baseurl.lua).
 COPY config/baseurl.lua /etc/apache2/lua/baseurl.lua
-COPY config/polarion-baseurl.conf /etc/apache2/conf-available/polarion-baseurl.conf
-RUN sed -i 's/\r//' /etc/apache2/lua/baseurl.lua /etc/apache2/conf-available/polarion-baseurl.conf
+COPY config/polarion-baseurl.conf /etc/apache2/conf-available/zz-polarion-baseurl.conf
+RUN sed -i 's/\r//' /etc/apache2/lua/baseurl.lua /etc/apache2/conf-available/zz-polarion-baseurl.conf
 
 # Copy modular entrypoint scripts.
 # Kept last on purpose: these are only read at container start, never at build time, but they

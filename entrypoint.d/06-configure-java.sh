@@ -7,11 +7,10 @@ if [ ! -f "$CONFIG_FILE" ]; then
     return 1
 fi
 
-# Polarion's config.sh ships biased-locking flags that JDK 18+ no longer accepts.
-# Strip just the flag tokens (not the whole line) so the config's closing
-# quote or backslash continuation on the same line survives intact.
-sed -i 's/-XX:+UseBiasedLocking//' "$CONFIG_FILE"
-sed -i 's/-XX:BiasedLockingStartupDelay=[0-9]*//' "$CONFIG_FILE"
+# Polarion 2506 still ships biased-locking flags that were removed in modern JDKs.
+# Strip them from the installed config so the service can start on Temurin 21.
+sed -i '/UseBiasedLocking/d' "$CONFIG_FILE"
+sed -i '/BiasedLockingStartupDelay/d' "$CONFIG_FILE"
 
 # Configure Memory settings from JAVA_OPTS
 if [[ -n "$JAVA_OPTS" ]]; then

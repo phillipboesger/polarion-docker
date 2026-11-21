@@ -79,13 +79,6 @@ sed -i 's|^controlHostname=.*|controlHostname=localhost|' /opt/polarion/etc/pola
 # Ensure Apache (www-data) can write SVN repo lock/index files during commits.
 normalize_repo_permissions
 
-# Verify Apache is actually running before starting Polarion
-if ! pgrep -x apache2 >/dev/null 2>&1; then
-    echo "WARNING: Apache is not running — attempting recovery start before Polarion..."
-    rm -f /var/run/apache2/apache2.pid 2>/dev/null || true
-    service apache2 start || true
-fi
-
 # Remove Polarion workspace config and metadata to avoid issues with stale data
 rm -rf /opt/polarion/data/workspace/.config /opt/polarion/data/workspace/.metadata
 
