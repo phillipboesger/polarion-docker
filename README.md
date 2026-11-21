@@ -543,7 +543,7 @@ The `v2612` image enables the new 2612 features by default (set in `entrypoint.d
 | Property | Purpose |
 | :--- | :--- |
 | `com.siemens.polarion.mcp.enabled=true` | Official MCP server at `http://localhost/polarion/mcp/` (authenticate as a Polarion user with a token) |
-| `polarionapp.enabled=true` | Polarion Applications (navigation topic, sidebar, Work Item form panel); upload ZIPs in Global Administration → Applications |
+| `polarionapp.enabled=true` (global configuration property, seeded into `context.properties`; `POLARION_APPS_ENABLED=false` skips it) | Polarion Applications (navigation topic, sidebar, Work Item form panel); upload ZIPs in Global Administration → Applications |
 | `com.siemens.polarion.rest.enabled=true` + `...restApiToken.enabled=true` | Already default; both features require REST with token authentication |
 
 2612 is an Early Access build for testing only, not for production use.
