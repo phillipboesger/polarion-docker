@@ -184,6 +184,12 @@ COPY config/bash_aliases /root/.bash_aliases
 RUN sed -i 's/\r//' /root/.bash_aliases && \
   printf '\n. /root/.bash_aliases\n' >> /root/.bashrc
 
+# Apache output filter that rewrites base.url (http://localhost/) to the host:port the client
+# used, so any published host port works without extra parameters (see config/baseurl.lua).
+COPY config/baseurl.lua /etc/apache2/lua/baseurl.lua
+COPY config/polarion-baseurl.conf /etc/apache2/conf-available/polarion-baseurl.conf
+RUN sed -i 's/\r//' /etc/apache2/lua/baseurl.lua /etc/apache2/conf-available/polarion-baseurl.conf
+
 # Copy modular entrypoint scripts.
 # Kept last on purpose: these are only read at container start, never at build time, but they
 # change far more often than the JDK/Mailpit/Polarion install layers above — copying them
