@@ -33,6 +33,18 @@ enable_apache_module_if_available dav
 enable_apache_module_if_available dav_svn
 enable_apache_module_if_available authz_svn
 
+# Per-request base URL: Polarion bakes base.url=http://localhost (no port) into REST links and
+# Apps/Core-Plugin URLs, which breaks on any host port other than 80. This filter swaps in the
+# Host header the client used. base.url itself stays localhost. BASE_URL_REWRITE=false disables.
+if [ "${BASE_URL_REWRITE:-true}" != "false" ] && [ -f /etc/apache2/lua/baseurl.lua ] \
+    && [ -f /etc/apache2/conf-available/polarion-baseurl.conf ] \
+    && [ -f /etc/apache2/mods-available/lua.load ]; then
+    enable_apache_module_if_available lua
+    a2enconf polarion-baseurl >/dev/null 2>&1 || true
+else
+    a2disconf polarion-baseurl >/dev/null 2>&1 || true
+fi
+
 if ! validate_apache_config; then
     echo "❌ Aborting Apache start due to invalid configuration."
 else

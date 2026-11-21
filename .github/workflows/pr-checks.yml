@@ -671,6 +671,75 @@ jobs:
           [ "$rc" = 2 ] || fail "empty secret must return 2 (got $rc)"
           echo "ALL ADMIN RESET TESTS PASSED"
 
+  baseurl-tests:
+    name: Per-request base URL (Apache filter)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build isolated Apache test image
+        run: |
+          # Real config/baseurl.lua + config/polarion-baseurl.conf in a stock Apache that serves
+          # mock /polarion/ files (no licensed Polarion ZIP needed).
+          mkdir -p /tmp/baseurl-ctx
+          cp config/baseurl.lua config/polarion-baseurl.conf /tmp/baseurl-ctx/
+          cat > /tmp/baseurl-ctx/setup.sh <<'EOF'
+          #!/bin/bash
+          set -e
+          mkdir -p /var/www/mock
+          printf '{"links":{"self":"http://localhost/polarion/rest/v1/x","other":"http://localhost:9/keep"}}' > /var/www/mock/x.json
+          printf '<a href="http://localhost/polarion/a">a</a>' > /var/www/mock/x.html
+          printf 'var u="http://localhost/polarion/a";' > /var/www/mock/x.js
+          for _ in $(seq 1 30000); do printf '{"u":"http://localhost/polarion/a"}\n'; done > /var/www/mock/big.json
+          printf '{"u":"http://localhost/polarion/a"}' | gzip > /var/www/mock/z.json.gz
+          printf 'AddType application/json .json\nAddEncoding gzip .gz\nAlias /polarion /var/www/mock\n<Directory /var/www/mock>\nRequire all granted\n</Directory>\n' > /etc/apache2/conf-available/mock.conf
+          a2enmod lua >/dev/null
+          a2enconf polarion-baseurl mock >/dev/null
+          echo 'ServerName localhost' >> /etc/apache2/apache2.conf
+          EOF
+          cat > /tmp/baseurl-ctx/Dockerfile <<'EOF'
+          FROM ubuntu:24.04
+          RUN apt-get -y update && apt-get -y install --no-install-recommends apache2 gzip && apt-get clean
+          COPY baseurl.lua /etc/apache2/lua/baseurl.lua
+          COPY polarion-baseurl.conf /etc/apache2/conf-available/polarion-baseurl.conf
+          COPY setup.sh /setup.sh
+          RUN bash /setup.sh
+          CMD ["apache2ctl", "-D", "FOREGROUND"]
+          EOF
+          docker build -q -t baseurl-test:ci /tmp/baseurl-ctx
+          echo "✅ Apache base URL test image built"
+
+      - name: Verify host:port rewrite, pass-through and safety cases
+        run: |
+          docker run -d --name baseurl-test -p 8099:80 baseurl-test:ci
+          for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:8099/polarion/x.json && break; sleep 1; done
+          fail() { echo "FAIL: $*"; docker logs baseurl-test 2>&1 | tail -20; exit 1; }
+          ok() { echo "OK: $*"; }
+          get() { curl -s -H "Host: $1" "http://localhost:8099/polarion/$2"; }
+
+          [ "$(get localhost:8080 x.json)" = '{"links":{"self":"http://localhost:8080/polarion/rest/v1/x","other":"http://localhost:9/keep"}}' ] \
+            || fail "JSON not rewritten to localhost:8080"
+          ok "JSON rewritten to the request host:port, other URLs untouched"
+          get 127.0.0.1:8081 x.html | grep -q 'http://127.0.0.1:8081/polarion/a' || fail "HTML not rewritten"
+          ok "HTML rewritten"
+          get localhost x.json | grep -q '"self":"http://localhost/polarion' || fail "Host localhost must stay unchanged"
+          ok "plain localhost unchanged"
+          get localhost:8080 x.js | grep -q 'http://localhost/polarion/a' || fail "JavaScript must not be rewritten"
+          ok "static JavaScript untouched"
+          ! get 'evil.com/x' x.json | grep -q 'evil.com' || fail "unsafe Host must not be injected"
+          ok "unsafe Host value ignored"
+          total="$(get localhost:8080 big.json | wc -l | tr -d ' ')"
+          rewritten="$(get localhost:8080 big.json | grep -c 'http://localhost:8080/polarion/a')"
+          [ "$total" = 30000 ] && [ "$rewritten" = 30000 ] || fail "large body: $rewritten of $total lines rewritten"
+          ok "large body rewritten across chunk boundaries"
+          [ "$(get localhost:8080 z.json.gz | gunzip -c)" = '{"u":"http://localhost/polarion/a"}' ] \
+            || fail "content-encoded answer must pass through untouched"
+          ok "gzip-encoded answer passes through"
+          docker stop baseurl-test >/dev/null
+          echo "ALL BASE URL TESTS PASSED"
+
   drift-check-tests:
     name: Version Branch Drift Check
     runs-on: ubuntu-latest
