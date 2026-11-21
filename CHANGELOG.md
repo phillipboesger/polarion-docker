@@ -18,6 +18,8 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ## [Unreleased]
 
+## [2026-11-21]
+
 ### Added
 
 - Per-request base URL: an Apache `mod_lua` output filter (`config/baseurl.lua`) rewrites Polarion's fixed
