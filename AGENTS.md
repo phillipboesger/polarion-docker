@@ -30,6 +30,7 @@ Which Polarion version you get is decided entirely by the branch you build from.
 
 | Branch | Installer archive it builds from | Published image tags |
 | :--- | :--- | :--- |
+| `v2612` | `PolarionALM_2612.zip` | `v2612`, `polarion-v2612` |
 | `v2512` | `PolarionALM_2512.zip` | `v2512`, `polarion-v2512` |
 | `main` | newest `PolarionALM_*.zip` in the Drive folder | `main`, `latest` |
 

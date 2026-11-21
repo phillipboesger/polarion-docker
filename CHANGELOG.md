@@ -20,6 +20,9 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ### Added
 
+- Polarion 2612 EA support: new `v2612` version branch (`PolarionALM_2612.zip`) and default-on
+  `com.siemens.polarion.mcp.enabled` (MCP server) and `polarionapp.enabled` (Polarion Applications).
+  Note: `main` builds the newest installer ZIP, so it now builds 2612 EA.
 - `docs/FAQ.md` with answers to recurring questions (build and pull, start and access,
   data and shutdown, timezone), linked from the README's Troubleshooting section.
 
