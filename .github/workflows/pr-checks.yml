@@ -695,16 +695,16 @@ jobs:
           for _ in $(seq 1 30000); do printf '{"u":"http://localhost/polarion/a"}\n'; done > /var/www/mock/big.json
           printf '{"u":"http://localhost/polarion/a"}' | gzip > /var/www/mock/z.json.gz
           printf '{"u":"http://localhost/polarion/a","t":"http://loc' > /var/www/mock/tail.json
-          printf 'AddType application/json .json\nAddEncoding gzip .gz\nAlias /polarion /var/www/mock\n<Directory /var/www/mock>\nRequire all granted\n</Directory>\n' > /etc/apache2/conf-available/mock.conf
-          a2enmod lua >/dev/null
-          a2enconf polarion-baseurl mock >/dev/null
+          printf 'AddType application/json .json\nAddEncoding gzip .gz\n<Location ~ \"/(polarion(?!(/bir)))\">\nSetOutputFilter DEFLATE\n</Location>\nAlias /polarion /var/www/mock\n<Directory /var/www/mock>\nRequire all granted\n</Directory>\n' > /etc/apache2/conf-available/mock.conf
+          a2enmod lua headers deflate >/dev/null
+          a2enconf zz-polarion-baseurl mock >/dev/null
           echo 'ServerName localhost' >> /etc/apache2/apache2.conf
           EOF
           cat > /tmp/baseurl-ctx/Dockerfile <<'EOF'
           FROM ubuntu:24.04
           RUN apt-get -y update && apt-get -y install --no-install-recommends apache2 gzip && apt-get clean
           COPY baseurl.lua /etc/apache2/lua/baseurl.lua
-          COPY polarion-baseurl.conf /etc/apache2/conf-available/polarion-baseurl.conf
+          COPY polarion-baseurl.conf /etc/apache2/conf-available/zz-polarion-baseurl.conf
           COPY setup.sh /setup.sh
           RUN bash /setup.sh
           CMD ["apache2ctl", "-D", "FOREGROUND"]
@@ -723,6 +723,9 @@ jobs:
           [ "$(get localhost:8080 x.json)" = '{"links":{"self":"http://localhost:8080/polarion/rest/v1/x","other":"http://localhost:9/keep"}}' ] \
             || fail "JSON not rewritten to localhost:8080"
           ok "JSON rewritten to the request host:port, other URLs untouched"
+          curl -s --compressed -H "Host: localhost:8080" http://localhost:8099/polarion/x.json | grep -q 'http://localhost:8080/polarion/rest/v1/x' \
+            || fail "JSON must be rewritten with the DEFLATE location from polarion.conf active"
+          ok "rewrite survives the polarion.conf DEFLATE location"
           get 127.0.0.1:8081 x.html | grep -q 'http://127.0.0.1:8081/polarion/a' || fail "HTML not rewritten"
           ok "HTML rewritten"
           get localhost x.json | grep -q '"self":"http://localhost/polarion' || fail "Host localhost must stay unchanged"
