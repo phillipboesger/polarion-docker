@@ -538,12 +538,14 @@ Every push to `main`/a version branch additionally runs [`.github/workflows/buil
 
 ## Polarion 2612 EA: MCP server and Applications
 
-The `v2612` image enables the new 2612 features by default (set in `entrypoint.d/04-configure-properties.sh`, re-applied on every start):
+The image enables the new 2612 features by default. `com.siemens.polarion.mcp.enabled` is set on every branch by `entrypoint.d/04-configure-properties.sh` at each start (older Polarion versions ignore it); `polarionapp.enabled` is seeded once on 2612+ only if it is not yet defined in `context.properties`, so a value changed later persists:
 
 | Property | Purpose |
 | :--- | :--- |
 | `com.siemens.polarion.mcp.enabled=true` | Official MCP server at `http://localhost/polarion/mcp/` (authenticate as a Polarion user with a token) |
 | `polarionapp.enabled=true` (global configuration property, seeded into `context.properties`; `POLARION_APPS_ENABLED=false` skips it) | Polarion Applications (navigation topic, sidebar, Work Item form panel); upload ZIPs in Global Administration → Applications |
 | `com.siemens.polarion.rest.enabled=true` + `...restApiToken.enabled=true` | Already default; both features require REST with token authentication |
+
+Polarion 2612 generates a random admin password at install time. `entrypoint.d/08-reset-admin-password.sh` resets it to the documented default `admin` at first start, only while the stored password still equals the generated one; a password changed in Polarion is never touched.
 
 2612 is an Early Access build for testing only, not for production use.

@@ -620,6 +620,57 @@ jobs:
       - name: Verify SALT switch, Copilot seats and runtime property seeding
         run: docker run --rm copilot-test:ci bash /run-tests.sh
 
+  admin-reset-tests:
+    name: Admin password reset (2612+)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test 08-reset-admin-password.sh against stubbed psql and secrets-cli
+        run: |
+          set -u
+          T="$(mktemp -d)"; mkdir -p "$T/bin" "$T/state" "$T/cli"; touch "$T/cli/secrets-cli.jar"
+          cat > "$T/bin/psql" <<'EOF'
+          #!/bin/bash
+          case "$*" in
+            *update*) [ -e "$STATE/failupd" ] && exit 1; echo updated > "$STATE/updated" ;;
+            *) [ -e "$STATE/nodb" ] && exit 2; [ -f "$STATE/stored" ] && cat "$STATE/stored" ;;
+          esac
+          EOF
+          cat > "$T/bin/java" <<'EOF'
+          #!/bin/bash
+          [ -f "$STATE/secret" ] && { echo "noise"; cat "$STATE/secret"; }; exit 0
+          EOF
+          chmod +x "$T/bin/psql" "$T/bin/java"
+          export STATE="$T/state" PATH="$T/bin:$PATH" SECRETS_CLI_DIR="$T/cli"
+          # shellcheck disable=SC1091
+          source entrypoint.d/08-reset-admin-password.sh
+          fail() { echo "FAIL: $*"; exit 1; }
+          reset_state() { rm -f "$STATE"/*; }
+          hash() { printf '%s' "$2" | openssl passwd -apr1 -salt "$1" -stdin; }
+
+          reset_state; reset_admin_password && rc=0 || rc=$?
+          [ "$rc" = 2 ] || fail "missing row must return 2 (got $rc)"
+          reset_state; touch "$STATE/nodb"; reset_admin_password && rc=0 || rc=$?
+          [ "$rc" = 2 ] || fail "psql failure must return 2 (got $rc)"
+          reset_state; hash abcd1234 admin > "$STATE/stored"; reset_admin_password || fail "already admin must return 0"
+          [ ! -e "$STATE/updated" ] || fail "already admin must not update"
+          reset_state; hash abcd1234 changed > "$STATE/stored"; echo generated > "$STATE/secret"
+          reset_admin_password || fail "changed password must return 0"
+          [ ! -e "$STATE/updated" ] || fail "changed password must stay untouched"
+          reset_state; hash abcd1234 generated > "$STATE/stored"; echo generated > "$STATE/secret"
+          reset_admin_password || fail "generated password must return 0"
+          [ -e "$STATE/updated" ] || fail "generated password must be reset"
+          reset_state; hash abcd1234 generated > "$STATE/stored"; echo generated > "$STATE/secret"; touch "$STATE/failupd"
+          reset_admin_password && rc=0 || rc=$?
+          [ "$rc" = 2 ] || fail "update failure must return 2 (got $rc)"
+          reset_state; hash abcd1234 generated > "$STATE/stored"
+          reset_admin_password && rc=0 || rc=$?
+          [ "$rc" = 2 ] || fail "empty secret must return 2 (got $rc)"
+          echo "ALL ADMIN RESET TESTS PASSED"
+
   drift-check-tests:
     name: Version Branch Drift Check
     runs-on: ubuntu-latest
