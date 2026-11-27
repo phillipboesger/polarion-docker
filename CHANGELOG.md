@@ -18,6 +18,8 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ## [Unreleased]
 
+## [2026-11-27]
+
 ### Fixed
 
 - Per-request base URL did not rewrite proxied Polarion answers (REST `links`): `polarion.conf`'s DEFLATE
