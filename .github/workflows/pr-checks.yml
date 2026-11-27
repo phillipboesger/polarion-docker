@@ -695,10 +695,18 @@ jobs:
           for _ in $(seq 1 30000); do printf '{"u":"http://localhost/polarion/a"}\n'; done > /var/www/mock/big.json
           printf '{"u":"http://localhost/polarion/a"}' | gzip > /var/www/mock/z.json.gz
           printf '{"u":"http://localhost/polarion/a","t":"http://loc' > /var/www/mock/tail.json
+          # GWT-RPC answers also carry the BARE string value "http://localhost" (no trailing
+          # slash), which the browser client appends paths to — Polarion Apps lose the port.
+          printf '["a","http://localhost","http://localhost:3000","http://localhost.example"]' > /var/www/mock/q.json
+          for _ in $(seq 1 30000); do printf '{"u":"http://localhost","n":1}\n'; done > /var/www/mock/qbig.json
+          printf 'x="http://localhost"' > /var/www/mock/qtail.json
+          printf '{"t":"http://loc' > /var/www/mock/qpart.json
           printf 'AddType application/json .json\nAddEncoding gzip .gz\n<Location ~ \"/(polarion(?!(/bir)))\">\nSetOutputFilter DEFLATE\n</Location>\nAlias /polarion /var/www/mock\n<Directory /var/www/mock>\nRequire all granted\n</Directory>\n' > /etc/apache2/conf-available/mock.conf
           a2enmod lua headers deflate >/dev/null
           a2enconf zz-polarion-baseurl mock >/dev/null
           echo 'ServerName localhost' >> /etc/apache2/apache2.conf
+          # Without this Apache mmaps each mock into ONE bucket and chunk-boundary cases never run.
+          echo 'EnableMMAP Off' >> /etc/apache2/apache2.conf
           EOF
           cat > /tmp/baseurl-ctx/Dockerfile <<'EOF'
           FROM ubuntu:24.04
@@ -744,6 +752,28 @@ jobs:
           [ "$(get localhost:8080 tail.json)" = '{"u":"http://localhost:8080/polarion/a","t":"http://loc' ] \
             || fail "partial needle at end of body must be flushed"
           ok "partial needle at EOF flushed"
+          [ "$(get localhost:8080 q.json)" = '["a","http://localhost:8080","http://localhost:3000","http://localhost.example"]' ] \
+            || fail "quoted bare \"http://localhost\" not rewritten, or near-miss values changed"
+          ok "quoted bare \"http://localhost\" rewritten, near-miss values untouched"
+          [ "$(get localhost q.json)" = '["a","http://localhost","http://localhost:3000","http://localhost.example"]' ] \
+            || fail "Host localhost must leave the quoted bare value unchanged"
+          ok "plain localhost leaves the quoted bare value unchanged"
+          qout="$(get localhost:8080 qbig.json)"
+          qtotal="$(printf '%s\n' "$qout" | wc -l | tr -d ' ')"
+          qrewritten="$(printf '%s\n' "$qout" | grep -c '"u":"http://localhost:8080","n":1')"
+          qleft="$(printf '%s\n' "$qout" | grep -cF '"http://localhost"' || true)"
+          [ "$qtotal" = 30000 ] && [ "$qrewritten" = 30000 ] && [ "$qleft" = 0 ] \
+            || fail "large body with quoted bare value: $qrewritten of $qtotal lines rewritten, $qleft left over"
+          docker exec baseurl-test sed 's/"http:\/\/localhost"/"http:\/\/localhost:8080"/g' /var/www/mock/qbig.json > /tmp/qexpected.json
+          printf '%s\n' "$qout" > /tmp/qgot.json
+          cmp /tmp/qgot.json /tmp/qexpected.json || fail "large body with quoted bare value not byte-exact"
+          ok "large body with quoted bare value rewritten across chunk boundaries, byte-exact, none left over"
+          [ "$(get localhost:8080 qtail.json)" = 'x="http://localhost:8080"' ] \
+            || fail "body ending in a complete quoted bare value not rewritten"
+          ok "body ending in a complete quoted bare value rewritten"
+          [ "$(get localhost:8080 qpart.json)" = '{"t":"http://loc' ] \
+            || fail "partial quoted needle at end of body must be flushed unchanged"
+          ok "body ending in a partial quoted needle flushed unchanged"
           for bad in 'a"b' 'a<b' 'a b'; do
             ! get "$bad" x.json | grep -q 'http://a' || fail "unsafe Host '$bad' must not be injected"
           done
