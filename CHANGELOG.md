@@ -18,11 +18,16 @@ commit, then `git tag <date> && git push origin <date>` and
 
 ## [Unreleased]
 
+## [2026-11-27]
+
 ### Fixed
 
 - Per-request base URL did not rewrite proxied Polarion answers (REST `links`): `polarion.conf`'s DEFLATE
   `<Location>` replaced the filter, and Polarion gzips REST JSON. The filter now loads as
   `zz-polarion-baseurl.conf`, chains in front of DEFLATE and stops the backend from gzipping.
+- Polarion Apps (GWT-RPC clients) on a host port other than 80 lost the port: their answers also carry
+  the bare string value `"http://localhost"` (no trailing slash), which the base URL filter only
+  rewrote with a trailing slash. The filter now replaces the exact quoted bare value too, chunk-boundary safe.
 
 ## [2026-11-21]
 
